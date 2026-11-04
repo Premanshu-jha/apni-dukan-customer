@@ -76,6 +76,103 @@ Everything needs sign-in, because the backend's salon endpoints need a signed-in
 | `/profile/email` | Change email (SMS code first when the old email is verified) | `POST auth/email/change-phone-code`, `auth/email/send-code`, `auth/email/verify` |
 | `/profile/delete` | Delete account with an SMS code | `POST auth/me/delete-code`, `auth/me/delete` |
 
+## Flows
+
+### Sign-up and sign-in
+
+Who goes where: the route guards (`src/app/guards.tsx`) and `nextAfterSignIn` (`src/features/auth/flow.ts`).
+
+```mermaid
+flowchart TD
+  open([Open the app]) --> saved{Saved session?}
+  saved -- no --> phone["/signin: mobile number + robot check"]
+  saved -- yes --> refresh[Refresh the session]
+  refresh -- refused --> phone
+  refresh -- ok --> done{Email and name done?}
+  phone -- "otp/send 202" --> code["/signin/code: 6-digit SMS code"]
+  phone -- "SMS_PAUSED / CAPTCHA_*" --> phone
+  phone -. lost phone .-> recover["/signin/recover: email + new number, a code to each"]
+  recover -- both codes right --> done
+  code -- "WRONG_CODE / CODE_EXPIRED / TOO_MANY_ATTEMPTS" --> code
+  code -- "verify 200" --> done
+  done -- email missing --> email["/welcome/email: email, then its code"]
+  email --> done
+  done -- name missing --> name["/welcome/name: What should we call you?"]
+  name --> done
+  done -- yes --> back([Back to where they started, or Home])
+```
+
+### Finding a salon and booking
+
+`LocationGate`, `SalonList`, `SalonPage`, `BookTime`, `ConfirmBooking`. Every backend answer on Book has its own
+branch; the Idempotency-Key in the draft means a retried tap never books twice.
+
+```mermaid
+flowchart TD
+  home([Home: Salon tab]) --> loc{Location?}
+  loc -- "not asked yet" --> explain[Why we need it → Allow location]
+  explain --> loc
+  loc -- blocked or off --> guide[Step-by-step guide → Try again]
+  guide --> loc
+  loc -- outside India --> india[Apni Dukan works only in India]
+  loc -- ok --> list[Salons within 5 km]
+  list -- none --> empty[No salons near you yet → Let us know]
+  list --> salon["/salons/:id: tick services"]
+  salon --> time["/salons/:id/book: day chips, free times"]
+  time --> confirm["/salons/:id/confirm: Book now + Idempotency-Key"]
+  confirm -- 201 --> booked([Booking with start code])
+  confirm -- SLOT_TAKEN --> time
+  confirm -- PROFILE_INCOMPLETE --> step[Missing sign-up step] --> confirm
+  confirm -- "BOOKING_BLOCKED / TOO_MANY_BOOKINGS / TOO_MANY_CHANGES / OVERLAPS_YOUR_BOOKING" --> msg[Banner: the reason, e.g. when booking opens again]
+  confirm -- "network timeout, retried" --> same[Same key: never two bookings]
+```
+
+### A booking's life
+
+What the customer sees on `/bookings/:id` (`BookingDetail`). Move is offered only while `canMove` is true (more than
+1 hour to go and the salon taking changes); Cancel while `canChange` is true.
+
+```mermaid
+stateDiagram-v2
+  [*] --> CONFIRMED: booked
+  CONFIRMED --> CONFIRMED: moved (more than 1 h before)
+  CONFIRMED --> CANCELLED_BY_CUSTOMER: cancelled (within 1 h = late, a strike)
+  CONFIRMED --> CANCELLED_BY_SALON: salon cancels, with a reason
+  CONFIRMED --> IN_SERVICE: salon starts it with the 4-digit code
+  CONFIRMED --> NO_SHOW: not started 15 min after the start (a strike)
+  IN_SERVICE --> COMPLETED: done
+  COMPLETED --> [*]
+  CANCELLED_BY_CUSTOMER --> [*]
+  CANCELLED_BY_SALON --> [*]
+  NO_SHOW --> [*]
+```
+
+### Staying signed in (several tabs)
+
+`src/api/client.ts` and `src/store/session.ts`.
+
+```mermaid
+sequenceDiagram
+  participant Tab as A tab of the app
+  participant Lock as Lock shared by all tabs
+  participant Saved as Saved session (localStorage)
+  participant API as Backend
+  Tab->>API: call with access token
+  API-->>Tab: 401 (expired)
+  Tab->>Lock: one refresh at a time
+  Lock->>Saved: read the newest refresh token
+  Tab->>API: POST /auth/refresh
+  alt new pair
+    API-->>Tab: tokens
+    Tab->>Saved: save (other tabs follow by storage event)
+    Tab->>API: the call again
+  else refused (expired, reused, account gone)
+    API-->>Tab: 401
+    Tab->>Saved: sign out here, drop push, draft and cache
+  end
+  Note over Tab,API: Signing out waits for a refresh on its way, and one landing after sign-out is thrown away
+```
+
 ## How it works
 
 ### Folders
@@ -161,6 +258,8 @@ and set `VITE_API_URL` (and `VITE_TURNSTILE_SITE_KEY` in production) in the host
 ## Changelog
 
 ### 0.3.0 — 2026-11-04
+
+- Flow diagrams in this README: sign-up and sign-in, booking, a booking's life, staying signed in.
 
 Second review round (four independent reviews: customer app, backend, backend inbox, contract between them).
 
