@@ -1,0 +1,87 @@
+import { useState } from 'react'
+import { Navigate, useNavigate, useParams } from 'react-router'
+import { useBooking, useMoveBooking } from '../../api/bookings'
+import { isApiError, messageOf } from '../../api/errors'
+import { Banner, Button, ErrorState, Loading, Page } from '../../components/ui'
+import { dateOfIst, dateTimeIst, timeIst } from '../../lib/ist'
+import { DateChips, SlotGrid } from '../salon/SlotGrid'
+
+export function MoveBooking() {
+  const { id = '' } = useParams()
+  const navigate = useNavigate()
+  const booking = useBooking(id)
+  const move = useMoveBooking()
+  const [date, setDate] = useState<string | null>(null)
+  const [startAt, setStartAt] = useState<string | null>(null)
+
+  if (booking.isPending) {
+    return (
+      <Page back={`/bookings/${id}`} title="Move booking">
+        <Loading />
+      </Page>
+    )
+  }
+  if (booking.isError) {
+    return (
+      <Page back={`/bookings/${id}`} title="Move booking">
+        <ErrorState message={messageOf(booking.error)} onRetry={() => booking.refetch()} />
+      </Page>
+    )
+  }
+  const b = booking.data
+  if (!b.canMove) return <Navigate to={`/bookings/${id}`} replace />
+  const day = date ?? dateOfIst(b.startsAt)
+
+  return (
+    <Page
+      back={`/bookings/${id}`}
+      title="Move booking"
+      footer={
+        <Button
+          className="w-full"
+          disabled={!startAt}
+          busy={move.isPending}
+          onClick={() =>
+            startAt &&
+            move.mutate(
+              { id, salonId: b.salonId, startAt },
+              {
+                onSuccess: () => navigate(`/bookings/${id}`, { replace: true }),
+                onError: (e) => {
+                  if (isApiError(e, 'SLOT_TAKEN')) setStartAt(null)
+                },
+              },
+            )
+          }
+        >
+          {startAt ? `Move to ${timeIst(startAt)}` : 'Pick a new time'}
+        </Button>
+      }
+    >
+      <p className="text-muted">
+        Now: <span className="text-ink">{dateTimeIst(b.startsAt)}</span> at {b.salonName}
+      </p>
+      {move.isError && (
+        <Banner tone="bad">
+          {isApiError(move.error, 'SLOT_TAKEN') ? 'Someone just booked that time. Pick another one.' : messageOf(move.error)}
+        </Banner>
+      )}
+      <DateChips
+        value={day}
+        onChange={(d) => {
+          setDate(d)
+          setStartAt(null)
+        }}
+      />
+      <SlotGrid
+        salonId={b.salonId}
+        serviceIds={b.services.map((s) => s.serviceId)}
+        date={day}
+        selected={startAt}
+        onPick={setStartAt}
+        exclude={b.startsAt}
+        moving={b.id}
+      />
+    </Page>
+  )
+}
