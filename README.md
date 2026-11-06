@@ -264,7 +264,11 @@ and set `VITE_API_URL` (and `VITE_TURNSTILE_SITE_KEY` in production) in the host
 - Salons are listed within 2 km (was 5 km), 30 at a time with "Show more salons", so a dense area with hundreds of
   salons loads quickly. Needs the backend's scale PR (pages with `afterDistance` and `afterId`).
 - "N salons within 2 km, nearest first" (no longer the wrong "within 5 km" count when the list was cut at 50).
-- Tests: the fake backend pages like the real one; an end-to-end journey for a dense area.
+- A failed "Show more salons" keeps the salons already shown and says so (offline is told at once); the button stays
+  focusable while loading, focus moves to the first new salon, and the count is announced.
+- Messages: "99+ unread" once there are more than 99 (the backend now counts up to 100).
+- Tests: the fake backend pages like the real one and caps unread at 100; end-to-end journeys for a dense area,
+  exactly 30 salons, a failed page and 99+ unread.
 
 ### 0.3.0 — 2026-11-04
 

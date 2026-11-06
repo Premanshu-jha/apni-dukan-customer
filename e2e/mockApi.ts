@@ -86,6 +86,8 @@ export class MockApi {
   profileIncompleteOnce = false
   /** Move targets (ISO) that answer SLOT_TAKEN once. */
   moveTakenOnce = new Set<string>()
+  /** How many next-page requests fail (the earlier pages must stay on screen). */
+  failSalonPages = 0
   /** The salon was suspended: its pages answer 404 SALON_NOT_FOUND. */
   salonGone = false
   /** Makes "sign out everywhere" fail on the backend. */
@@ -195,6 +197,11 @@ export class MockApi {
       const afterDistance = url.searchParams.get('afterDistance')
       const afterId = url.searchParams.get('afterId')
       if ((afterDistance === null) !== (afterId === null)) return fail(400, 'VALIDATION_FAILED', 'Some fields are not valid', { afterId: 'send afterDistance and afterId together' })
+      if (afterDistance !== null && !Number.isFinite(Number(afterDistance))) return fail(400, 'BAD_REQUEST', 'The request is not valid')
+      if (afterId !== null && this.failSalonPages > 0) {
+        this.failSalonPages -= 1
+        return fail(500, 'INTERNAL_ERROR', 'Something went wrong on our side.')
+      }
       const rest = afterId === null ? this.salons : this.salons.filter((s) =>
         s.distanceMetres > Number(afterDistance) || (s.distanceMetres === Number(afterDistance) && s.id > afterId))
       return ok(200, rest.slice(0, 30))
@@ -251,8 +258,8 @@ export class MockApi {
       return ok(200, b)
     }
 
-    if (p === '/me/notifications') return ok(200, { items: this.inbox, unread: this.inbox.filter((i) => !i.read).length, next: null })
-    if (p === '/me/notifications/unread-count') return ok(200, { unread: this.inbox.filter((i) => !i.read).length })
+    if (p === '/me/notifications') return ok(200, { items: this.inbox, unread: Math.min(100, this.inbox.filter((i) => !i.read).length), next: null })
+    if (p === '/me/notifications/unread-count') return ok(200, { unread: Math.min(100, this.inbox.filter((i) => !i.read).length) })
     if (p === '/me/notifications/read') {
       const ids: string[] = body?.ids ?? []
       this.inbox.forEach((i) => {

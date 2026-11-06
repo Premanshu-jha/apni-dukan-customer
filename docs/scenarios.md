@@ -1,6 +1,6 @@
 # Customer scenarios (salon)
 
-Scope: every scenario a salon customer can hit, checked against the backend `apni-dukan-backend` (branch `feature/notification-inbox`: auth, salon, notifications, shops) and the customer app `apni-dukan-customer` (branch `feature/customer-app`: `src/features/**`, `src/api/**`).
+Scope: every scenario a salon customer can hit, checked against the backend `apni-dukan-backend` (`main` plus the scale PR: auth, salon, notifications, shops) and the customer app `apni-dukan-customer` (`src/features/**`, `src/api/**`). `MessagesAtScaleIntegrationTest`=MsgIT.
 "API behaviour" and "App behaviour" come from reading the code, not from the READMEs. Test names are JUnit methods (backend: `AuthIntegrationTest`=AuthIT, `SalonBookingIntegrationTest`=BookIT, others named in full) and Vitest/Playwright titles (app: `client.test`, `e2e:<spec>`).
 Verdicts: **OK-tested**, **OK-untested** (correct but no test), **GAP** (wrong or missing; file:line given), **N/A-v1** (a v1 limit the README states).
 Audited 2026-11-04 by an independent reviewer, then updated after the fixes (the 10 GAPs are fixed; tests were added for the most important untested rows).
@@ -155,4 +155,9 @@ How to use it: every new feature or fix adds or updates rows here. A row is done
 | 144 | Long input | Huge JSON body | 413/400 before it is read (64 KB) | n/a | AuthIT.hugeRequestBodiesAreRefusedBeforeBeingRead; …hugeBodiesWithoutALength… | — | OK-tested |
 | 145 | Long input | Long salon name or address in the reminder | The code and held-until go first; only the end is cut | n/a | BookIT.aReminderKeepsTheStartCodeAndHeldUntilWhenALongAddressMakesItTooLong | — | OK-tested |
 | 146 | Long input | Email over 254 characters or phone over 20 | 400 VALIDATION_FAILED | `looksLikeEmail` / `normalizePhone` block it first | EmailsTest; PhoneNumbersTest | lib.test "formats and checks" | OK-tested |
-| 147 | Finding salons | A dense area (more than 30 salons within 2 km) | 200, pages of 30; the next page with afterDistance + afterId of the last salon (both or neither, else 400) | "Show more salons" until a page is shorter than 30; paused salons never cut a page short | BookIT (salon paging tests) | e2e:scenarios "a dense area…" | OK-tested |
+| 147 | Finding salons | A dense area (more than 30 salons within 2 km) | 200, pages of 30; the next page with afterDistance + afterId of the last salon (both or neither, else 400) | "Show more salons" until a page is shorter than 30; paused salons never cut a page short | BookIT.salonsWithin2KmComeNearestFirst30APage… | e2e:scenarios "a dense area…" | OK-tested |
+| 148 | Finding salons | Exactly 30 salons | 200 [30], then 200 [] | One extra page, then "30 salons within 2 km" and no button | — | e2e:scenarios "exactly 30 salons…" | OK-tested |
+| 149 | Finding salons | "Show more salons" fails (offline, 5xx) | — | The salons already shown stay; "Couldn't load more salons…"; tapping again works; offline says so at once | — | e2e:scenarios "\"Show more salons\" failing…" | OK-tested |
+| 150 | Finding salons | A background refresh of the list fails | — | The list stays with "Couldn't refresh the list" | — | — | OK-untested |
+| 151 | Finding salons | Keyboard or screen reader on "Show more salons" | — | The button stays focusable while loading (aria-busy); focus moves to the first new salon; the count is announced | — | e2e:scenarios "\"Show more salons\" failing…" (focus) | OK-tested |
+| 152 | Messages | More than 99 unread | unread is counted up to 100 | Bell "99+" and "Messages, more than 99 unread"; inbox "99+ unread" | MsgIT.theUnreadCountStopsAt100… | e2e:scenarios "more than 99 unread…" | OK-tested |
