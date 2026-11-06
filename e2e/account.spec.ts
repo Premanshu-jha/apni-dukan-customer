@@ -22,6 +22,9 @@ test('messages: the bell shows unread, opening one marks it read and opens its b
 test('signing out ends the session and the next person starts at Home', async ({ page, context, api }) => {
   await signedIn(context, api)
   await page.goto('/bookings')
+  // Let the start-up refresh finish first: leaving the page while it is on its way loses its answer, and the next
+  // page would send the refresh token the backend already swapped (401: signed out, as on a real phone)
+  await expect(page.getByText('No upcoming bookings')).toBeVisible()
   await page.goto('/profile')
   await page.getByRole('button', { name: 'Sign out', exact: true }).click()
   await expect(page).toHaveURL(/\/signin$/)
