@@ -2,7 +2,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { Navigate, useNavigate, useParams } from 'react-router'
 import { useBook } from '../../api/bookings'
-import { isApiError, messageOf } from '../../api/errors'
+import { isApiError, messageOf, salonReadMessage } from '../../api/errors'
 import { useSalon, useSalonServices } from '../../api/salons'
 import { Banner, Button, Card, ErrorState, Loading, Page } from '../../components/ui'
 import { dateTimeIst } from '../../lib/ist'
@@ -50,11 +50,12 @@ export function ConfirmBooking() {
       </Page>
     )
   }
-  if (salon.isError || services.isError) {
+  // Only when there is nothing to show: a failed refresh (a 429 on coming back to the app) keeps the page
+  if ((salon.isError && !salon.data) || (services.isError && !services.data)) {
     return (
       <Page back={`/salons/${id}/book`} title="Confirm booking">
         <ErrorState
-          message={messageOf(salon.error ?? services.error)}
+          message={salonReadMessage(salon.error ?? services.error)}
           onRetry={() => {
             void salon.refetch()
             void services.refetch()

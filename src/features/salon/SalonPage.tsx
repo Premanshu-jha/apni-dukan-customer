@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router'
-import { messageOf } from '../../api/errors'
+import { salonReadMessage } from '../../api/errors'
 import { useSalon, useSalonServices } from '../../api/salons'
 import { Banner, Button, ErrorState, Loading, Page } from '../../components/ui'
 import { clock12, dateTimeIst, weekdayName } from '../../lib/ist'
@@ -33,11 +33,12 @@ export function SalonPage() {
       </Page>
     )
   }
-  if (salon.isError || services.isError) {
+  // Only when there is nothing to show: a failed refresh (a 429 on coming back to the app) keeps the page
+  if ((salon.isError && !salon.data) || (services.isError && !services.data)) {
     return (
       <Page back="/">
         <ErrorState
-          message={messageOf(salon.error ?? services.error)}
+          message={salonReadMessage(salon.error ?? services.error)}
           onRetry={() => {
             void salon.refetch()
             void services.refetch()
@@ -79,6 +80,9 @@ export function SalonPage() {
         </div>
       }
     >
+      {(salon.isRefetchError || services.isRefetchError) && (
+        <Banner tone="warn">Couldn't refresh this salon: {salonReadMessage(salon.error ?? services.error)}</Banner>
+      )}
       <SalonPhoto url={s.photoUrl} name={s.name} large />
       <div className="flex flex-col gap-1">
         <p className="text-muted">

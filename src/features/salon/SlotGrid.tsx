@@ -1,4 +1,4 @@
-import { isApiError, messageOf } from '../../api/errors'
+import { isApiError, salonReadMessage } from '../../api/errors'
 import { useSlots } from '../../api/salons'
 import { Chip, EmptyState, ErrorState, Loading } from '../../components/ui'
 import { clock12, dayLabel, nextDates } from '../../lib/ist'
@@ -53,7 +53,7 @@ export function SlotGrid({
         />
       )
     }
-    return <ErrorState message={messageOf(slots.error)} onRetry={() => slots.refetch()} />
+    return <ErrorState message={salonReadMessage(slots.error)} onRetry={() => slots.refetch()} />
   }
   const starts = slots.data.starts.filter((s) => s.startAt !== exclude)
   if (starts.length === 0) {
