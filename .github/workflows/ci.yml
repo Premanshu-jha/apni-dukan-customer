@@ -30,7 +30,8 @@ jobs:
 
   e2e:
     # A real browser drives the app through the main journeys, against the fake backend in e2e/mockApi.ts
-    runs-on: ubuntu-latest
+    # Playwright's Chromium isn't available on ubuntu-latest (26.04) yet; same as the partner app
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:

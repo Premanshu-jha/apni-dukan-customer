@@ -64,7 +64,7 @@ Everything needs sign-in, because the backend's salon endpoints need a signed-in
 | `/signin/recover` | Lost phone: email + new number, a code to each | `POST auth/recover/start`, `auth/recover/complete` |
 | `/welcome/email` | Step 2 of 3: email and its code | `POST auth/email/send-code`, `auth/email/verify` |
 | `/welcome/name` | Step 3 of 3, last: "What should we call you?" | `PATCH auth/me` |
-| `/` | Home: category tabs; Salon tab = location, then salons within 5 km | `GET salons?lat&lng` |
+| `/` | Home: category tabs; Salon tab = location, then salons within 2 km, 30 at a time ("Show more salons") | `GET salons?lat&lng[&afterDistance&afterId]` |
 | `/salons/:id` | Salon: photo, address, services to tick, opening hours | `GET salons/{id}`, `salons/{id}/services` |
 | `/salons/:id/book` | Day chips (7 days) and free times | `GET salons/{id}/availability?services&date` |
 | `/salons/:id/confirm` | Summary and Book now | `POST bookings` (with `Idempotency-Key`) |
@@ -115,7 +115,7 @@ flowchart TD
   loc -- blocked or off --> guide[Step-by-step guide → Try again]
   guide --> loc
   loc -- outside India --> india[Apni Dukan works only in India]
-  loc -- ok --> list[Salons within 5 km]
+  loc -- ok --> list[Salons within 2 km]
   list -- none --> empty[No salons near you yet → Let us know]
   list --> salon["/salons/:id: tick services"]
   salon --> time["/salons/:id/book: day chips, free times"]
@@ -216,8 +216,10 @@ public/         sw.js (push notifications), manifest, icon
   explains why. If location is blocked or off, a guide shows the steps for Android, iPhone or a computer.
 - The location is saved on the phone (`ad.location`) and shown as "Near your current location · ±30 m · Update".
 - Accuracy worse than 1 km (usual on laptops) shows a warning that results may be off.
-- The backend returns approved salons within 5 km, nearest first, at most 50. None → "No salons near you yet" with
-  a "Let us know" email link (to `VITE_SUPPORT_EMAIL`).
+- The backend returns approved salons within 2 km, nearest first, 30 at a time (found by a map index, so a dense
+  city is as fast as a quiet one). "Show more salons" asks for the next 30 after the last one's distance and id,
+  until a shorter page comes back. None → "No salons near you yet" with a "Let us know" email link (to
+  `VITE_SUPPORT_EMAIL`).
 
 ### Booking
 
@@ -256,6 +258,29 @@ and set `VITE_API_URL` (and `VITE_TURNSTILE_SITE_KEY` in production) in the host
 `index.html` (single-page app). Then add the site's address to the backend's `CORS_ALLOWED_ORIGINS`.
 
 ## Changelog
+
+### 0.5.0 — 2026-11-06
+
+- ETags: the API client keeps the last answer to each read in memory only (per person, at most 200 addresses), sends
+  its ETag as `If-None-Match` and shows the kept data on a 304, so a booking, the bell or a list re-read with nothing
+  changed downloads nothing. Answers stay `no-store` (a shared phone keeps nothing after sign-out); the memory is
+  forgotten on sign-out, when the session ends and when another person signs in. A 304 is never an error and never
+  retried. Needs the backend's scale PR (#31).
+- A 304 for which nothing is kept (a cache or proxy on the way, or the person signed out or changed while the
+  read was on its way) is asked once more without `If-None-Match` and past any cache, instead of becoming an error.
+- Tests: the fake backend answers ETags and 304s like the real one; an end-to-end refresh answered 304; unit tests
+  of the ETag memory.
+
+### 0.4.0 — 2026-11-06
+
+- Salons are listed within 2 km (was 5 km), 30 at a time with "Show more salons", so a dense area with hundreds of
+  salons loads quickly. Needs the backend's scale PR (pages with `afterDistance` and `afterId`).
+- "N salons within 2 km, nearest first" (no longer the wrong "within 5 km" count when the list was cut at 50).
+- A failed "Show more salons" keeps the salons already shown and says so (offline is told at once); the button stays
+  focusable while loading, focus moves to the first new salon, and the count is announced.
+- Messages: "99+ unread" once there are more than 99 (the backend now counts up to 100).
+- Tests: the fake backend pages like the real one and caps unread at 100; end-to-end journeys for a dense area,
+  exactly 30 salons, a failed page and 99+ unread.
 
 ### 0.3.0 — 2026-11-04
 

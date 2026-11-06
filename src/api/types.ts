@@ -27,6 +27,8 @@ export interface SalonSummary {
   city: string
   distanceKm: number
   photoUrl: string | null
+  /** Exact distance in metres: sent back to ask for the next page */
+  distanceMetres: number
 }
 
 export interface DayHours {
