@@ -1,15 +1,30 @@
+import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router'
 import { isApiError, messageOf } from '../../api/errors'
-import { useNearbySalons } from '../../api/salons'
-import { EmptyState, ErrorState, Loading } from '../../components/ui'
+import { SALONS_RADIUS_KM, useNearbySalons } from '../../api/salons'
+import { Button, EmptyState, ErrorState, Loading } from '../../components/ui'
 import { SUPPORT_EMAIL } from '../../lib/config'
 
 
 export function SalonList({ lat, lng }: { lat: number; lng: number }) {
   const salons = useNearbySalons(lat, lng)
+  const [offlineTap, setOfflineTap] = useState(false)
+  const listRef = useRef<HTMLUListElement | null>(null)
+  // Index of the first salon the next page brings (set when "Show more salons" is tapped)
+  const focusIndex = useRef<number | null>(null)
+  const loaded = salons.data?.pages.flat().length ?? 0
+
+  // After "Show more salons", move focus to the first salon that just appeared (keyboard and screen readers)
+  useEffect(() => {
+    if (focusIndex.current !== null && loaded > focusIndex.current) {
+      listRef.current?.querySelector<HTMLAnchorElement>(`a[data-index="${focusIndex.current}"]`)?.focus()
+      focusIndex.current = null
+    }
+  }, [loaded])
 
   if (salons.isPending) return <Loading label="Looking for salons near you…" />
-  if (salons.isError) {
+  // Only when nothing is on screen yet: a failed "Show more" (or a background refresh) keeps the list and says so
+  if (salons.isError && !salons.data) {
     // The backend answers VALIDATION_FAILED on lat/lng for a point outside India
     if (isApiError(salons.error, 'VALIDATION_FAILED')) {
       return (
@@ -21,7 +36,10 @@ export function SalonList({ lat, lng }: { lat: number; lng: number }) {
     }
     return <ErrorState message={messageOf(salons.error)} onRetry={() => salons.refetch()} />
   }
-  if (salons.data.length === 0) {
+  const list = salons.data.pages.flat()
+  const moreFailed = salons.isFetchNextPageError
+  const refreshFailed = salons.isRefetchError && !salons.isFetchNextPageError
+  if (list.length === 0) {
     return (
       <EmptyState
         title="No salons near you yet"
@@ -41,12 +59,17 @@ export function SalonList({ lat, lng }: { lat: number; lng: number }) {
   return (
     <section aria-label="Salons near you" className="flex flex-col gap-3">
       <p className="text-sm text-muted">
-        {salons.data.length} {salons.data.length === 1 ? 'salon' : 'salons'} within 5 km
+        {salons.hasNextPage ? 'Salons' : `${list.length} ${list.length === 1 ? 'salon' : 'salons'}`} within{' '}
+        {SALONS_RADIUS_KM} km, nearest first
       </p>
-      <ul className="flex flex-col gap-3">
-        {salons.data.map((s) => (
+      <p aria-live="polite" className="sr-only">
+        {list.length} salons shown
+      </p>
+      <ul ref={listRef} className="flex flex-col gap-3">
+        {list.map((s, i) => (
           <li key={s.id}>
             <Link
+              data-index={i}
               to={`/salons/${s.id}`}
               className="flex gap-3 rounded-2xl border border-line bg-surface p-3 transition hover:bg-raised"
             >
@@ -62,6 +85,34 @@ export function SalonList({ lat, lng }: { lat: number; lng: number }) {
           </li>
         ))}
       </ul>
+      {(moreFailed || offlineTap || refreshFailed) && (
+        <p role="alert" className="text-sm text-bad">
+          {offlineTap
+            ? "You're offline. Connect to the internet and tap Show more salons again."
+            : moreFailed
+              ? "Couldn't load more salons. Check your connection and tap Show more salons again."
+              : "Couldn't refresh the list. It may be a little out of date."}
+        </p>
+      )}
+      {salons.hasNextPage && (
+        // aria-busy, not disabled: a disabled button would drop the keyboard focus while it loads
+        <Button
+          variant="secondary"
+          aria-busy={salons.isFetchingNextPage}
+          onClick={() => {
+            if (salons.isFetchingNextPage) return
+            if (!navigator.onLine) {
+              setOfflineTap(true)
+              return
+            }
+            setOfflineTap(false)
+            focusIndex.current = list.length
+            void salons.fetchNextPage()
+          }}
+        >
+          {salons.isFetchingNextPage ? 'Loading more salons…' : 'Show more salons'}
+        </Button>
+      )}
     </section>
   )
 }
