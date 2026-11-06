@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto'
 import type { BrowserContext, Route } from '@playwright/test'
 
 /**
@@ -5,6 +6,17 @@ import type { BrowserContext, Route } from '@playwright/test'
  * InboxPage); errors follow ErrorResponse {code, message, details}. State lives per test.
  */
 export const API = 'http://api.test'
+
+/** An ETag as Spring's ShallowEtagHeaderFilter makes it: "0" and the MD5 of the body, in quotes. */
+export function etagOf(body: string): string {
+  return `"0${createHash('md5').update(body).digest('hex')}"`
+}
+
+/** If-None-Match holds this ETag (a list, weak or strong, or *), as the filter compares them. */
+function matches(ifNoneMatch: string | undefined, etag: string): boolean {
+  if (!ifNoneMatch) return false
+  return ifNoneMatch.split(',').some((t) => t.trim() === '*' || t.trim().replace(/^W\//, '') === etag)
+}
 const IST = 5.5 * 3600_000
 
 export interface MockUser {
@@ -65,6 +77,8 @@ export const TIMES = ['10:00', '11:30', '13:00', '15:45', '17:15', '18:30']
 
 export class MockApi {
   user: MockUser = { id: 'u1', phone: '9848012345', name: null, email: null, emailVerified: false, admin: false }
+  /** Paths (with the query) answered 304 Not Modified, in order. */
+  notModified: string[] = []
   calls: Call[] = []
   bookings: Record<string, unknown>[] = []
   inbox: { id: string; type: string; title: string; body: string; url: string | null; sentAt: string; read: boolean }[] = []
@@ -72,9 +86,10 @@ export class MockApi {
   takenOnce = new Set<string>()
   /** Start times (ISO) no longer offered. */
   gone = new Set<string>()
+  /** Approved salons within 2 km, nearest first (BookingService.salonsNear). */
   salons = [
-    { id: 's1', name: SALON.name, area: SALON.area, city: SALON.city, distanceKm: 0.8, photoUrl: null },
-    { id: 's2', name: 'Royal Cuts', area: 'Sector 63', city: 'Noida', distanceKm: 2.4, photoUrl: null },
+    { id: 's1', name: SALON.name, area: SALON.area, city: SALON.city, distanceKm: 0.8, photoUrl: null, distanceMetres: 812.4 },
+    { id: 's2', name: 'Royal Cuts', area: 'Sector 63', city: 'Noida', distanceKm: 1.9, photoUrl: null, distanceMetres: 1934.7 },
   ]
   private refreshCount = 0
   private accessValid = new Set<string>()
@@ -85,6 +100,8 @@ export class MockApi {
   profileIncompleteOnce = false
   /** Move targets (ISO) that answer SLOT_TAKEN once. */
   moveTakenOnce = new Set<string>()
+  /** How many next-page requests fail (the earlier pages must stay on screen). */
+  failSalonPages = 0
   /** The salon was suspended: its pages answer 404 SALON_NOT_FOUND. */
   salonGone = false
   /** Makes "sign out everywhere" fail on the backend. */
@@ -142,8 +159,20 @@ export class MockApi {
     const auth = req.headers()['authorization'] ?? null
     this.calls.push({ method, path: url.pathname + url.search, body, auth, idempotencyKey: req.headers()['idempotency-key'] ?? null })
     const p = url.pathname.replace('/api/v1', '')
-    const ok = (status: number, json?: unknown) =>
-      route.fulfill({ status, headers: { ...this.cors(), 'Content-Type': 'application/json' }, body: json === undefined ? '' : JSON.stringify(json) })
+    const ok = (status: number, json?: unknown) => {
+      const text = json === undefined ? '' : JSON.stringify(json)
+      // Every successful GET carries an ETag; sent back unchanged as If-None-Match, the answer is 304 with no body
+      const etag = method === 'GET' && status >= 200 && status < 300 ? etagOf(text) : null
+      if (etag && matches(req.headers()['if-none-match'], etag)) {
+        this.notModified.push(url.pathname + url.search)
+        return route.fulfill({ status: 304, headers: { ...this.cors(), ETag: etag }, body: '' })
+      }
+      return route.fulfill({
+        status,
+        headers: { ...this.cors(), 'Content-Type': 'application/json', ...(etag ? { ETag: etag } : {}) },
+        body: text,
+      })
+    }
     const fail = (status: number, code: string, message: string, details: Record<string, unknown> = {}) =>
       ok(status, { code, message, details })
 
@@ -190,7 +219,18 @@ export class MockApi {
     if (p === '/salons') {
       const lat = Number(url.searchParams.get('lat'))
       if (lat < 6 || lat > 37.6) return fail(400, 'VALIDATION_FAILED', 'Some fields are not valid', { lat: 'the point must be in India' })
-      return ok(200, this.salons)
+      // Keyset pages of 30 after (distance, id), as the backend does
+      const afterDistance = url.searchParams.get('afterDistance')
+      const afterId = url.searchParams.get('afterId')
+      if ((afterDistance === null) !== (afterId === null)) return fail(400, 'VALIDATION_FAILED', 'Some fields are not valid', { afterId: 'send afterDistance and afterId together' })
+      if (afterDistance !== null && !Number.isFinite(Number(afterDistance))) return fail(400, 'BAD_REQUEST', 'The request is not valid')
+      if (afterId !== null && this.failSalonPages > 0) {
+        this.failSalonPages -= 1
+        return fail(500, 'INTERNAL_ERROR', 'Something went wrong on our side.')
+      }
+      const rest = afterId === null ? this.salons : this.salons.filter((s) =>
+        s.distanceMetres > Number(afterDistance) || (s.distanceMetres === Number(afterDistance) && s.id > afterId))
+      return ok(200, rest.slice(0, 30))
     }
     if (p.startsWith('/salons/s1') && this.salonGone) return fail(404, 'SALON_NOT_FOUND', 'This salon is not on Apni Dukan right now.')
     if (p === '/salons/s1') return ok(200, SALON)
@@ -244,8 +284,8 @@ export class MockApi {
       return ok(200, b)
     }
 
-    if (p === '/me/notifications') return ok(200, { items: this.inbox, unread: this.inbox.filter((i) => !i.read).length, next: null })
-    if (p === '/me/notifications/unread-count') return ok(200, { unread: this.inbox.filter((i) => !i.read).length })
+    if (p === '/me/notifications') return ok(200, { items: this.inbox, unread: Math.min(100, this.inbox.filter((i) => !i.read).length), next: null })
+    if (p === '/me/notifications/unread-count') return ok(200, { unread: Math.min(100, this.inbox.filter((i) => !i.read).length) })
     if (p === '/me/notifications/read') {
       const ids: string[] = body?.ids ?? []
       this.inbox.forEach((i) => {
@@ -287,7 +327,8 @@ export class MockApi {
   private cors() {
     return {
       'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Headers': 'Authorization, Content-Type, Idempotency-Key',
+      'Access-Control-Allow-Headers': 'Authorization, Content-Type, Idempotency-Key, If-None-Match',
+      'Access-Control-Expose-Headers': 'Retry-After, ETag',
       'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
     }
   }
