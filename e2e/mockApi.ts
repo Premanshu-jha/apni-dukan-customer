@@ -72,9 +72,10 @@ export class MockApi {
   takenOnce = new Set<string>()
   /** Start times (ISO) no longer offered. */
   gone = new Set<string>()
+  /** Approved salons within 2 km, nearest first (BookingService.salonsNear). */
   salons = [
-    { id: 's1', name: SALON.name, area: SALON.area, city: SALON.city, distanceKm: 0.8, photoUrl: null },
-    { id: 's2', name: 'Royal Cuts', area: 'Sector 63', city: 'Noida', distanceKm: 2.4, photoUrl: null },
+    { id: 's1', name: SALON.name, area: SALON.area, city: SALON.city, distanceKm: 0.8, photoUrl: null, distanceMetres: 812.4 },
+    { id: 's2', name: 'Royal Cuts', area: 'Sector 63', city: 'Noida', distanceKm: 1.9, photoUrl: null, distanceMetres: 1934.7 },
   ]
   private refreshCount = 0
   private accessValid = new Set<string>()
@@ -190,7 +191,13 @@ export class MockApi {
     if (p === '/salons') {
       const lat = Number(url.searchParams.get('lat'))
       if (lat < 6 || lat > 37.6) return fail(400, 'VALIDATION_FAILED', 'Some fields are not valid', { lat: 'the point must be in India' })
-      return ok(200, this.salons)
+      // Keyset pages of 30 after (distance, id), as the backend does
+      const afterDistance = url.searchParams.get('afterDistance')
+      const afterId = url.searchParams.get('afterId')
+      if ((afterDistance === null) !== (afterId === null)) return fail(400, 'VALIDATION_FAILED', 'Some fields are not valid', { afterId: 'send afterDistance and afterId together' })
+      const rest = afterId === null ? this.salons : this.salons.filter((s) =>
+        s.distanceMetres > Number(afterDistance) || (s.distanceMetres === Number(afterDistance) && s.id > afterId))
+      return ok(200, rest.slice(0, 30))
     }
     if (p.startsWith('/salons/s1') && this.salonGone) return fail(404, 'SALON_NOT_FOUND', 'This salon is not on Apni Dukan right now.')
     if (p === '/salons/s1') return ok(200, SALON)

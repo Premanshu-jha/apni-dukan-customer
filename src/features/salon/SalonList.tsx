@@ -1,7 +1,7 @@
 import { Link } from 'react-router'
 import { isApiError, messageOf } from '../../api/errors'
-import { useNearbySalons } from '../../api/salons'
-import { EmptyState, ErrorState, Loading } from '../../components/ui'
+import { SALONS_RADIUS_KM, useNearbySalons } from '../../api/salons'
+import { Button, EmptyState, ErrorState, Loading } from '../../components/ui'
 import { SUPPORT_EMAIL } from '../../lib/config'
 
 
@@ -21,7 +21,8 @@ export function SalonList({ lat, lng }: { lat: number; lng: number }) {
     }
     return <ErrorState message={messageOf(salons.error)} onRetry={() => salons.refetch()} />
   }
-  if (salons.data.length === 0) {
+  const list = salons.data.pages.flat()
+  if (list.length === 0) {
     return (
       <EmptyState
         title="No salons near you yet"
@@ -41,10 +42,11 @@ export function SalonList({ lat, lng }: { lat: number; lng: number }) {
   return (
     <section aria-label="Salons near you" className="flex flex-col gap-3">
       <p className="text-sm text-muted">
-        {salons.data.length} {salons.data.length === 1 ? 'salon' : 'salons'} within 5 km
+        {salons.hasNextPage ? 'Salons' : `${list.length} ${list.length === 1 ? 'salon' : 'salons'}`} within{' '}
+        {SALONS_RADIUS_KM} km, nearest first
       </p>
       <ul className="flex flex-col gap-3">
-        {salons.data.map((s) => (
+        {list.map((s) => (
           <li key={s.id}>
             <Link
               to={`/salons/${s.id}`}
@@ -62,6 +64,22 @@ export function SalonList({ lat, lng }: { lat: number; lng: number }) {
           </li>
         ))}
       </ul>
+      {salons.isFetchNextPageError && (
+        <p role="alert" className="text-sm text-bad">
+          Couldn't load more salons. Check your connection and tap Show more salons again.
+        </p>
+      )}
+      {salons.hasNextPage && (
+        <Button
+          variant="secondary"
+          busy={salons.isFetchingNextPage}
+          onClick={() => {
+            if (!salons.isFetchingNextPage) void salons.fetchNextPage()
+          }}
+        >
+          Show more salons
+        </Button>
+      )}
     </section>
   )
 }

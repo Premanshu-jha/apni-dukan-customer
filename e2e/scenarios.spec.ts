@@ -83,3 +83,21 @@ test('signing out in one tab signs out the other tab too', async ({ context, api
   await expect(b).toHaveURL(/\/signin$/)
   expect(api.user.name).toBe(MockApi.completeUser().name)
 })
+
+test('a dense area: 30 salons a page, nearest first, then "Show more salons" loads the rest', async ({ page, context, api }) => {
+  await signedIn(context, api)
+  api.salons = Array.from({ length: 45 }, (_, i) => ({
+    id: `x${String(i).padStart(2, '0')}`, name: `Salon ${i + 1}`, area: 'Sector 18', city: 'Noida',
+    distanceKm: Math.round((50 + i * 40) / 100) / 10, photoUrl: null, distanceMetres: 50 + i * 40,
+  }))
+  await page.goto('/')
+  await expect(page.getByText('Salons within 2 km, nearest first')).toBeVisible()
+  await expect(page.getByRole('link', { name: /Salon \d+/ })).toHaveCount(30)
+  await page.getByRole('button', { name: 'Show more salons' }).click()
+  await expect(page.getByRole('link', { name: /Salon \d+/ })).toHaveCount(45)
+  await expect(page.getByText('45 salons within 2 km, nearest first')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Show more salons' })).toBeHidden()
+  // The second page asked from where the first ended
+  const second = api.calls.find((c) => c.path.startsWith('/api/v1/salons?') && c.path.includes('afterId=x29'))
+  expect(second?.path).toContain('afterDistance=1210')
+})
