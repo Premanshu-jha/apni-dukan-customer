@@ -1,6 +1,7 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from './client'
 import { ApiError } from './errors'
+import { cursorQuery, nextAfterLast, type AfterCursor } from './pages'
 import type { Booking, CancelResult } from './types'
 
 export const bookingKeys = {
@@ -8,10 +9,46 @@ export const bookingKeys = {
   one: (id: string) => ['bookings', 'one', id] as const,
 }
 
-export function useMyBookings(when: 'upcoming' | 'past') {
+/** Upcoming bookings: all of them in one answer (a customer holds at most 2 waiting; the backend has no pages here). */
+export function useUpcomingBookings() {
   return useQuery({
-    queryKey: bookingKeys.mine(when),
-    queryFn: () => api<Booking[]>('GET', `/api/v1/me/bookings?when=${when}`),
+    queryKey: bookingKeys.mine('upcoming'),
+    queryFn: () => api<Booking[]>('GET', '/api/v1/me/bookings?when=upcoming'),
+  })
+}
+
+/** Past bookings per page (BookingService.PAST_PAGE); a shorter page is the last one. */
+export const PAST_PAGE = 30
+/**
+ * At most this many pages are loaded (300 bookings). A refresh (after a booking changes, on return to the app) asks
+ * every loaded page again, one after the other, so the pages stay joined; the cap keeps that to 10 small calls, each
+ * a 304 when unchanged. TanStack's `maxPages` would drop the latest page and the backend has no "page before".
+ */
+export const PAST_MAX_PAGES = 10
+
+/**
+ * Past bookings, latest first, 30 a page: the next page starts after the last booking's startsAt and id, sent back
+ * exactly as received (keyset paging), so years of bookings are never loaded at once.
+ */
+export function usePastBookings() {
+  return useInfiniteQuery({
+    queryKey: bookingKeys.mine('past'),
+    initialPageParam: null as AfterCursor | null,
+    queryFn: ({ pageParam }) => api<Booking[]>('GET', `/api/v1/me/bookings?when=past${cursorQuery(pageParam)}`),
+    getNextPageParam: (last: Booking[], all: Booking[][]) => nextAfterLast(last, all, PAST_PAGE, PAST_MAX_PAGES),
+  })
+}
+
+/**
+ * Whether any past booking comes after the capped list: the page after the last loaded one, asked once (again when
+ * bookings are refreshed), only to say yes or no. Without it the note at the cap would show when exactly 300 exist.
+ */
+export function useMorePastAfterCap(after: AfterCursor | null) {
+  return useQuery({
+    queryKey: [...bookingKeys.mine('past'), 'after-cap', after?.afterStart ?? null, after?.afterId ?? null],
+    queryFn: () => api<Booking[]>('GET', `/api/v1/me/bookings?when=past${cursorQuery(after)}`),
+    enabled: after !== null,
+    select: (page: Booking[]) => page.length > 0,
   })
 }
 

@@ -3,7 +3,7 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router'
 import { refreshSession, whenSessionEnds } from './api/client'
-import { ApiError } from './api/errors'
+import { ApiError, retryDelay } from './api/errors'
 import { claimSubscription, dropBrowserSubscription, registerWorker } from './api/push'
 import { App } from './app/App'
 import { forgetReturn } from './features/auth/flow'
@@ -16,6 +16,8 @@ const queryClient = new QueryClient({
     queries: {
       // Retry network blips, never answers the backend meant (a 4xx is final).
       retry: (count, error) => count < 2 && (!(error instanceof ApiError) || error.status === 0 || error.status >= 500),
+      // Waits as long as the backend's Retry-After asks (SERVICE_BUSY), else 1 s, 2 s
+      retryDelay,
       refetchOnWindowFocus: true,
     },
   },
