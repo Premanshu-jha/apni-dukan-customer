@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query'
+import { useInfiniteQuery, useQuery } from '@tanstack/react-query'
 import { api } from './client'
 import type { SalonDetails, SalonService, SalonSummary, Slots } from './types'
 
@@ -12,10 +12,26 @@ export const salonKeys = {
     ['salons', id, 'slots', [...services].sort(), date, moving ?? null] as const,
 }
 
+/** Salons per page from the backend (BookingService.SALONS_PAGE); a shorter page is the last one. */
+export const SALONS_PAGE = 30
+/** How far around the customer salons are listed (BookingService.RADIUS_METRES). */
+export const SALONS_RADIUS_KM = 2
+
+/**
+ * Salons near the customer, nearest first, a page at a time. The next page starts after the last salon's exact
+ * distance and id (keyset paging), so a dense area with hundreds of salons is never loaded at once.
+ */
 export function useNearbySalons(lat: number | null, lng: number | null) {
-  return useQuery({
+  return useInfiniteQuery({
     queryKey: salonKeys.near(lat ?? 0, lng ?? 0),
-    queryFn: () => api<SalonSummary[]>('GET', `/api/v1/salons?lat=${round6(lat!)}&lng=${round6(lng!)}`),
+    initialPageParam: null as SalonSummary | null,
+    queryFn: ({ pageParam }) => {
+      const after = pageParam
+        ? `&afterDistance=${encodeURIComponent(String(pageParam.distanceMetres))}&afterId=${encodeURIComponent(pageParam.id)}`
+        : ''
+      return api<SalonSummary[]>('GET', `/api/v1/salons?lat=${round6(lat!)}&lng=${round6(lng!)}${after}`)
+    },
+    getNextPageParam: (last: SalonSummary[]) => (last.length < SALONS_PAGE ? undefined : last[last.length - 1]),
     enabled: lat !== null && lng !== null,
     staleTime: 60_000,
   })
