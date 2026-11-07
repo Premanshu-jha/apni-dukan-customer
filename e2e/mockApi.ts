@@ -19,6 +19,24 @@ function matches(ifNoneMatch: string | undefined, etag: string): boolean {
 }
 const IST = 5.5 * 3600_000
 
+/** Past bookings per page (BookingService.PAST_PAGE); messages per page (InboxService). */
+const PAST_PAGE = 30
+const INBOX_PAGE = 30
+
+/**
+ * An instant's microseconds since 1970, from the backend's text ("…T04:30:00.123456Z"): the backend orders and
+ * pages by the microsecond, so the fake does too (a JavaScript Date keeps only milliseconds).
+ */
+export function micros(instant: string): number {
+  const fraction = (instant.match(/\.(\d+)Z$/)?.[1] ?? '').padEnd(6, '0').slice(0, 6)
+  return Math.floor(Date.parse(instant) / 1000) * 1_000_000 + Number(fraction)
+}
+
+/** What Spring can read as an Instant query value (ISO-8601, in UTC). */
+const INSTANT = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d{1,9})?)?Z$/
+/** This fake's booking ids stand in for the backend's UUIDs: anything else is unreadable. */
+const BOOKING_ID = /^b\d+$/
+
 export interface MockUser {
   id: string
   phone: string
@@ -34,6 +52,8 @@ export interface Call {
   body: unknown
   auth: string | null
   idempotencyKey: string | null
+  /** When it arrived (ms), to check the waits between retries. */
+  at: number
 }
 
 /** "2026-11-05" + "15:45" India time → ISO instant. */
@@ -104,6 +124,17 @@ export class MockApi {
   failSalonPages = 0
   /** The salon was suspended: its pages answer 404 SALON_NOT_FOUND. */
   salonGone = false
+  /** Paths (by suffix) answered 503 SERVICE_BUSY with Retry-After this many times. */
+  busy = new Map<string, { times: number; retryAfter: number }>()
+  /** How many next-page requests of the past bookings fail with 500 (the pages shown must stay). */
+  failPastPages = 0
+  /**
+   * Salon pages, service lists and free-time checks one person may ask in a minute (app.salon.reads-per-minute);
+   * past it, 429 TOO_MANY_REQUESTS with Retry-After until the minute is over.
+   */
+  readsPerMinute = 60
+  /** The salon reads counted in the current minute, and when that minute started. */
+  salonReads: number[] = []
   /** Makes "sign out everywhere" fail on the backend. */
   failLogoutAll = false
 
@@ -157,9 +188,9 @@ export class MockApi {
     if (method === 'OPTIONS') return route.fulfill({ status: 204, headers: this.cors() })
     const body = req.postData() ? JSON.parse(req.postData()!) : undefined
     const auth = req.headers()['authorization'] ?? null
-    this.calls.push({ method, path: url.pathname + url.search, body, auth, idempotencyKey: req.headers()['idempotency-key'] ?? null })
+    this.calls.push({ method, path: url.pathname + url.search, body, auth, idempotencyKey: req.headers()['idempotency-key'] ?? null, at: Date.now() })
     const p = url.pathname.replace('/api/v1', '')
-    const ok = (status: number, json?: unknown) => {
+    const ok = (status: number, json?: unknown, extra: Record<string, string> = {}) => {
       const text = json === undefined ? '' : JSON.stringify(json)
       // Every successful GET carries an ETag; sent back unchanged as If-None-Match, the answer is 304 with no body
       const etag = method === 'GET' && status >= 200 && status < 300 ? etagOf(text) : null
@@ -169,7 +200,7 @@ export class MockApi {
       }
       return route.fulfill({
         status,
-        headers: { ...this.cors(), 'Content-Type': 'application/json', ...(etag ? { ETag: etag } : {}) },
+        headers: { ...this.cors(), 'Content-Type': 'application/json', ...(etag ? { ETag: etag } : {}), ...extra },
         body: text,
       })
     }
@@ -202,6 +233,14 @@ export class MockApi {
     const token = auth?.replace('Bearer ', '') ?? ''
     if (!this.accessValid.has(token)) return fail(401, 'TOKEN_EXPIRED', 'Your session has expired. Refresh it.')
 
+    // 503 SERVICE_BUSY with Retry-After, as GlobalExceptionHandler answers a statement past its time limit
+    for (const [suffix, b] of this.busy) {
+      if (p.endsWith(suffix) && b.times > 0) {
+        b.times -= 1
+        return ok(503, { code: 'SERVICE_BUSY', message: "We're having a short problem. Try again in a few seconds.", details: {} }, { 'Retry-After': String(b.retryAfter) })
+      }
+    }
+
     if (p === '/auth/me' && method === 'GET') return ok(200, this.user)
     if (p === '/auth/me' && method === 'PATCH') {
       this.user = { ...this.user, name: body.name }
@@ -232,6 +271,20 @@ export class MockApi {
         s.distanceMetres > Number(afterDistance) || (s.distanceMetres === Number(afterDistance) && s.id > afterId))
       return ok(200, rest.slice(0, 30))
     }
+    // BookingService.requireReadsLeft: a salon page, its services and its free times count together, per person
+    if (/^\/salons\/[^/]+(\/services|\/availability)?$/.test(p)) {
+      const now = Date.now()
+      this.salonReads = this.salonReads.filter((t) => now - t < 60_000)
+      if (this.salonReads.length >= this.readsPerMinute) {
+        const wait = Math.max(1, Math.ceil((this.salonReads[0] + 60_000 - now) / 1000))
+        return ok(
+          429,
+          { code: 'TOO_MANY_REQUESTS', message: 'Too many salon pages at once. Wait a few seconds and try again.', details: {} },
+          { 'Retry-After': String(wait) },
+        )
+      }
+      this.salonReads.push(now)
+    }
     if (p.startsWith('/salons/s1') && this.salonGone) return fail(404, 'SALON_NOT_FOUND', 'This salon is not on Apni Dukan right now.')
     if (p === '/salons/s1') return ok(200, SALON)
     if (p === '/salons/s1/services') return ok(200, SERVICES)
@@ -260,8 +313,38 @@ export class MockApi {
       return ok(201, booking)
     }
     if (p === '/me/bookings') {
-      const upcoming = url.searchParams.get('when') !== 'past'
-      return ok(200, this.bookings.filter((b) => (b.status === 'CONFIRMED') === upcoming))
+      // Spring reads the cursor first (one it can't read is 400 BAD_REQUEST, as handleTypeMismatch; an empty one
+      // counts as not sent), then half of one is VALIDATION_FAILED naming afterId, then a cursor with when=upcoming
+      // is VALIDATION_FAILED naming afterStart
+      const upcoming = (url.searchParams.get('when') ?? 'upcoming').toLowerCase() !== 'past'
+      const afterStart = url.searchParams.get('afterStart') || null
+      const afterId = url.searchParams.get('afterId') || null
+      const unreadable = (value: string, name: string) => fail(400, 'BAD_REQUEST', `'${value}' is not a valid value for '${name}'`)
+      if (afterStart !== null && (!INSTANT.test(afterStart) || Number.isNaN(Date.parse(afterStart)))) return unreadable(afterStart, 'afterStart')
+      if (afterId !== null && !BOOKING_ID.test(afterId)) return unreadable(afterId, 'afterId')
+      const invalid = (details: Record<string, unknown>) => fail(400, 'VALIDATION_FAILED', 'Some fields are not valid', details)
+      if ((afterStart === null) !== (afterId === null)) return invalid({ afterId: 'send afterStart and afterId together' })
+      if (upcoming && afterId !== null) return invalid({ afterStart: 'pages are only for when=past' })
+      if (afterId !== null && this.failPastPages > 0) {
+        this.failPastPages -= 1
+        return fail(500, 'INTERNAL_ERROR', 'Something went wrong on our side.')
+      }
+      const at = (b: Record<string, unknown>) => micros(b.startsAt as string)
+      const byId = (x: Record<string, unknown>, y: Record<string, unknown>) => ((x.id as string) < (y.id as string) ? -1 : (x.id as string) > (y.id as string) ? 1 : 0)
+      // Upcoming: CONFIRMED or IN_SERVICE and not over yet, soonest first, all of them (at most 50)
+      const waiting = (b: Record<string, unknown>) =>
+        ['CONFIRMED', 'IN_SERVICE'].includes(b.status as string) && Date.parse(b.endsAt as string) > Date.now()
+      if (upcoming) return ok(200, this.bookings.filter(waiting).sort((x, y) => at(x) - at(y) || byId(x, y)).slice(0, 50))
+      // Past: everything else, startsAt descending then id ascending, 30 a page after the cursor
+      const after = afterStart === null ? null : micros(afterStart)
+      return ok(
+        200,
+        this.bookings
+          .filter((b) => !waiting(b))
+          .sort((x, y) => at(y) - at(x) || byId(x, y))
+          .filter((b) => after === null || at(b) < after || (at(b) === after && (b.id as string) > afterId!))
+          .slice(0, PAST_PAGE),
+      )
     }
     const one = p.match(/^\/bookings\/([^/]+)(\/cancel|\/reschedule)?$/)
     if (one) {
@@ -284,7 +367,14 @@ export class MockApi {
       return ok(200, b)
     }
 
-    if (p === '/me/notifications') return ok(200, { items: this.inbox, unread: Math.min(100, this.inbox.filter((i) => !i.read).length), next: null })
+    if (p === '/me/notifications') {
+      // Newest first, 30 a page; `next` is an opaque cursor (here "c" and the index), anything else 400 BAD_CURSOR
+      const cursor = url.searchParams.get('cursor')
+      if (cursor !== null && !/^c\d+$/.test(cursor)) return fail(400, 'BAD_CURSOR', 'This list has changed. Open it again.')
+      const from = cursor === null ? 0 : Number(cursor.slice(1))
+      const next = from + INBOX_PAGE < this.inbox.length ? `c${from + INBOX_PAGE}` : null
+      return ok(200, { items: this.inbox.slice(from, from + INBOX_PAGE), unread: Math.min(100, this.inbox.filter((i) => !i.read).length), next })
+    }
     if (p === '/me/notifications/unread-count') return ok(200, { unread: Math.min(100, this.inbox.filter((i) => !i.read).length) })
     if (p === '/me/notifications/read') {
       const ids: string[] = body?.ids ?? []

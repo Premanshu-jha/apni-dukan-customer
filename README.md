@@ -235,6 +235,25 @@ public/         sw.js (push notifications), manifest, icon
 - Move is hidden within 1 hour of the start (`canMove` from the backend). Cancelling within 1 hour warns that it
   counts as a late cancel.
 
+### My bookings and busy salons
+
+- **Past bookings** come 30 at a time, latest first, with "Show more bookings": the next page starts after the last
+  booking's `startsAt` and `id`, sent back exactly as received (keyset pages; the backend reads times to the
+  microsecond). Upcoming bookings are a few at most and come in one answer (the backend refuses a cursor there). A
+  failed page or a tap while offline keeps the list and says so; focus moves to the first new booking (or the count);
+  `aria-busy` while loading; cards far off screen aren't drawn (`content-visibility`).
+- **Bounded refreshes:** a refresh of a paged list (a booking changed, coming back to the app) asks every loaded page
+  again, one after the other, so the pages stay joined with nothing missing or twice; each is a 304 when unchanged.
+  At most 10 pages are loaded (300 past bookings, 300 messages), then a note says so — for past bookings only when
+  the page after the cap (asked once) isn't empty, so exactly 300 shows no note. TanStack's `maxPages` isn't
+  used: it would drop the latest page from the top, and the backend has no "page before" to bring it back.
+- **Too many salon reads:** past 60 salon pages, service lists and free-time checks a minute the backend answers 429
+  with `Retry-After`. The salon page, Confirm and the free times say "Too many tries — wait a minute, then try
+  again." Nothing retries by itself (a 4xx is final; the client repeats only `SERVICE_BUSY`), and a failed refresh
+  of a salon page already on screen keeps it with a note.
+- **Busy backend:** `SERVICE_BUSY` (503, `Retry-After: 5`) is tried once more by the client after `Retry-After`, then
+  by the query twice more, each after `Retry-After` too.
+
 ### Notifications
 
 - `public/sw.js` shows the backend's Web Push messages (`{type, title, body, url}`) and opens the app on tap, only on
@@ -258,6 +277,21 @@ and set `VITE_API_URL` (and `VITE_TURNSTILE_SITE_KEY` in production) in the host
 `index.html` (single-page app). Then add the site's address to the backend's `CORS_ALLOWED_ORIGINS`.
 
 ## Changelog
+
+### 0.6.0 — 2026-11-06
+
+Uses the backend's scale PR (apni-dukan-backend#33, "Pages (the exact contract)"; merge that first):
+
+- Past bookings 30 at a time with "Show more bookings" (cursor from the last booking, exactly as received); a failed
+  or offline tap keeps the list and says so; focus on the first new booking or the count; `aria-busy`; at most 300
+  loaded. Upcoming bookings stay one answer.
+- 429 on a salon page, its services or free times: "Too many tries — wait a minute, then try again.", never retried
+  by itself; a failed refresh no longer replaces a salon page already on screen.
+- Messages: at most 10 pages (300) loaded, then "Showing the latest 300 messages."
+- A failed read is retried after the backend's `Retry-After` (503 SERVICE_BUSY: 5 s), not after 1 s.
+- Tests: the fake backend pages past bookings and messages, refuses cursors and counts salon reads like the real one;
+  end-to-end journeys for ties across a page end, exactly 30, a failed page, offline, focus, the caps, 429; unit
+  tests of the paging helpers, the retry delay and the 429 words.
 
 ### 0.5.0 — 2026-11-06
 
