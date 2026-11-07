@@ -94,6 +94,9 @@ export const SERVICES = [
 ]
 
 export const TIMES = ['10:00', '11:30', '13:00', '15:45', '17:15', '18:30']
+/** BookingService: a cancel less than this before the start is late, except within FREE_CANCEL_MINUTES of booking. */
+const LATE_CANCEL_MS = 3600_000
+const FREE_CANCEL_MINUTES = 10
 
 export class MockApi {
   user: MockUser = { id: 'u1', phone: '9848012345', name: null, email: null, emailVerified: false, admin: false }
@@ -104,6 +107,8 @@ export class MockApi {
   inbox: { id: string; type: string; title: string; body: string; url: string | null; sentAt: string; read: boolean }[] = []
   /** Start times (ISO) that answer 409 SLOT_TAKEN once. */
   takenOnce = new Set<string>()
+  /** More free times ("HH:mm" on an India date), e.g. one starting within the hour. */
+  extraTimes: { date: string; time: string }[] = []
   /** Start times (ISO) no longer offered. */
   gone = new Set<string>()
   /** Approved salons within 2 km, nearest first (BookingService.salonsNear). */
@@ -292,8 +297,13 @@ export class MockApi {
       const date = url.searchParams.get('date')!
       const ids = url.searchParams.getAll('services')
       const minutes = SERVICES.filter((s) => ids.includes(s.id)).reduce((t, s) => t + s.durationMinutes, 0)
-      const starts = TIMES.map((t) => ({ startAt: istInstant(date, t), time: t })).filter((s) => !this.gone.has(s.startAt))
-      return ok(200, { date, durationMinutes: minutes, starts })
+      // BookingResponses.Slots: freeCancelMinutes (10) and each start's lateCancelFrom (1 hour before it)
+      const times = [...TIMES, ...this.extraTimes.filter((x) => x.date === date).map((x) => x.time)].sort()
+      const starts = times
+        .map((t) => ({ startAt: istInstant(date, t), time: t }))
+        .filter((s) => !this.gone.has(s.startAt))
+        .map((s) => ({ ...s, lateCancelFrom: new Date(Date.parse(s.startAt) - LATE_CANCEL_MS).toISOString() }))
+      return ok(200, { date, durationMinutes: minutes, freeCancelMinutes: FREE_CANCEL_MINUTES, starts })
     }
 
     if (p === '/bookings' && method === 'POST') {
@@ -351,7 +361,8 @@ export class MockApi {
       const b = this.booking(one[1])
       if (!b) return fail(404, 'NOT_FOUND', 'Booking not found')
       if (one[2] === '/cancel') {
-        const late = new Date(b.startsAt as string).getTime() - Date.now() < 3600_000
+        // BookingService.cancel: late after lateCancelFrom (at it, not)
+        const late = Date.now() > Date.parse(b.lateCancelFrom as string)
         Object.assign(b, { status: 'CANCELLED_BY_CUSTOMER', startCode: null, canChange: false, canMove: false, cancelReason: 'Cancelled by you' })
         return ok(200, { booking: b, countedAsLate: late })
       }
@@ -361,7 +372,8 @@ export class MockApi {
           this.gone.add(body.startAt)
           return fail(409, 'SLOT_TAKEN', "That time isn't free any more. Pick one of the nearest free times.", { nearest: [] })
         }
-        Object.assign(b, this.makeBooking(b.id as string, (b.services as { serviceId: string }[]).map((s) => s.serviceId), body.startAt))
+        // Moving keeps the row (its createdAt), so lateCancelFrom is worked out from the original booking time
+        Object.assign(b, this.makeBooking(b.id as string, (b.services as { serviceId: string }[]).map((s) => s.serviceId), body.startAt, b.createdAt as string))
         return ok(200, b)
       }
       return ok(200, b)
@@ -387,7 +399,7 @@ export class MockApi {
     return fail(404, 'NOT_FOUND', `No mock for ${method} ${p}`)
   }
 
-  makeBooking(id: string, serviceIds: string[], startAt: string) {
+  makeBooking(id: string, serviceIds: string[], startAt: string, createdAt: string = new Date().toISOString()) {
     const lines = SERVICES.filter((s) => serviceIds.includes(s.id)).map((s) => ({ serviceId: s.id, name: s.name, durationMinutes: s.durationMinutes, pricePaise: s.pricePaise, priceIsFrom: s.priceIsFrom }))
     const start = new Date(startAt).getTime()
     const minutes = lines.reduce((t, l) => t + l.durationMinutes, 0)
@@ -410,7 +422,9 @@ export class MockApi {
       cancelReason: null,
       canChange: start > Date.now(),
       canMove: movable,
-      createdAt: new Date().toISOString(),
+      createdAt,
+      // BookingService.lateCancelFrom: the later of 1 hour before the start and 10 minutes after booking
+      lateCancelFrom: new Date(Math.max(start - LATE_CANCEL_MS, Date.parse(createdAt) + FREE_CANCEL_MINUTES * 60_000)).toISOString(),
     }
   }
 
