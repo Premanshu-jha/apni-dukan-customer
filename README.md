@@ -331,6 +331,9 @@ switches over. Change `OFFLINE_CACHE` in `sw.js` when the offline page changes.
 - Removed the old `vercel.json` (a rewrite without the security headers): the app runs on Railway with Caddy only.
 - CI: the build job's checkout keeps no token (`persist-credentials: false`), like the other jobs.
 - Tests: an unchanged bell poll and message list are 304s and change nothing on screen (`inbox-etag.spec`).
+- Day chips follow the salon's booking window: today plus its `maxDaysAhead` (1–30, `GET /salons/{id}`), when booking
+  and when moving a booking; 7 until the salon is read (or from an older backend). The fake backend sends the bell's
+  and the inbox's own `"n1-…"` ETags.
 - Free and late cancels (backend apni-dukan-backend#34, "API changes in this version"): the free times' `freeCancelMinutes`
   and each start's `lateCancelFrom` come with the picked time; Confirm warns when that is less than the free minutes away
   (a start under about 1 h 10 min away), worded by the actual timing: under 1 h, it can't be moved and cancelling

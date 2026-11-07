@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Navigate, useNavigate, useParams } from 'react-router'
 import { useBooking, useMoveBooking } from '../../api/bookings'
+import { useSalon } from '../../api/salons'
 import { isApiError, messageOf } from '../../api/errors'
 import { Banner, Button, ErrorState, Loading, Page } from '../../components/ui'
 import { dateOfIst, dateTimeIst, timeIst } from '../../lib/ist'
@@ -10,6 +11,8 @@ export function MoveBooking() {
   const { id = '' } = useParams()
   const navigate = useNavigate()
   const booking = useBooking(id)
+  // The salon's booking window (day chips); read once the booking says which salon
+  const salon = useSalon(booking.data?.salonId ?? '')
   const move = useMoveBooking()
   const [date, setDate] = useState<string | null>(null)
   const [startAt, setStartAt] = useState<string | null>(null)
@@ -67,6 +70,7 @@ export function MoveBooking() {
         </Banner>
       )}
       <DateChips
+        maxDaysAhead={salon.data?.maxDaysAhead}
         value={day}
         onChange={(d) => {
           setDate(d)

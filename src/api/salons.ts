@@ -42,6 +42,7 @@ export function useSalon(id: string) {
     queryKey: salonKeys.one(id),
     queryFn: () => api<SalonDetails>('GET', `/api/v1/salons/${id}`),
     staleTime: 60_000,
+    enabled: id !== '',
   })
 }
 
@@ -66,4 +67,16 @@ export function useSlots(id: string, services: string[], date: string, moving?: 
     staleTime: 15_000,
     retry: false,
   })
+}
+
+/** Day chips when the salon's window isn't known yet (or an older backend sends no `maxDaysAhead`). */
+export const DAYS_SHOWN = 7
+
+/**
+ * How many day chips a salon gets: today plus its `maxDaysAhead` (the owner's setting, 1 to 30; the backend answers
+ * OUTSIDE_WINDOW past it). Missing or out of range: the default 7.
+ */
+export function daysShown(maxDaysAhead: number | undefined): number {
+  if (typeof maxDaysAhead !== 'number' || !Number.isInteger(maxDaysAhead) || maxDaysAhead < 1) return DAYS_SHOWN
+  return Math.min(maxDaysAhead, 30) + 1
 }

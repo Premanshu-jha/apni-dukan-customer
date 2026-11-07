@@ -51,6 +51,8 @@ export interface SalonDetails {
   hours: DayHours[]
   pausedUntil: string | null
   photoUrl: string | null
+  /** How many days after today it takes online bookings (1–30, the owner's setting); missing from older backends. */
+  maxDaysAhead?: number
 }
 
 export interface SalonService {

@@ -1,16 +1,13 @@
 import { isApiError, salonReadMessage } from '../../api/errors'
-import { useSlots } from '../../api/salons'
+import { daysShown, useSlots } from '../../api/salons'
 import { Chip, EmptyState, ErrorState, Loading } from '../../components/ui'
 import { clock12, dayLabel, nextDates } from '../../lib/ist'
 import type { CancelTerms } from '../../store/bookingDraft'
 
-/** Salons take bookings up to 7 days ahead by default; a salon that allows less answers OUTSIDE_WINDOW. */
-export const DAYS_SHOWN = 7
-
-export function DateChips({ value, onChange }: { value: string; onChange: (d: string) => void }) {
+export function DateChips({ value, onChange, maxDaysAhead }: { value: string; onChange: (d: string) => void; maxDaysAhead?: number }) {
   return (
     <div role="group" aria-label="Day" className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
-      {nextDates(DAYS_SHOWN).map((d) => (
+      {nextDates(daysShown(maxDaysAhead)).map((d) => (
         <Chip key={d} selected={d === value} onClick={() => onChange(d)}>
           {dayLabel(d)}
         </Chip>

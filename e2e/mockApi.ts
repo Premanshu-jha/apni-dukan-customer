@@ -102,6 +102,16 @@ export class MockApi {
   user: MockUser = { id: 'u1', phone: '9848012345', name: null, email: null, emailVerified: false, admin: false }
   /** Paths (with the query) answered 304 Not Modified, in order. */
   notModified: string[] = []
+  /**
+   * The bell's and the inbox first page's own ETag, as NotificationsController sends it ("n1-…": the person's inbox
+   * version and the app): it moves whenever their list changes.
+   */
+  inboxTag(what: string): string {
+    return `"n1-${etagOf(JSON.stringify(this.inbox) + what).replace(/"/g, '')}"`
+  }
+
+  /** The salon's booking window (its owner's setting, 1–30; GET /salons/{id} `maxDaysAhead`). */
+  maxDaysAhead = 7
   calls: Call[] = []
   bookings: Record<string, unknown>[] = []
   inbox: { id: string; type: string; title: string; body: string; url: string | null; sentAt: string; read: boolean }[] = []
@@ -195,10 +205,11 @@ export class MockApi {
     const auth = req.headers()['authorization'] ?? null
     this.calls.push({ method, path: url.pathname + url.search, body, auth, idempotencyKey: req.headers()['idempotency-key'] ?? null, at: Date.now() })
     const p = url.pathname.replace('/api/v1', '')
-    const ok = (status: number, json?: unknown, extra: Record<string, string> = {}) => {
+    const ok = (status: number, json?: unknown, extra: Record<string, string> = {}, ownTag?: string) => {
       const text = json === undefined ? '' : JSON.stringify(json)
-      // Every successful GET carries an ETag; sent back unchanged as If-None-Match, the answer is 304 with no body
-      const etag = method === 'GET' && status >= 200 && status < 300 ? etagOf(text) : null
+      // Every successful GET carries an ETag (the bell's and the inbox's first page the backend's own "n1-…"); sent
+      // back unchanged as If-None-Match, the answer is 304 with no body
+      const etag = method === 'GET' && status >= 200 && status < 300 ? (ownTag ?? etagOf(text)) : null
       if (etag && matches(req.headers()['if-none-match'], etag)) {
         this.notModified.push(url.pathname + url.search)
         return route.fulfill({ status: 304, headers: { ...this.cors(), ETag: etag }, body: '' })
@@ -291,7 +302,7 @@ export class MockApi {
       this.salonReads.push(now)
     }
     if (p.startsWith('/salons/s1') && this.salonGone) return fail(404, 'SALON_NOT_FOUND', 'This salon is not on Apni Dukan right now.')
-    if (p === '/salons/s1') return ok(200, SALON)
+    if (p === '/salons/s1') return ok(200, { ...SALON, maxDaysAhead: this.maxDaysAhead })
     if (p === '/salons/s1/services') return ok(200, SERVICES)
     if (p === '/salons/s1/availability') {
       const date = url.searchParams.get('date')!
@@ -385,9 +396,9 @@ export class MockApi {
       if (cursor !== null && !/^c\d+$/.test(cursor)) return fail(400, 'BAD_CURSOR', 'This list has changed. Open it again.')
       const from = cursor === null ? 0 : Number(cursor.slice(1))
       const next = from + INBOX_PAGE < this.inbox.length ? `c${from + INBOX_PAGE}` : null
-      return ok(200, { items: this.inbox.slice(from, from + INBOX_PAGE), unread: Math.min(100, this.inbox.filter((i) => !i.read).length), next })
+      return ok(200, { items: this.inbox.slice(from, from + INBOX_PAGE), unread: Math.min(100, this.inbox.filter((i) => !i.read).length), next }, {}, cursor === null ? this.inboxTag('list') : undefined)
     }
-    if (p === '/me/notifications/unread-count') return ok(200, { unread: Math.min(100, this.inbox.filter((i) => !i.read).length) })
+    if (p === '/me/notifications/unread-count') return ok(200, { unread: Math.min(100, this.inbox.filter((i) => !i.read).length) }, {}, this.inboxTag('count'))
     if (p === '/me/notifications/read') {
       const ids: string[] = body?.ids ?? []
       this.inbox.forEach((i) => {

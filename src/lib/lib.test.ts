@@ -66,3 +66,14 @@ describe('phone numbers', () => {
     expect(looksLikeEmail('a@b')).toBe(false)
   })
 })
+
+describe('day chips for a salon', () => {
+  it('shows today plus its maxDaysAhead (1–30), else 7', async () => {
+    const { daysShown } = await import('../api/salons')
+    expect(daysShown(1)).toBe(2)
+    expect(daysShown(30)).toBe(31)
+    expect(daysShown(45)).toBe(31)
+    expect(daysShown(undefined)).toBe(7)
+    expect(daysShown(0)).toBe(7)
+  })
+})
