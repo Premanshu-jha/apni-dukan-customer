@@ -34,8 +34,11 @@ The backend must allow this app's address in `CORS_ALLOWED_ORIGINS` (it already 
 | `npm test` | Unit tests (Vitest) |
 | `npm run e2e` | End-to-end tests (Playwright): a real browser drives the app against a fake backend |
 | `npm run build` | Type-check and production build into `dist/` |
+| `npm run icons` | Make the PNG icons from `public/icon.svg` (commit them) |
 
-CI runs type-check, lint, unit tests, build, the end-to-end tests and a gitleaks secret scan on every pull request.
+CI runs type-check, lint, unit tests, build, the end-to-end tests, the security-headers check (Caddy), `npm audit`
+(high and critical) and a gitleaks secret scan on every pull request. Dependabot proposes npm and GitHub Actions
+updates weekly.
 
 ### Tests
 
@@ -272,11 +275,67 @@ public/         sw.js (push notifications), manifest, icon
 
 ## Deploying
 
-Any static host works (Vercel or Cloudflare Pages, free tier). Build command `npm run build`, output folder `dist`,
-and set `VITE_API_URL` (and `VITE_TURNSTILE_SITE_KEY` in production) in the host's settings. All routes must serve
-`index.html` (single-page app). Then add the site's address to the backend's `CORS_ALLOWED_ORIGINS`.
+Railway (a service that builds from `main`). `railway.json` picks Railpack, which sees a Vite site
+(no `start` script), runs `npm run build` and serves `dist/` with Caddy, using this repo's `Caddyfile` instead of its
+default: every address that isn't a file gets `index.html` (single-page app), `/health` answers 200, and every answer
+carries the security headers. Keep the service's Start Command empty in Railway's settings: a start command turns
+Caddy (and the headers) off. Set `VITE_API_URL` and `VITE_TURNSTILE_SITE_KEY` as the service's variables (they are
+read at build time), optionally `PHOTO_ORIGIN` (default `https://*.r2.cloudflarestorage.com`, where signed photo
+links point). Then add the site's address to the backend's `CORS_ALLOWED_ORIGINS`.
+
+### Security headers
+
+`security-headers.ts` works them out from the build's variables; the build writes them to
+`dist/security-headers.caddy`, which the `Caddyfile` imports, and `vite preview` (the end-to-end tests) sends the same.
+
+| Header | Value |
+| --- | --- |
+| `Content-Security-Policy` | `default-src 'self'`; scripts from the site (plus `https://challenges.cloudflare.com` when the Turnstile key is set, also its frame); API calls only to `VITE_API_URL`; images from the site, `data:`, `blob:` and `PHOTO_ORIGIN`; styles allow inline (the Turnstile widget); no plugins; `frame-ancestors 'none'` (never inside another site's frame) |
+| `Strict-Transport-Security` | `max-age=63072000; includeSubDomains` |
+| `Referrer-Policy` | `strict-origin-when-cross-origin` |
+| `X-Content-Type-Options` | `nosniff` |
+| `Permissions-Policy` | `geolocation=(self)` (salons near you); camera, microphone, payment and the rest off |
+
+CI's `headers` job builds as for production, starts Caddy with the `Caddyfile` (the build at `/app/dist`, as on
+Railway) and checks every header on the app, a deep link, `sw.js`, the manifest and the offline page
+(`scripts/check-headers.mjs`). The dev server sends none (hot reload needs inline scripts).
+
+### Installing and offline
+
+`public/manifest.webmanifest` lists the SVG icon and PNGs (192, 512, maskable 512) plus `apple-touch-icon.png` for
+iPhone, all made from `public/icon.svg` by `npm run icons` (sharp); commit the PNGs after changing the SVG.
+`public/sw.js` keeps a small offline page (`offline.html`, its CSS and the icon): opening the app without a
+connection shows "You're offline" with "Try again" instead of the browser's error. Nothing else is cached. A new
+version of `sw.js` waits after installing; the app shows "New version available — Reload" and only that button
+switches over. Change `OFFLINE_CACHE` in `sw.js` when the offline page changes.
 
 ## Changelog
+
+### 0.7.0 — 2026-11-07
+
+- Security headers on Railway: a `Caddyfile` (Railpack serves the build with Caddy) with CSP, HSTS, Referrer-Policy,
+  nosniff and Permissions-Policy, worked out from the build's variables (`security-headers.ts`); `vite preview`
+  sends the same, so every end-to-end test runs under the CSP and fails if it blocks anything; CI starts Caddy and
+  checks the headers. `railway.json` picks Railpack.
+- A screen that fails while drawing shows "Something went wrong on this screen" with "Start again" instead of a blank
+  page (around each screen, the bottom bar stays; and around the whole app).
+- Two reminders no longer replace each other: notifications have no `tag`.
+- Installable everywhere: PNG icons (192, 512, maskable) and the iPhone icon from `icon.svg` (`npm run icons`), a
+  complete manifest; an offline page when opened without a connection; a new version waits for "New version
+  available — Reload" instead of switching silently. The service worker is registered also where push isn't offered.
+- A refresh answered 409 `TRY_AGAIN` (another tab or request swapped the same token first) uses the newer token that
+  was saved and retries the call once; never a loop.
+- Dependabot (npm and GitHub Actions, weekly) and `npm audit --audit-level=high` in CI.
+- Free and late cancels (backend apni-dukan-backend#34, "API changes in this version"): the free times' `freeCancelMinutes`
+  and each start's `lateCancelFrom` come with the picked time; Confirm warns when that is less than the free minutes away
+  (a start under about 1 h 10 min away), worded by the actual timing: under 1 h, it can't be moved and cancelling
+  counts as late after its first 10 minutes; 60–70 min, until when it can be moved and until when cancelling is free. A booking shows "Free to cancel until …" from its own `lateCancelFrom` (or "Cancelling now counts as a late
+  cancel."), and the cancel sheet's late warning uses it too, so a cancel within 10 minutes of booking isn't called late.
+  An older backend without these fields: 1 hour before the start, as before.
+- Tests: unit tests of the late-cancel rules; end-to-end the warning, free cancel within 10 minutes, a late cancel past
+  `lateCancelFrom`; the fake backend sends `freeCancelMinutes`/`lateCancelFrom` and keeps `createdAt` on a move.
+- Tests: unit tests of the error boundary, the service worker (stand-in globals), the update offer and the 409
+  refresh; end-to-end headers, install icons and offline page.
 
 ### 0.6.0 — 2026-11-06
 
