@@ -73,14 +73,14 @@ export function Profile() {
             </div>
           </div>
         ) : (
-          <Row label="Name" value={user.name ?? ''} action={<button type="button" className="text-brand" onClick={() => setEditing(true)}>Edit</button>} />
+          <Row label="Name" value={user.name ?? ''} action={<button type="button" className="text-link" onClick={() => setEditing(true)}>Edit</button>} />
         )}
         <Row label="Mobile" value={`+91 ${formatPhone(user.phone)}`} />
         <Row
           label="Email"
           value={user.email ?? ''}
           action={
-            <Link to="/profile/email" className="text-brand">
+            <Link to="/profile/email" className="text-link">
               Change
             </Link>
           }
@@ -96,7 +96,7 @@ export function Profile() {
         <p className="text-sm text-muted">
           A problem with a booking, or a missed booking you think is wrong? Write to us with your booking number.
         </p>
-        <a href={`mailto:${SUPPORT_EMAIL}`} className="text-sm text-brand underline">
+        <a href={`mailto:${SUPPORT_EMAIL}`} className="text-sm text-link underline">
           {SUPPORT_EMAIL}
         </a>
       </Card>

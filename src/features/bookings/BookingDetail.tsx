@@ -56,9 +56,9 @@ export function BookingDetail() {
           </div>
           <StatusPill status={b.status} />
         </div>
-        <p className="text-xl font-bold text-brand">{dateTimeIst(b.startsAt)}</p>
+        <p className="text-xl font-bold text-link">{dateTimeIst(b.startsAt)}</p>
         {b.mapLink && (
-          <a href={b.mapLink} target="_blank" rel="noreferrer" className="text-sm text-brand underline">
+          <a href={b.mapLink} target="_blank" rel="noreferrer" className="text-sm text-link underline">
             Directions
           </a>
         )}

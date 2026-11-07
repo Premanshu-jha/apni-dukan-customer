@@ -47,7 +47,7 @@ export function Inbox() {
           <p className="text-sm text-muted">{unread > 99 ? '99+' : unread} unread</p>
           <button
             type="button"
-            className="text-sm font-semibold text-brand disabled:opacity-50"
+            className="text-sm font-semibold text-link disabled:opacity-50"
             disabled={markRead.isPending}
             onClick={() => markRead.mutate([])}
           >
@@ -72,7 +72,7 @@ export function Inbox() {
               >
                 <span
                   aria-hidden
-                  className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-base font-bold ${m.type === 'BOOKING_CANCELLED_BY_SALON' || m.type === 'BOOKING_NO_SHOW' ? 'bg-bad/15 text-bad' : 'bg-brand/15 text-brand'}`}
+                  className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-base font-bold ${m.type === 'BOOKING_CANCELLED_BY_SALON' || m.type === 'BOOKING_NO_SHOW' ? 'bg-bad/15 text-bad' : 'bg-brand/15 text-link'}`}
                 >
                   {icons[m.type] ?? '•'}
                 </span>

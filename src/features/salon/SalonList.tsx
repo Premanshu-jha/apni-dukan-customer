@@ -29,7 +29,7 @@ export function SalonList({ lat, lng }: { lat: number; lng: number }) {
     if (isApiError(salons.error, 'VALIDATION_FAILED')) {
       return (
         <EmptyState
-          title="Apni Dukan works only in India"
+          title="Clozest works only in India"
           body="Your location seems to be outside India. Open the app when you're in India, or tap Update after moving."
         />
       )
@@ -46,7 +46,7 @@ export function SalonList({ lat, lng }: { lat: number; lng: number }) {
         body="We're adding salons area by area. Tell us where you are and we'll come to you sooner."
         action={
           <a
-            className="text-brand underline"
+            className="text-link underline"
             href={`mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent('Please add salons near me')}&body=${encodeURIComponent(`My area: \nLocation: ${lat.toFixed(4)}, ${lng.toFixed(4)}`)}`}
           >
             Let us know
@@ -79,7 +79,7 @@ export function SalonList({ lat, lng }: { lat: number; lng: number }) {
                 <p className="truncate text-sm text-muted">
                   {s.area}, {s.city}
                 </p>
-                <p className="text-sm text-brand">{s.distanceKm.toFixed(1)} km away</p>
+                <p className="text-sm text-link">{s.distanceKm.toFixed(1)} km away</p>
               </div>
             </Link>
           </li>

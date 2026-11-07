@@ -211,7 +211,7 @@ export function Sheet({
   }, [open])
   if (!open) return null
   return (
-    <div className="fixed inset-0 z-30 flex items-end justify-center bg-black/60" onClick={onClose}>
+    <div className="fixed inset-0 z-30 flex items-end justify-center bg-scrim/60" onClick={onClose}>
       <div
         ref={panel}
         role="dialog"

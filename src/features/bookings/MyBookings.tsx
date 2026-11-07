@@ -37,7 +37,7 @@ function Upcoming() {
         title="No upcoming bookings"
         body="Find a salon near you and book a time."
         action={
-          <Link to="/" className="text-brand underline">
+          <Link to="/" className="text-link underline">
             Find a salon
           </Link>
         }
@@ -159,7 +159,7 @@ function BookingCard({ b, index }: { b: Booking; index: number }) {
         <p className="font-semibold">{b.salonName}</p>
         <StatusPill status={b.status} />
       </div>
-      <p className="text-brand">{dateTimeIst(b.startsAt)}</p>
+      <p className="text-link">{dateTimeIst(b.startsAt)}</p>
       <p className="truncate text-sm text-muted">
         {b.services.map((s) => s.name).join(', ')} · {rupees(b.totalPricePaise, b.priceIsFrom)}
       </p>

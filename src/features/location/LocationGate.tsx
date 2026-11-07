@@ -37,13 +37,13 @@ export function LocationGate({ children }: { children: (place: Place) => ReactNo
       <div className="flex flex-col gap-2">
         <p className="text-xl font-semibold">Find salons near you</p>
         <p className="max-w-xs text-muted">
-          Apni Dukan needs your location to show salons within 5 km. It is used only to find salons and is never
+          Clozest needs your location to show salons within 5 km. It is used only to find salons and is never
           shared.
         </p>
       </div>
       {error === 'timeout' && <Banner tone="warn">That took too long. Move near a window or turn on GPS, then try again.</Banner>}
       {error === 'unavailable' && <Banner tone="warn">Your phone couldn't find your location. Check that location is on, then try again.</Banner>}
-      {error === 'unsupported' && <Banner tone="bad">This browser can't share a location. Open Apni Dukan in Chrome or Safari.</Banner>}
+      {error === 'unsupported' && <Banner tone="bad">This browser can't share a location. Open Clozest in Chrome or Safari.</Banner>}
       <Button className="w-full max-w-xs" onClick={locate}>
         Allow location
       </Button>
@@ -73,7 +73,7 @@ export function LocationGuide({ onRetry }: { onRetry: () => void }) {
             'Click the icon at the left of the address bar.',
             'Find Location and set it to Allow.',
             'Reload the page and click Try again.',
-            'For the best results, open Apni Dukan on your phone: a computer can only guess your location.',
+            'For the best results, open Clozest on your phone: a computer can only guess your location.',
           ]
   return (
     <div className="flex flex-col gap-5 py-6">
