@@ -1,7 +1,7 @@
 import type { QueryClient } from '@tanstack/react-query'
 import { authApi } from '../../api/auth'
 import { refreshSettled } from '../../api/client'
-import { turnOffPush } from '../../api/push'
+import { closeShownNotifications, turnOffPush } from '../../api/push'
 import { forgetReturn } from '../auth/flow'
 import { useDraft } from '../../store/bookingDraft'
 import { useLocation } from '../../store/location'
@@ -25,6 +25,8 @@ export async function signOutHere(qc: QueryClient, opts: { everywhere?: boolean;
   }
   if (opts.everywhere) await turnOffPush()
   signOut()
+  // Booking messages still in the phone's tray name the salon and the time: the next person mustn't read them
+  void closeShownNotifications()
   forgetReturn()
   useLocation.getState().clear()
   useDraft.getState().clear()

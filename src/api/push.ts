@@ -104,3 +104,13 @@ export async function dropBrowserSubscription(): Promise<void> {
     /* nothing more to do */
   }
 }
+
+/** Closes this app's notifications still in the phone's tray (sign-out: the next person mustn't read them). */
+export async function closeShownNotifications(): Promise<void> {
+  try {
+    const reg = await navigator.serviceWorker?.getRegistration()
+    for (const n of (await reg?.getNotifications()) ?? []) n.close()
+  } catch {
+    /* nothing more to do */
+  }
+}
