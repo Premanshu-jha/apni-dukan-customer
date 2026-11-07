@@ -335,7 +335,8 @@ switches over. Change `OFFLINE_CACHE` in `sw.js` when the offline page changes.
   the backend's words.
 - Tests: an unchanged bell poll and message list are 304s and change nothing on screen (`inbox-etag.spec`).
 - Day chips follow the salon's booking window: today plus its `maxDaysAhead` (1–30, `GET /salons/{id}`), when booking
-  and when moving a booking; 7 until the salon is read (or from an older backend). The fake backend sends the bell's
+  and when moving a booking; today plus the backend's default 7 (8 chips) until the salon is read (or from an older
+  backend). The fake backend sends the bell's
   and the inbox's own `"n1-…"` ETags.
 - Free and late cancels (backend apni-dukan-backend#34, "API changes in this version"): the free times' `freeCancelMinutes`
   and each start's `lateCancelFrom` come with the picked time; Confirm warns when that is less than the free minutes away
