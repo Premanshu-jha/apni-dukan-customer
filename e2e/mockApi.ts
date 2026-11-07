@@ -309,7 +309,8 @@ export class MockApi {
       const ids = url.searchParams.getAll('services')
       const minutes = SERVICES.filter((s) => ids.includes(s.id)).reduce((t, s) => t + s.durationMinutes, 0)
       // BookingResponses.Slots: freeCancelMinutes (10) and each start's lateCancelFrom (1 hour before it)
-      const times = [...TIMES, ...this.extraTimes.filter((x) => x.date === date).map((x) => x.time)].sort()
+      // Each start once, as the backend lists them (an extra time may also be a usual one, depending on the time of day)
+      const times = [...new Set([...TIMES, ...this.extraTimes.filter((x) => x.date === date).map((x) => x.time)])].sort()
       const starts = times
         .map((t) => ({ startAt: istInstant(date, t), time: t }))
         .filter((s) => !this.gone.has(s.startAt))
