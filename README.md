@@ -330,6 +330,7 @@ switches over. Change `OFFLINE_CACHE` in `sw.js` when the offline page changes.
   person on a shared phone can't read them (as the partner app does).
 - Removed the old `vercel.json` (a rewrite without the security headers): the app runs on Railway with Caddy only.
 - CI: the build job's checkout keeps no token (`persist-credentials: false`), like the other jobs.
+- Tests: an unchanged bell poll and message list are 304s and change nothing on screen (`inbox-etag.spec`).
 - Free and late cancels (backend apni-dukan-backend#34, "API changes in this version"): the free times' `freeCancelMinutes`
   and each start's `lateCancelFrom` come with the picked time; Confirm warns when that is less than the free minutes away
   (a start under about 1 h 10 min away), worded by the actual timing: under 1 h, it can't be moved and cancelling
