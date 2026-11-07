@@ -44,7 +44,7 @@ export function BookTime() {
       {slotTaken && !draft.startAt && (
         <Banner tone="warn">Someone just booked that time. Pick another one.</Banner>
       )}
-      <DateChips value={date} onChange={pickDate} />
+      <DateChips value={date} onChange={pickDate} maxDaysAhead={salon.data?.maxDaysAhead} />
       <SlotGrid salonId={id} serviceIds={draft.serviceIds} date={date} selected={draft.startAt} onPick={pickSlot} />
     </Page>
   )

@@ -1,15 +1,13 @@
 import { isApiError, salonReadMessage } from '../../api/errors'
-import { useSlots } from '../../api/salons'
+import { daysShown, useSlots } from '../../api/salons'
 import { Chip, EmptyState, ErrorState, Loading } from '../../components/ui'
 import { clock12, dayLabel, nextDates } from '../../lib/ist'
+import type { CancelTerms } from '../../store/bookingDraft'
 
-/** Salons take bookings up to 7 days ahead by default; a salon that allows less answers OUTSIDE_WINDOW. */
-export const DAYS_SHOWN = 7
-
-export function DateChips({ value, onChange }: { value: string; onChange: (d: string) => void }) {
+export function DateChips({ value, onChange, maxDaysAhead }: { value: string; onChange: (d: string) => void; maxDaysAhead?: number }) {
   return (
     <div role="group" aria-label="Day" className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
-      {nextDates(DAYS_SHOWN).map((d) => (
+      {nextDates(daysShown(maxDaysAhead)).map((d) => (
         <Chip key={d} selected={d === value} onClick={() => onChange(d)}>
           {dayLabel(d)}
         </Chip>
@@ -32,7 +30,8 @@ export function SlotGrid({
   serviceIds: string[]
   date: string
   selected: string | null
-  onPick: (startAt: string) => void
+  /** @param terms the time's cancel terms, when the backend gave them */
+  onPick: (startAt: string, terms: CancelTerms | null) => void
   /** A start time not to offer (the booking's own time, when moving it). */
   exclude?: string
   /** The booking being moved: its own time counts as free. */
@@ -55,6 +54,9 @@ export function SlotGrid({
     }
     return <ErrorState message={salonReadMessage(slots.error)} onRetry={() => slots.refetch()} />
   }
+  const free = slots.data.freeCancelMinutes
+  const termsOf = (s: { startAt: string; lateCancelFrom?: string }): CancelTerms | null =>
+    s.lateCancelFrom && typeof free === 'number' ? { startAt: s.startAt, lateCancelFrom: s.lateCancelFrom, freeCancelMinutes: free } : null
   const starts = slots.data.starts.filter((s) => s.startAt !== exclude)
   if (starts.length === 0) {
     return <EmptyState title="No free times" body="The salon is fully booked or closed on this day. Try another day." />
@@ -73,7 +75,7 @@ export function SlotGrid({
           <h3 className="text-sm font-medium text-muted">{g.name}</h3>
           <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
             {g.list.map((s) => (
-              <Chip key={s.startAt} selected={s.startAt === selected} onClick={() => onPick(s.startAt)}>
+              <Chip key={s.startAt} selected={s.startAt === selected} onClick={() => onPick(s.startAt, termsOf(s))}>
                 {clock12(s.time)}
               </Chip>
             ))}

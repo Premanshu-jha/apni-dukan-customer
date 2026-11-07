@@ -7,9 +7,10 @@ import { dateTimeIst, minutesUntil, timeIst } from '../../lib/ist'
 import { duration, rupees } from '../../lib/money'
 import { NotificationsPrompt } from '../profile/Notifications'
 import { StatusPill } from './StatusPill'
+import { cancelIsLate, lateCancelFromOf } from './lateCancel'
 
-/** Cancelling less than this before the start counts as a late cancel (the backend's LATE_CANCEL). */
-const LATE_CANCEL_MIN = 60
+/** Bookings can't be moved within this many minutes of the start (the backend's TOO_LATE_TO_MOVE). */
+const NO_MOVE_MIN = 60
 
 export function BookingDetail() {
   const { id = '' } = useParams()
@@ -38,7 +39,9 @@ export function BookingDetail() {
 
   const b = booking.data
   const minutes = b.services.reduce((t, s) => t + s.durationMinutes, 0)
-  const late = minutesUntil(b.startsAt) < LATE_CANCEL_MIN
+  const withinHour = minutesUntil(b.startsAt) < NO_MOVE_MIN
+  // From the booking's own lateCancelFrom: a booking made for soon is free to cancel for its first 10 minutes
+  const late = cancelIsLate(b)
 
   return (
     <Page back="/bookings" title={`Booking ${b.bookingNo}`}>
@@ -104,11 +107,18 @@ export function BookingDetail() {
           ) : (
             b.canChange && (
               <p className="text-center text-sm text-muted">
-                {late
+                {withinHour
                   ? "Bookings can't be moved within 1 hour of the start."
                   : "The salon isn't taking changes right now, so this booking can't be moved. You can still cancel it."}
               </p>
             )
+          )}
+          {b.canChange && (
+            <p className="text-center text-sm text-muted">
+              {late
+                ? 'Cancelling now counts as a late cancel.'
+                : `Free to cancel until ${dateTimeIst(lateCancelFromOf(b))}.`}
+            </p>
           )}
           {b.canChange && (
             <Button variant="danger" onClick={() => setAsking(true)}>
@@ -128,7 +138,7 @@ export function BookingDetail() {
         <div className="flex flex-col gap-4">
           {late ? (
             <Banner tone="warn">
-              It starts in less than an hour, so this counts as a late cancel. Too many late cancels or missed bookings
+              It's past {timeIst(lateCancelFromOf(b))}, so this counts as a late cancel. Too many late cancels or missed bookings
               can stop you booking for a while.
             </Banner>
           ) : (
