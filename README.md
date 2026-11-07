@@ -1,4 +1,4 @@
-# Apni Dukan — customer app
+# Clozest — customer app
 
 The app customers use to find a salon near them and book a time. It is a mobile-first web app (it can be
 added to the phone's home screen) and talks only to [apni-dukan-backend](https://github.com/Premanshu-jha/apni-dukan-backend).
@@ -117,7 +117,7 @@ flowchart TD
   explain --> loc
   loc -- blocked or off --> guide[Step-by-step guide → Try again]
   guide --> loc
-  loc -- outside India --> india[Apni Dukan works only in India]
+  loc -- outside India --> india[Clozest works only in India]
   loc -- ok --> list[Salons within 2 km]
   list -- none --> empty[No salons near you yet → Let us know]
   list --> salon["/salons/:id: tick services"]
@@ -335,7 +335,8 @@ switches over. Change `OFFLINE_CACHE` in `sw.js` when the offline page changes.
   the backend's words.
 - Tests: an unchanged bell poll and message list are 304s and change nothing on screen (`inbox-etag.spec`).
 - Day chips follow the salon's booking window: today plus its `maxDaysAhead` (1–30, `GET /salons/{id}`), when booking
-  and when moving a booking; 7 until the salon is read (or from an older backend). The fake backend sends the bell's
+  and when moving a booking; today plus the backend's default 7 (8 chips) until the salon is read (or from an older
+  backend). The fake backend sends the bell's
   and the inbox's own `"n1-…"` ETags.
 - Free and late cancels (backend apni-dukan-backend#34, "API changes in this version"): the free times' `freeCancelMinutes`
   and each start's `lateCancelFrom` come with the picked time; Confirm warns when that is less than the free minutes away
@@ -412,7 +413,7 @@ Second review round (four independent reviews: customer app, backend, backend in
 
 Scenario audit (146 customer scenarios, `docs/scenarios.md`) and its fixes:
 
-- Outside India: "Apni Dukan works only in India" instead of "Some fields are not valid".
+- Outside India: "Clozest works only in India" instead of "Some fields are not valid".
 - Confirm sends exactly the services it shows (a removed one is never sent).
 - Moving: the free times count the booking's own time as free (`moving=`), so a move by a few minutes is offered.
 - When Move isn't offered more than an hour ahead, the reason given is the salon not taking changes.

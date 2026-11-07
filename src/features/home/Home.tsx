@@ -57,7 +57,7 @@ export function Home() {
               {place.accuracy > ROUGH_METRES && (
                 <Banner tone="warn">
                   Your location is only accurate to about {Math.round(place.accuracy / 1000)} km, so these salons may
-                  not be the nearest. Open Apni Dukan on your phone for better results.
+                  not be the nearest. Open Clozest on your phone for better results.
                 </Banner>
               )}
               <SalonList lat={place.lat} lng={place.lng} />
@@ -97,7 +97,7 @@ function LocationBar() {
           {minutes >= 30 && ` · ${minutes < 120 ? `${minutes} min` : `${Math.round(minutes / 60)} h`} ago`}
         </span>
       </span>
-      <button type="button" onClick={locate} disabled={finding} className="text-sm font-semibold text-brand disabled:opacity-50">
+      <button type="button" onClick={locate} disabled={finding} className="text-sm font-semibold text-link disabled:opacity-50">
         {finding ? 'Updating…' : 'Update'}
       </button>
     </div>

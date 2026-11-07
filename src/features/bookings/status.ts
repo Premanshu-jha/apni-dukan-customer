@@ -10,7 +10,7 @@ export const statusText: Record<BookingStatus, string> = {
 }
 
 export const statusTone: Record<BookingStatus, string> = {
-  CONFIRMED: 'bg-brand/15 text-brand',
+  CONFIRMED: 'bg-brand/15 text-link',
   IN_SERVICE: 'bg-good/15 text-good',
   COMPLETED: 'bg-raised text-muted',
   CANCELLED_BY_CUSTOMER: 'bg-raised text-muted',

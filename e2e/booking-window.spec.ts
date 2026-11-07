@@ -19,3 +19,12 @@ test('the day chips follow the salon’s booking window, when booking and when m
   await expect(dayChips(page)).toHaveCount(2)
   await expect(dayChips(page).last()).toHaveText('Tomorrow')
 })
+
+test('a salon answer without maxDaysAhead: today plus the backend default 7 (8 chips)', async ({ page, context, api }) => {
+  await signedIn(context, api)
+  api.maxDaysAhead = undefined
+  await page.goto('/salons/s1')
+  await page.getByLabel(/Haircut/).check()
+  await page.getByRole('button', { name: 'Pick a time' }).click()
+  await expect(dayChips(page)).toHaveCount(8)
+})

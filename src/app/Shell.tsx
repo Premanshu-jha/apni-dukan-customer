@@ -24,7 +24,7 @@ export function Shell() {
             to={t.to}
             end={t.end}
             className={({ isActive }) =>
-              `flex min-h-14 flex-col items-center justify-center gap-0.5 text-xs ${isActive ? 'text-brand' : 'text-muted'}`
+              `flex min-h-14 flex-col items-center justify-center gap-0.5 text-xs ${isActive ? 'text-link' : 'text-muted'}`
             }
           >
             <span aria-hidden className="text-lg leading-none">

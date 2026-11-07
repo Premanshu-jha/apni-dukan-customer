@@ -89,7 +89,7 @@ export function SalonPage() {
           {s.addressLine}, {s.area}, {s.city} {s.pincode}
         </p>
         {s.mapLink && (
-          <a href={s.mapLink} target="_blank" rel="noreferrer" className="text-sm text-brand underline">
+          <a href={s.mapLink} target="_blank" rel="noreferrer" className="text-sm text-link underline">
             Open in Maps
           </a>
         )}

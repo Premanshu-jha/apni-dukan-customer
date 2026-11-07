@@ -62,7 +62,7 @@ test('outside India: a clear message instead of "fields not valid"', async ({ pa
   await context.setGeolocation({ latitude: 51.5, longitude: -0.12, accuracy: 20 })
   await page.goto('/')
   await page.getByRole('button', { name: 'Allow location' }).click()
-  await expect(page.getByText('Apni Dukan works only in India')).toBeVisible()
+  await expect(page.getByText('Clozest works only in India')).toBeVisible()
 })
 
 test('expired and too-many-tries sign-in codes say what to do', async ({ page, api }) => {

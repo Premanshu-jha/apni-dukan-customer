@@ -110,8 +110,8 @@ export class MockApi {
     return `"n1-${etagOf(JSON.stringify(this.inbox) + what).replace(/"/g, '')}"`
   }
 
-  /** The salon's booking window (its owner's setting, 1–30; GET /salons/{id} `maxDaysAhead`). */
-  maxDaysAhead = 7
+  /** The salon's booking window (its owner's setting, 1–30; GET /salons/{id} `maxDaysAhead`); undefined: not sent. */
+  maxDaysAhead: number | undefined = 7
   calls: Call[] = []
   bookings: Record<string, unknown>[] = []
   inbox: { id: string; type: string; title: string; body: string; url: string | null; sentAt: string; read: boolean }[] = []

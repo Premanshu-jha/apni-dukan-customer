@@ -147,7 +147,7 @@ export function ConfirmBooking() {
             {salon.data?.area}, {salon.data?.city}
           </p>
         </div>
-        <p className="text-xl font-bold text-brand">{dateTimeIst(draft.startAt)}</p>
+        <p className="text-xl font-bold text-link">{dateTimeIst(draft.startAt)}</p>
         <ul className="flex flex-col gap-1 border-t border-line pt-3">
           {chosen.map((s) => (
             <li key={s.id} className="flex justify-between gap-3">
