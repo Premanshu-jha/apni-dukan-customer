@@ -10,8 +10,19 @@ export interface Draft {
   serviceIds: string[]
   date: string | null
   startAt: string | null
+  /**
+   * The picked time's cancel terms from the free times: from when a cancel counts as late, and for how long after
+   * booking it never does. Only for the time it was given with (`startAt` equal); a draft saved before has none.
+   */
+  terms?: CancelTerms | null
   /** One key per booking attempt, so a retried Book never makes two bookings. */
   idempotencyKey: string
+}
+
+export interface CancelTerms {
+  startAt: string
+  lateCancelFrom: string
+  freeCancelMinutes: number
 }
 
 interface DraftState {
@@ -20,7 +31,7 @@ interface DraftState {
   open: (salonId: string) => Draft
   toggleService: (serviceId: string) => void
   pickDate: (date: string) => void
-  pickSlot: (startAt: string | null) => void
+  pickSlot: (startAt: string | null, terms?: CancelTerms | null) => void
   /** Forgets picked services this salon no longer offers. */
   keepOnly: (salonId: string, serviceIds: string[]) => void
   /** A new key after an answer from the backend that is final for that attempt. */
@@ -76,7 +87,7 @@ export const useDraft = create<DraftState>((set, get) => {
       })
     },
     pickDate: (date) => update({ date, startAt: null }),
-    pickSlot: (startAt) => update({ startAt }),
+    pickSlot: (startAt, terms = null) => update({ startAt, terms }),
     newAttempt: () => update({ idempotencyKey: crypto.randomUUID() }),
     keepOnly: (salonId, serviceIds) => {
       const d = get().draft
