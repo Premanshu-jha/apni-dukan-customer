@@ -326,6 +326,10 @@ switches over. Change `OFFLINE_CACHE` in `sw.js` when the offline page changes.
 - A refresh answered 409 `TRY_AGAIN` (another tab or request swapped the same token first) uses the newer token that
   was saved and retries the call once; never a loop.
 - Dependabot (npm and GitHub Actions, weekly) and `npm audit --audit-level=high` in CI.
+- Signing out (and a session ended by the backend) closes the booking messages still in the phone's tray, so the next
+  person on a shared phone can't read them (as the partner app does).
+- Removed the old `vercel.json` (a rewrite without the security headers): the app runs on Railway with Caddy only.
+- CI: the build job's checkout keeps no token (`persist-credentials: false`), like the other jobs.
 - Free and late cancels (backend apni-dukan-backend#34, "API changes in this version"): the free times' `freeCancelMinutes`
   and each start's `lateCancelFrom` come with the picked time; Confirm warns when that is less than the free minutes away
   (a start under about 1 h 10 min away), worded by the actual timing: under 1 h, it can't be moved and cancelling
