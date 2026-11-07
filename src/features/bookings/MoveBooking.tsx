@@ -78,7 +78,7 @@ export function MoveBooking() {
         serviceIds={b.services.map((s) => s.serviceId)}
         date={day}
         selected={startAt}
-        onPick={setStartAt}
+        onPick={(at) => setStartAt(at)}
         exclude={b.startsAt}
         moving={b.id}
       />
