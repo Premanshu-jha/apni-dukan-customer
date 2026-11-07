@@ -94,16 +94,31 @@ export const SERVICES = [
 ]
 
 export const TIMES = ['10:00', '11:30', '13:00', '15:45', '17:15', '18:30']
+/** BookingService: a cancel less than this before the start is late, except within FREE_CANCEL_MINUTES of booking. */
+const LATE_CANCEL_MS = 3600_000
+const FREE_CANCEL_MINUTES = 10
 
 export class MockApi {
   user: MockUser = { id: 'u1', phone: '9848012345', name: null, email: null, emailVerified: false, admin: false }
   /** Paths (with the query) answered 304 Not Modified, in order. */
   notModified: string[] = []
+  /**
+   * The bell's and the inbox first page's own ETag, as NotificationsController sends it ("n1-…": the person's inbox
+   * version and the app): it moves whenever their list changes.
+   */
+  inboxTag(what: string): string {
+    return `"n1-${etagOf(JSON.stringify(this.inbox) + what).replace(/"/g, '')}"`
+  }
+
+  /** The salon's booking window (its owner's setting, 1–30; GET /salons/{id} `maxDaysAhead`). */
+  maxDaysAhead = 7
   calls: Call[] = []
   bookings: Record<string, unknown>[] = []
   inbox: { id: string; type: string; title: string; body: string; url: string | null; sentAt: string; read: boolean }[] = []
   /** Start times (ISO) that answer 409 SLOT_TAKEN once. */
   takenOnce = new Set<string>()
+  /** More free times ("HH:mm" on an India date), e.g. one starting within the hour. */
+  extraTimes: { date: string; time: string }[] = []
   /** Start times (ISO) no longer offered. */
   gone = new Set<string>()
   /** Approved salons within 2 km, nearest first (BookingService.salonsNear). */
@@ -190,10 +205,11 @@ export class MockApi {
     const auth = req.headers()['authorization'] ?? null
     this.calls.push({ method, path: url.pathname + url.search, body, auth, idempotencyKey: req.headers()['idempotency-key'] ?? null, at: Date.now() })
     const p = url.pathname.replace('/api/v1', '')
-    const ok = (status: number, json?: unknown, extra: Record<string, string> = {}) => {
+    const ok = (status: number, json?: unknown, extra: Record<string, string> = {}, ownTag?: string) => {
       const text = json === undefined ? '' : JSON.stringify(json)
-      // Every successful GET carries an ETag; sent back unchanged as If-None-Match, the answer is 304 with no body
-      const etag = method === 'GET' && status >= 200 && status < 300 ? etagOf(text) : null
+      // Every successful GET carries an ETag (the bell's and the inbox's first page the backend's own "n1-…"); sent
+      // back unchanged as If-None-Match, the answer is 304 with no body
+      const etag = method === 'GET' && status >= 200 && status < 300 ? (ownTag ?? etagOf(text)) : null
       if (etag && matches(req.headers()['if-none-match'], etag)) {
         this.notModified.push(url.pathname + url.search)
         return route.fulfill({ status: 304, headers: { ...this.cors(), ETag: etag }, body: '' })
@@ -286,14 +302,20 @@ export class MockApi {
       this.salonReads.push(now)
     }
     if (p.startsWith('/salons/s1') && this.salonGone) return fail(404, 'SALON_NOT_FOUND', 'This salon is not on Apni Dukan right now.')
-    if (p === '/salons/s1') return ok(200, SALON)
+    if (p === '/salons/s1') return ok(200, { ...SALON, maxDaysAhead: this.maxDaysAhead })
     if (p === '/salons/s1/services') return ok(200, SERVICES)
     if (p === '/salons/s1/availability') {
       const date = url.searchParams.get('date')!
       const ids = url.searchParams.getAll('services')
       const minutes = SERVICES.filter((s) => ids.includes(s.id)).reduce((t, s) => t + s.durationMinutes, 0)
-      const starts = TIMES.map((t) => ({ startAt: istInstant(date, t), time: t })).filter((s) => !this.gone.has(s.startAt))
-      return ok(200, { date, durationMinutes: minutes, starts })
+      // BookingResponses.Slots: freeCancelMinutes (10) and each start's lateCancelFrom (1 hour before it)
+      // Each start once, as the backend lists them (an extra time may also be a usual one, depending on the time of day)
+      const times = [...new Set([...TIMES, ...this.extraTimes.filter((x) => x.date === date).map((x) => x.time)])].sort()
+      const starts = times
+        .map((t) => ({ startAt: istInstant(date, t), time: t }))
+        .filter((s) => !this.gone.has(s.startAt))
+        .map((s) => ({ ...s, lateCancelFrom: new Date(Date.parse(s.startAt) - LATE_CANCEL_MS).toISOString() }))
+      return ok(200, { date, durationMinutes: minutes, freeCancelMinutes: FREE_CANCEL_MINUTES, starts })
     }
 
     if (p === '/bookings' && method === 'POST') {
@@ -351,7 +373,8 @@ export class MockApi {
       const b = this.booking(one[1])
       if (!b) return fail(404, 'NOT_FOUND', 'Booking not found')
       if (one[2] === '/cancel') {
-        const late = new Date(b.startsAt as string).getTime() - Date.now() < 3600_000
+        // BookingService.cancel: late after lateCancelFrom (at it, not)
+        const late = Date.now() > Date.parse(b.lateCancelFrom as string)
         Object.assign(b, { status: 'CANCELLED_BY_CUSTOMER', startCode: null, canChange: false, canMove: false, cancelReason: 'Cancelled by you' })
         return ok(200, { booking: b, countedAsLate: late })
       }
@@ -361,7 +384,8 @@ export class MockApi {
           this.gone.add(body.startAt)
           return fail(409, 'SLOT_TAKEN', "That time isn't free any more. Pick one of the nearest free times.", { nearest: [] })
         }
-        Object.assign(b, this.makeBooking(b.id as string, (b.services as { serviceId: string }[]).map((s) => s.serviceId), body.startAt))
+        // Moving keeps the row (its createdAt), so lateCancelFrom is worked out from the original booking time
+        Object.assign(b, this.makeBooking(b.id as string, (b.services as { serviceId: string }[]).map((s) => s.serviceId), body.startAt, b.createdAt as string))
         return ok(200, b)
       }
       return ok(200, b)
@@ -373,9 +397,9 @@ export class MockApi {
       if (cursor !== null && !/^c\d+$/.test(cursor)) return fail(400, 'BAD_CURSOR', 'This list has changed. Open it again.')
       const from = cursor === null ? 0 : Number(cursor.slice(1))
       const next = from + INBOX_PAGE < this.inbox.length ? `c${from + INBOX_PAGE}` : null
-      return ok(200, { items: this.inbox.slice(from, from + INBOX_PAGE), unread: Math.min(100, this.inbox.filter((i) => !i.read).length), next })
+      return ok(200, { items: this.inbox.slice(from, from + INBOX_PAGE), unread: Math.min(100, this.inbox.filter((i) => !i.read).length), next }, {}, cursor === null ? this.inboxTag('list') : undefined)
     }
-    if (p === '/me/notifications/unread-count') return ok(200, { unread: Math.min(100, this.inbox.filter((i) => !i.read).length) })
+    if (p === '/me/notifications/unread-count') return ok(200, { unread: Math.min(100, this.inbox.filter((i) => !i.read).length) }, {}, this.inboxTag('count'))
     if (p === '/me/notifications/read') {
       const ids: string[] = body?.ids ?? []
       this.inbox.forEach((i) => {
@@ -387,7 +411,7 @@ export class MockApi {
     return fail(404, 'NOT_FOUND', `No mock for ${method} ${p}`)
   }
 
-  makeBooking(id: string, serviceIds: string[], startAt: string) {
+  makeBooking(id: string, serviceIds: string[], startAt: string, createdAt: string = new Date().toISOString()) {
     const lines = SERVICES.filter((s) => serviceIds.includes(s.id)).map((s) => ({ serviceId: s.id, name: s.name, durationMinutes: s.durationMinutes, pricePaise: s.pricePaise, priceIsFrom: s.priceIsFrom }))
     const start = new Date(startAt).getTime()
     const minutes = lines.reduce((t, l) => t + l.durationMinutes, 0)
@@ -410,7 +434,9 @@ export class MockApi {
       cancelReason: null,
       canChange: start > Date.now(),
       canMove: movable,
-      createdAt: new Date().toISOString(),
+      createdAt,
+      // BookingService.lateCancelFrom: the later of 1 hour before the start and 10 minutes after booking
+      lateCancelFrom: new Date(Math.max(start - LATE_CANCEL_MS, Date.parse(createdAt) + FREE_CANCEL_MINUTES * 60_000)).toISOString(),
     }
   }
 
