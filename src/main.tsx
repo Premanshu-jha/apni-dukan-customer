@@ -4,8 +4,10 @@ import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router'
 import { refreshSession, whenSessionEnds } from './api/client'
 import { ApiError, retryDelay } from './api/errors'
-import { claimSubscription, dropBrowserSubscription, registerWorker } from './api/push'
+import { claimSubscription, closeShownNotifications, dropBrowserSubscription, registerWorker } from './api/push'
 import { App } from './app/App'
+import { ErrorBoundary } from './components/ErrorBoundary'
+import { UpdatePrompt } from './components/UpdatePrompt'
 import { forgetReturn } from './features/auth/flow'
 import { useDraft } from './store/bookingDraft'
 import { followOtherTabs, useSession } from './store/session'
@@ -26,6 +28,7 @@ const queryClient = new QueryClient({
 // The backend ended the session (expired, signed out everywhere, account deleted elsewhere): tidy this browser.
 whenSessionEnds(() => {
   void dropBrowserSubscription()
+  void closeShownNotifications()
   forgetReturn()
   useDraft.getState().clear()
   queryClient.clear()
@@ -62,7 +65,10 @@ createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
-        <App />
+        <ErrorBoundary>
+          <App />
+        </ErrorBoundary>
+        <UpdatePrompt />
       </BrowserRouter>
     </QueryClientProvider>
   </StrictMode>,

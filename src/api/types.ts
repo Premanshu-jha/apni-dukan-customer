@@ -51,6 +51,8 @@ export interface SalonDetails {
   hours: DayHours[]
   pausedUntil: string | null
   photoUrl: string | null
+  /** How many days after today it takes online bookings (1–30, the owner's setting); missing from older backends. */
+  maxDaysAhead?: number
 }
 
 export interface SalonService {
@@ -65,11 +67,15 @@ export interface Slot {
   startAt: string
   /** "16:30", India time */
   time: string
+  /** 1 hour before the start: a cancel after it counts as late, unless within freeCancelMinutes of booking. */
+  lateCancelFrom?: string
 }
 
 export interface Slots {
   date: string
   durationMinutes: number
+  /** A booking can be cancelled without a strike for this long after it is made (10), whatever its start. */
+  freeCancelMinutes?: number
   starts: Slot[]
 }
 
@@ -112,6 +118,8 @@ export interface Booking {
   /** Can still be moved (not within 1 hour of the start). */
   canMove: boolean
   createdAt: string
+  /** A cancel after this moment counts as late: the later of 1 hour before the start and 10 minutes after booking. */
+  lateCancelFrom?: string
 }
 
 export interface CancelResult {

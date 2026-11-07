@@ -1,16 +1,17 @@
 import { useQueryClient } from '@tanstack/react-query'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Navigate, useNavigate, useParams } from 'react-router'
 import { useBook } from '../../api/bookings'
 import { isApiError, messageOf, salonReadMessage } from '../../api/errors'
 import { useSalon, useSalonServices } from '../../api/salons'
 import { Banner, Button, Card, ErrorState, Loading, Page } from '../../components/ui'
-import { dateTimeIst } from '../../lib/ist'
+import { dateTimeIst, timeIst } from '../../lib/ist'
 import { duration, rupees } from '../../lib/money'
 import { useDraft } from '../../store/bookingDraft'
 import { useSession } from '../../store/session'
 import { authApi } from '../../api/auth'
 import { rememberReturn } from '../auth/flow'
+import { lateCancelSoon, termsFor } from '../bookings/lateCancel'
 
 /** Answers from the backend that end this attempt: the next Book is a new booking, so it needs a new key. */
 const FINAL = new Set([
@@ -37,6 +38,12 @@ export function ConfirmBooking() {
   const [error, setError] = useState<{ code: string; message: string } | null>(null)
   // Set when leaving this screen, so changing the draft on the way out doesn't bounce it back to the salon.
   const [leaving, setLeaving] = useState(false)
+  // The late-cancel warning depends on the clock: look again every 15 seconds while the screen is open
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 15_000)
+    return () => clearInterval(t)
+  }, [])
 
   if (leaving) return null
 
@@ -71,6 +78,8 @@ export function ConfirmBooking() {
   const minutes = chosen.reduce((t, s) => t + s.durationMinutes, 0)
   const paise = chosen.reduce((t, s) => t + s.pricePaise, 0)
   const isFrom = chosen.some((s) => s.priceIsFrom)
+  const terms = termsFor(draft.startAt, draft.terms)
+  const soon = lateCancelSoon(terms.lateCancelFrom, terms.freeCancelMinutes, now)
 
   function submit() {
     if (!draft?.startAt) return
@@ -154,6 +163,19 @@ export function ConfirmBooking() {
           <span>{rupees(paise, isFrom)}</span>
         </div>
       </Card>
+      {soon &&
+        (Date.parse(terms.lateCancelFrom) <= now ? (
+          <Banner tone="warn">
+            This time starts within the hour, so the booking can't be moved. Cancelling more than{' '}
+            {terms.freeCancelMinutes} minutes after booking counts as a late cancel.
+          </Banner>
+        ) : (
+          <Banner tone="warn">
+            This time starts in just over an hour. You can move it until {timeIst(terms.lateCancelFrom)}, and cancel it
+            for free until{' '}
+            {timeIst(new Date(Math.max(Date.parse(terms.lateCancelFrom), now + terms.freeCancelMinutes * 60_000)).toISOString())}.
+          </Banner>
+        ))}
       <p className="text-sm text-muted">
         Pay at the salon. Arrive on time: if you're more than 15 minutes late, the booking may be marked a no-show.
         You can cancel or move it from My bookings.

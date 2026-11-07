@@ -1,4 +1,5 @@
-import { NavLink, Outlet } from 'react-router'
+import { NavLink, Outlet, useLocation } from 'react-router'
+import { ErrorBoundary } from '../components/ErrorBoundary'
 
 const tabs = [
   { to: '/', label: 'Home', icon: '⌂', end: true },
@@ -11,7 +12,7 @@ export function Shell() {
   return (
     <div className="mx-auto flex min-h-dvh max-w-lg flex-col">
       <div className="flex flex-1 flex-col">
-        <Outlet />
+        <Screen />
       </div>
       <nav
         aria-label="Main"
@@ -41,7 +42,17 @@ export function Shell() {
 export function Bare() {
   return (
     <div className="mx-auto flex min-h-dvh max-w-lg flex-col">
-      <Outlet />
+      <Screen />
     </div>
+  )
+}
+
+/** The screen of the route, inside its own error boundary: a new address starts it afresh. */
+function Screen() {
+  const { pathname } = useLocation()
+  return (
+    <ErrorBoundary key={pathname}>
+      <Outlet />
+    </ErrorBoundary>
   )
 }

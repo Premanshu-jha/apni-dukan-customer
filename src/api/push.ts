@@ -1,3 +1,4 @@
+import { watchForUpdates } from '../lib/swUpdate'
 import { api } from './client'
 
 /** Browser notifications for booking messages, using the backend's VAPID key. */
@@ -23,10 +24,16 @@ function keyBytes(base64url: string): Uint8Array<ArrayBuffer> {
   return out
 }
 
+/**
+ * Registers the service worker: notifications, the offline page and new versions (see lib/swUpdate). Registered
+ * wherever service workers exist, also where notifications don't (an iPhone browser tab).
+ */
 export async function registerWorker(): Promise<ServiceWorkerRegistration | null> {
-  if (!pushSupported()) return null
+  if (!('serviceWorker' in navigator)) return null
   try {
-    return await navigator.serviceWorker.register('/sw.js')
+    const reg = await navigator.serviceWorker.register('/sw.js')
+    watchForUpdates(reg)
+    return reg
   } catch {
     return null
   }
@@ -93,6 +100,16 @@ export async function claimSubscription(): Promise<void> {
 export async function dropBrowserSubscription(): Promise<void> {
   try {
     await (await currentSubscription())?.unsubscribe()
+  } catch {
+    /* nothing more to do */
+  }
+}
+
+/** Closes this app's notifications still in the phone's tray (sign-out: the next person mustn't read them). */
+export async function closeShownNotifications(): Promise<void> {
+  try {
+    const reg = await navigator.serviceWorker?.getRegistration()
+    for (const n of (await reg?.getNotifications()) ?? []) n.close()
   } catch {
     /* nothing more to do */
   }

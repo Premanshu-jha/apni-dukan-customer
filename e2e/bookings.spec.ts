@@ -41,6 +41,8 @@ test('moving a booking, then cancelling it', async ({ page, context, api }) => {
   await expect(page).toHaveURL(/\/bookings\/b1$/)
   await expect(page.getByText(/5:15 PM/).first()).toBeVisible()
   expect(api.calls.find((c) => c.path.endsWith('/reschedule'))?.body).toEqual({ startAt: istInstant(tomorrow, '17:15') })
+  // Free to cancel until 1 hour before the new start
+  await expect(page.getByText('Free to cancel until')).toContainText('4:15 PM')
 
   await page.getByRole('button', { name: 'Cancel booking' }).click()
   await expect(page.getByText('The salon will be told')).toBeVisible()
@@ -51,7 +53,8 @@ test('moving a booking, then cancelling it', async ({ page, context, api }) => {
 
 test('cancelling within an hour warns that it counts as late; moving is not offered', async ({ page, context, api }) => {
   await signedIn(context, api)
-  api.bookings.push(api.makeBooking('b1', ['v1'], new Date(Date.now() + 30 * 60_000).toISOString()))
+  // Booked 20 minutes ago (past the 10 free minutes)
+  api.bookings.push(api.makeBooking('b1', ['v1'], new Date(Date.now() + 30 * 60_000).toISOString(), new Date(Date.now() - 20 * 60_000).toISOString()))
   await page.goto('/bookings/b1')
   await expect(page.getByText("Bookings can't be moved within 1 hour of the start.")).toBeVisible()
   await page.getByRole('button', { name: 'Cancel booking' }).click()
