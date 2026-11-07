@@ -69,14 +69,15 @@ export function useSlots(id: string, services: string[], date: string, moving?: 
   })
 }
 
-/** Day chips when the salon's window isn't known yet (or an older backend sends no `maxDaysAhead`). */
-export const DAYS_SHOWN = 7
+/** The backend's default booking window (a salon whose owner never set one): today plus 7 days. */
+export const DEFAULT_MAX_DAYS_AHEAD = 7
 
 /**
  * How many day chips a salon gets: today plus its `maxDaysAhead` (the owner's setting, 1 to 30; the backend answers
- * OUTSIDE_WINDOW past it). Missing or out of range: the default 7.
+ * OUTSIDE_WINDOW past it). Missing (not read yet, or an older backend) or out of range: today plus the backend's
+ * default 7, so 8 chips.
  */
 export function daysShown(maxDaysAhead: number | undefined): number {
-  if (typeof maxDaysAhead !== 'number' || !Number.isInteger(maxDaysAhead) || maxDaysAhead < 1) return DAYS_SHOWN
+  if (typeof maxDaysAhead !== 'number' || !Number.isInteger(maxDaysAhead) || maxDaysAhead < 1) return DEFAULT_MAX_DAYS_AHEAD + 1
   return Math.min(maxDaysAhead, 30) + 1
 }
