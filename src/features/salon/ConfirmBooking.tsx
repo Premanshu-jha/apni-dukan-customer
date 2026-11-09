@@ -4,14 +4,17 @@ import { Navigate, useNavigate, useParams } from 'react-router'
 import { useBook } from '../../api/bookings'
 import { isApiError, messageOf, salonReadMessage } from '../../api/errors'
 import { useSalon, useSalonServices } from '../../api/salons'
-import { Banner, Button, Card, ErrorState, Loading, Page } from '../../components/ui'
-import { dateTimeIst, timeIst } from '../../lib/ist'
+import { Banner, Button, Card, ErrorState, Loading, Page, Switch } from '../../components/ui'
+import { dateTimeIst, isAtLeastMinutesAway, timeIst } from '../../lib/ist'
 import { duration, rupees } from '../../lib/money'
 import { useDraft } from '../../store/bookingDraft'
 import { useSession } from '../../store/session'
 import { authApi } from '../../api/auth'
 import { rememberReturn } from '../auth/flow'
 import { lateCancelSoon, termsFor } from '../bookings/lateCancel'
+
+/** A booking can't be moved within this many minutes of its start (the backend's LATE_CANCEL). */
+const LATE_CANCEL_MIN = 60
 
 /** Answers from the backend that end this attempt: the next Book is a new booking, so it needs a new key. */
 const FINAL = new Set([
@@ -31,7 +34,7 @@ export function ConfirmBooking() {
   const navigate = useNavigate()
   const salon = useSalon(id)
   const services = useSalonServices(id)
-  const { draft, pickSlot, newAttempt, clear } = useDraft()
+  const { draft, pickSlot, newAttempt, clear, setEarlierAlert } = useDraft()
   const book = useBook()
   const qc = useQueryClient()
   const setUser = useSession((s) => s.setUser)
@@ -80,12 +83,15 @@ export function ConfirmBooking() {
   const isFrom = chosen.some((s) => s.priceIsFrom)
   const terms = termsFor(draft.startAt, draft.terms)
   const soon = lateCancelSoon(terms.lateCancelFrom, terms.freeCancelMinutes, now)
+  // A booking within the hour can't be moved, so no earlier time could be offered (the backend leaves it off too)
+  const canAlert = isAtLeastMinutesAway(draft.startAt, LATE_CANCEL_MIN)
+  const earlierAlert = canAlert && Boolean(draft.earlierAlert)
 
   function submit() {
     if (!draft?.startAt) return
     setError(null)
     book.mutate(
-      { salonId: id, serviceIds: sendIds, startAt: draft.startAt, idempotencyKey: draft.idempotencyKey },
+      { salonId: id, serviceIds: sendIds, startAt: draft.startAt, idempotencyKey: draft.idempotencyKey, earlierAlert },
       {
         onSuccess: (booking) => {
           setLeaving(true)
@@ -176,8 +182,18 @@ export function ConfirmBooking() {
             {timeIst(new Date(Math.max(Date.parse(terms.lateCancelFrom), now + terms.freeCancelMinutes * 60_000)).toISOString())}.
           </Banner>
         ))}
+      {canAlert && (
+        <Card>
+          <Switch
+            label="Tell me if an earlier time opens"
+            hint="If someone cancels earlier that day, we'll send you a message. You choose whether to move."
+            on={earlierAlert}
+            onChange={setEarlierAlert}
+          />
+        </Card>
+      )}
       <p className="text-sm text-muted">
-        Pay at the salon. Arrive on time: if you're more than 15 minutes late, the booking may be marked a no-show.
+        Pay at the salon. Arrive on time: if you're more than 10 minutes late, the booking may be marked a no-show.
         You can cancel or move it from My bookings.
       </p>
       {error && (

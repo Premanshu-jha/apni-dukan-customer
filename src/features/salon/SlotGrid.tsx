@@ -1,6 +1,7 @@
+import { useEffect } from 'react'
 import { isApiError, salonReadMessage } from '../../api/errors'
 import { daysShown, useSlots } from '../../api/salons'
-import { Chip, EmptyState, ErrorState, Loading } from '../../components/ui'
+import { Banner, Chip, EmptyState, ErrorState, Loading } from '../../components/ui'
 import { clock12, dayLabel, nextDates } from '../../lib/ist'
 import type { CancelTerms } from '../../store/bookingDraft'
 
@@ -25,6 +26,7 @@ export function SlotGrid({
   onPick,
   exclude,
   moving,
+  onSelectedGone,
 }: {
   salonId: string
   serviceIds: string[]
@@ -36,11 +38,20 @@ export function SlotGrid({
   exclude?: string
   /** The booking being moved: its own time counts as free. */
   moving?: string
+  /** The picked time is no longer free (a refresh found it taken): the screen clears it and says so. */
+  onSelectedGone?: () => void
 }) {
   const slots = useSlots(salonId, serviceIds, date, moving)
+  const fresh = slots.data && !slots.isError ? slots.data.starts : null
+  const selectedGone = selected !== null && fresh !== null && !fresh.some((s) => s.startAt === selected)
+
+  useEffect(() => {
+    if (selectedGone) onSelectedGone?.()
+  }, [selectedGone, onSelectedGone])
 
   if (slots.isPending) return <Loading label="Checking free times…" />
-  if (slots.isError) {
+  // A refresh that failed keeps the times already shown (with a note); only a first read that failed has nothing to show
+  if (slots.isError && !slots.data) {
     if (isApiError(slots.error, 'OUTSIDE_WINDOW')) {
       return <EmptyState title="Not open for booking" body={slots.error.message} />
     }
@@ -58,8 +69,16 @@ export function SlotGrid({
   const termsOf = (s: { startAt: string; lateCancelFrom?: string }): CancelTerms | null =>
     s.lateCancelFrom && typeof free === 'number' ? { startAt: s.startAt, lateCancelFrom: s.lateCancelFrom, freeCancelMinutes: free } : null
   const starts = slots.data.starts.filter((s) => s.startAt !== exclude)
+  const stale = slots.isError ? (
+    <Banner tone="warn">Couldn't check the times again just now. They may have changed: we'll try again shortly.</Banner>
+  ) : null
   if (starts.length === 0) {
-    return <EmptyState title="No free times" body="The salon is fully booked or closed on this day. Try another day." />
+    return (
+      <>
+        {stale}
+        <EmptyState title="No free times" body="The salon is fully booked or closed on this day. Try another day." />
+      </>
+    )
   }
 
   const groups = [
@@ -70,6 +89,7 @@ export function SlotGrid({
 
   return (
     <div className="flex flex-col gap-4">
+      {stale}
       {groups.map((g) => (
         <section key={g.name} aria-label={g.name} className="flex flex-col gap-2">
           <h3 className="text-sm font-medium text-muted">{g.name}</h3>

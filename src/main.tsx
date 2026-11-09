@@ -5,6 +5,7 @@ import { BrowserRouter } from 'react-router'
 import { refreshSession, whenSessionEnds } from './api/client'
 import { ApiError, retryDelay } from './api/errors'
 import { claimSubscription, closeShownNotifications, dropBrowserSubscription, registerWorker } from './api/push'
+import { isSlotsKey } from './api/salons'
 import { App } from './app/App'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { UpdatePrompt } from './components/UpdatePrompt'
@@ -51,11 +52,13 @@ async function start() {
     if (!ok && useSession.getState().refreshToken) useSession.setState({ status: 'signedIn' })
   }
   void registerWorker()
-  // A message arrived while the app is open: refresh the bell, the list and the bookings it may be about.
+  // A message arrived while the app is open: refresh the bell, the list and the bookings it may be about, and any free
+  // times on screen (a cancel or a move just changed them).
   navigator.serviceWorker?.addEventListener('message', (e: MessageEvent<{ kind?: string }>) => {
     if (e.data?.kind !== 'push') return
     void queryClient.invalidateQueries({ queryKey: ['inbox'] })
     void queryClient.invalidateQueries({ queryKey: ['bookings'] })
+    void queryClient.invalidateQueries({ predicate: (q) => isSlotsKey(q.queryKey) })
   })
 }
 
