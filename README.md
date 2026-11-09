@@ -142,7 +142,8 @@ stateDiagram-v2
   CONFIRMED --> CANCELLED_BY_CUSTOMER: cancelled (within 1 h = late, a strike)
   CONFIRMED --> CANCELLED_BY_SALON: salon cancels, with a reason
   CONFIRMED --> IN_SERVICE: salon starts it with the 4-digit code
-  CONFIRMED --> NO_SHOW: not started 15 min after the start (a strike)
+  CONFIRMED --> CONFIRMED: moved to an earlier time it was offered (switch on, someone cancelled)
+  CONFIRMED --> NO_SHOW: not started 10 min after the start (a strike)
   IN_SERVICE --> COMPLETED: done
   COMPLETED --> [*]
   CANCELLED_BY_CUSTOMER --> [*]
@@ -237,6 +238,18 @@ public/         sw.js (push notifications), manifest, icon
 - All times are shown in India time (`lib/ist.ts`), whatever zone the phone is set to.
 - Move is hidden within 1 hour of the start (`canMove` from the backend). Cancelling within 1 hour warns that it
   counts as a late cancel.
+- **Free times stay current:** while a list of free times is on screen it is asked for again every 30 s, and at once
+  when a message arrives, so a time someone just took goes and one just freed appears without a reload. A refresh
+  that fails keeps the times with a note; a picked time that got taken is cleared with "That time isn't free any
+  more".
+- **"Tell me if an earlier time opens":** a switch on Confirm (off by default, kept in the draft, not shown for a
+  booking within the hour; sent as `earlierAlert` only when on, so an older backend isn't refused) and on the
+  booking page while it can still move (`PUT /bookings/{id}/earlier-alert`). When someone's cancel or move frees an
+  earlier time that day that suits the booking, the backend sends a `BOOKING_EARLIER_SLOT` message whose link is
+  `/bookings/{id}?earlier=<start>`. The booking page then shows "An earlier time opened" with one button, "Move to
+  …" (the usual move): first to move gets it; if someone else was first, "Someone else took … first" and a way to see
+  other times; a time that passed, or is now too soon for the salon, says so. A link for a time the booking is
+  already at, or a broken one, shows nothing extra. Needs backend V33 (PR #44).
 
 ### My bookings and busy salons
 
@@ -252,8 +265,10 @@ public/         sw.js (push notifications), manifest, icon
   used: it would drop the latest page from the top, and the backend has no "page before" to bring it back.
 - **Too many salon reads:** past 60 salon pages, service lists and free-time checks a minute the backend answers 429
   with `Retry-After`. The salon page, Confirm and the free times say "Too many tries — wait a minute, then try
-  again." Nothing retries by itself (a 4xx is final; the client repeats only `SERVICE_BUSY`), and a failed refresh
-  of a salon page already on screen keeps it with a note.
+  again." Nothing retries at once (a 4xx is final; the client repeats only `SERVICE_BUSY`), and a failed refresh
+  of a salon page already on screen keeps it with a note. Free times on screen are the one exception: they are
+  asked again every 30 s whatever the last answer was (2 reads a minute, far below the 60), so a 429 there clears
+  on its own once the minute is over.
 - **Busy backend:** `SERVICE_BUSY` (503, `Retry-After: 5`) is tried once more by the client after `Retry-After`, then
   by the query twice more, each after `Retry-After` too.
 
@@ -269,8 +284,8 @@ public/         sw.js (push notifications), manifest, icon
 - **In-app messages:** the bell on Home shows the unread count (checked every minute and when the app comes back
   into view). The Messages screen lists the same messages the backend sends as notifications, so nothing is lost
   if notifications are blocked. Tapping one marks it read and opens its booking (only this app's own pages).
-  When a push arrives while the app is open, the service worker tells the page, which refreshes the bell and the
-  bookings at once. Needs the backend's `GET /me/notifications` (backend PR #22).
+  When a push arrives while the app is open, the service worker tells the page, which refreshes the bell, the
+  bookings and any free times on screen at once. Needs the backend's `GET /me/notifications` (backend PR #22).
 - An open booking refreshes every 30 s while it can still change (booked or in progress), then stops.
 
 ## Deploying
@@ -310,6 +325,21 @@ version of `sw.js` waits after installing; the app shows "New version available 
 switches over. Change `OFFLINE_CACHE` in `sw.js` when the offline page changes.
 
 ## Changelog
+
+### 0.8.0 — 2026-11-09
+
+- "Tell me if an earlier time opens": a switch on Confirm (kept in the draft; not shown within the hour) and on the
+  booking page; the message's link opens the booking with "Move to …" for the offered time in one tap; an offer
+  whose time passed or is too soon says so. Sent only when on, so this app also works with an older backend. Needs
+  backend PR #44 (V33).
+- Free times on screen refresh every 30 s and when a message arrives (no reload needed to see a time taken or freed);
+  a failed refresh keeps the times with a note, and a picked time that got taken is cleared with the reason.
+- A refused move reads the booking again (e.g. its last hour began: Move goes at once).
+- The new switch keeps focus while saving and is read with its explanation; after a move from an offer, focus goes
+  to the result.
+- The late allowance is 10 minutes: Confirm says so ("Arrive by" already comes from the backend).
+- A reusable `Switch` (role="switch") in `components/ui.tsx`.
+- Scenarios 176–203 in `docs/scenarios.md`; end-to-end journeys in `e2e/earlier-slot.spec.ts`.
 
 ### 0.7.0 — 2026-11-07
 
@@ -357,7 +387,8 @@ Uses the backend's scale PR (apni-dukan-backend#33, "Pages (the exact contract)"
   or offline tap keeps the list and says so; focus on the first new booking or the count; `aria-busy`; at most 300
   loaded. Upcoming bookings stay one answer.
 - 429 on a salon page, its services or free times: "Too many tries — wait a minute, then try again.", never retried
-  by itself; a failed refresh no longer replaces a salon page already on screen.
+  at once (free times on screen are asked again every 30 s since 0.8.0); a failed refresh no longer replaces a salon
+  page already on screen.
 - Messages: at most 10 pages (300) loaded, then "Showing the latest 300 messages."
 - A failed read is retried after the backend's `Retry-After` (503 SERVICE_BUSY: 5 s), not after 1 s.
 - Tests: the fake backend pages past bookings and messages, refuses cursors and counts salon reads like the real one;
