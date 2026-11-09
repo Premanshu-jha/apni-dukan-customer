@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Navigate, useLocation, useNavigate, useParams } from 'react-router'
 import { useSalon, useSalonServices } from '../../api/salons'
 import { Banner, Button, Page } from '../../components/ui'
@@ -16,6 +16,12 @@ export function BookTime() {
   const { draft, pickDate, pickSlot } = useDraft()
   const ready = draft?.salonId === id && draft.serviceIds.length > 0
   const date = draft?.date ?? todayIst()
+  // The picked time was taken by someone else while on screen (a refresh no longer lists it)
+  const [taken, setTaken] = useState(false)
+  const selectedGone = useCallback(() => {
+    pickSlot(null)
+    setTaken(true)
+  }, [pickSlot])
 
   useEffect(() => {
     if (ready && !draft.date) pickDate(todayIst())
@@ -41,11 +47,29 @@ export function BookTime() {
         {salon.data?.name}
         {minutes > 0 && ` · about ${duration(minutes)}`}
       </p>
-      {slotTaken && !draft.startAt && (
+      {slotTaken && !taken && !draft.startAt && (
         <Banner tone="warn">Someone just booked that time. Pick another one.</Banner>
       )}
-      <DateChips value={date} onChange={pickDate} maxDaysAhead={salon.data?.maxDaysAhead} />
-      <SlotGrid salonId={id} serviceIds={draft.serviceIds} date={date} selected={draft.startAt} onPick={pickSlot} />
+      {taken && !draft.startAt && <Banner tone="warn">That time isn't free any more. Pick another one.</Banner>}
+      <DateChips
+        value={date}
+        onChange={(d) => {
+          setTaken(false)
+          pickDate(d)
+        }}
+        maxDaysAhead={salon.data?.maxDaysAhead}
+      />
+      <SlotGrid
+        salonId={id}
+        serviceIds={draft.serviceIds}
+        date={date}
+        selected={draft.startAt}
+        onPick={(t, terms) => {
+          setTaken(false)
+          pickSlot(t, terms)
+        }}
+        onSelectedGone={selectedGone}
+      />
     </Page>
   )
 }

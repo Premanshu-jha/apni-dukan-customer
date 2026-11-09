@@ -4,6 +4,12 @@ import type { SalonDetails, SalonService, SalonSummary, Slots } from './types'
 
 const round6 = (n: number) => Math.round(n * 1e6) / 1e6
 
+/** How often free times on screen are checked again. */
+export const SLOTS_REFRESH_MS = 30_000
+
+/** Every free-times list of every salon (to refresh them all when something changed). */
+export const isSlotsKey = (key: readonly unknown[]) => key[0] === 'salons' && key[2] === 'slots'
+
 export const salonKeys = {
   near: (lat: number, lng: number) => ['salons', 'near', round6(lat), round6(lng)] as const,
   one: (id: string) => ['salons', id] as const,
@@ -65,6 +71,9 @@ export function useSlots(id: string, services: string[], date: string, moving?: 
     queryFn: () => api<Slots>('GET', `/api/v1/salons/${id}/availability?${params.toString()}`),
     enabled: services.length > 0,
     staleTime: 15_000,
+    // Others book and cancel all the time: while the times are on screen, check again every 30 s (and at once when
+    // a message arrives, see main.tsx), so a time just taken goes and one just freed appears without a reload
+    refetchInterval: SLOTS_REFRESH_MS,
     retry: false,
   })
 }

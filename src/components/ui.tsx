@@ -1,4 +1,4 @@
-import { useEffect, useRef, type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactNode } from 'react'
+import { useEffect, useId, useRef, type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactNode } from 'react'
 import { useNavigate } from 'react-router'
 
 type Variant = 'primary' | 'secondary' | 'danger' | 'ghost'
@@ -223,6 +223,56 @@ export function Sheet({
         <h2 className="mb-3 text-lg font-semibold">{title}</h2>
         {children}
       </div>
+    </div>
+  )
+}
+
+/** An on/off switch with its label and a line of explanation; `busy` while the change is being saved. */
+export function Switch({
+  label,
+  hint,
+  on,
+  busy = false,
+  disabled = false,
+  onChange,
+}: {
+  label: string
+  hint?: string
+  on: boolean
+  busy?: boolean
+  disabled?: boolean
+  onChange: (on: boolean) => void
+}) {
+  const id = useId()
+  return (
+    <div className="flex items-center justify-between gap-3">
+      <div>
+        <p id={`${id}-label`} className="font-medium">
+          {label}
+        </p>
+        {hint && (
+          <p id={`${id}-hint`} className="text-sm text-muted">
+            {hint}
+          </p>
+        )}
+      </div>
+      {/* While saving it stays focusable (aria-disabled, clicks ignored), so focus isn't lost to the page top */}
+      <button
+        type="button"
+        role="switch"
+        aria-checked={on}
+        aria-labelledby={`${id}-label`}
+        aria-describedby={hint ? `${id}-hint` : undefined}
+        aria-busy={busy}
+        aria-disabled={busy || undefined}
+        disabled={disabled}
+        onClick={() => {
+          if (!busy) onChange(!on)
+        }}
+        className={`relative h-8 w-14 shrink-0 rounded-full transition ${on ? 'bg-brand' : 'bg-line'} disabled:opacity-50 aria-disabled:opacity-50`}
+      >
+        <span className={`absolute top-1 h-6 w-6 rounded-full bg-ink transition ${on ? 'left-7' : 'left-1'}`} />
+      </button>
     </div>
   )
 }

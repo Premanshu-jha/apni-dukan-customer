@@ -152,6 +152,8 @@ export class MockApi {
   salonReads: number[] = []
   /** Makes "sign out everywhere" fail on the backend. */
   failLogoutAll = false
+  /** The next free-times read answers 429 (a refresh that fails: the 60-a-minute limit). */
+  failSlotsOnce = false
 
   /** A signed-in, complete user, saved as the app saves it. */
   static completeUser(): MockUser {
@@ -305,6 +307,10 @@ export class MockApi {
     if (p === '/salons/s1') return ok(200, { ...SALON, maxDaysAhead: this.maxDaysAhead })
     if (p === '/salons/s1/services') return ok(200, SERVICES)
     if (p === '/salons/s1/availability') {
+      if (this.failSlotsOnce) {
+        this.failSlotsOnce = false
+        return fail(429, 'TOO_MANY_REQUESTS', 'Too many salon pages at once. Wait a few seconds and try again.')
+      }
       const date = url.searchParams.get('date')!
       const ids = url.searchParams.getAll('services')
       const minutes = SERVICES.filter((s) => ids.includes(s.id)).reduce((t, s) => t + s.durationMinutes, 0)
@@ -330,6 +336,7 @@ export class MockApi {
         return fail(409, 'SLOT_TAKEN', "That time isn't free any more. Pick one of the nearest free times.", { nearest: [] })
       }
       const booking = this.makeBooking(`b${this.bookings.length + 1}`, body.serviceIds, body.startAt)
+      booking.earlierAlert = body.earlierAlert === true
       this.bookings.push(booking)
       this.inbox.unshift({ id: `n${this.inbox.length + 1}`, type: 'BOOKING_CONFIRMED', title: 'Booking confirmed', body: `${SALON.name}, booked.`, url: `/bookings/${booking.id}`, sentAt: new Date().toISOString(), read: false })
       return ok(201, booking)
@@ -368,7 +375,7 @@ export class MockApi {
           .slice(0, PAST_PAGE),
       )
     }
-    const one = p.match(/^\/bookings\/([^/]+)(\/cancel|\/reschedule)?$/)
+    const one = p.match(/^\/bookings\/([^/]+)(\/cancel|\/reschedule|\/earlier-alert)?$/)
     if (one) {
       const b = this.booking(one[1])
       if (!b) return fail(404, 'NOT_FOUND', 'Booking not found')
@@ -378,14 +385,31 @@ export class MockApi {
         Object.assign(b, { status: 'CANCELLED_BY_CUSTOMER', startCode: null, canChange: false, canMove: false, cancelReason: 'Cancelled by you' })
         return ok(200, { booking: b, countedAsLate: late })
       }
+      if (one[2] === '/earlier-alert' && method === 'PUT') {
+        // BookingService.earlierAlert: on only while it can still be moved; off any time
+        if (typeof body?.on !== 'boolean') return fail(400, 'VALIDATION_FAILED', 'Some fields are not valid', { on: 'must not be null' })
+        if (body.on && (b.status !== 'CONFIRMED' || new Date(b.startsAt as string).getTime() <= Date.now())) {
+          return fail(409, 'WRONG_STATUS', "This booking can't be changed any more.")
+        }
+        if (body.on && new Date(b.startsAt as string).getTime() - Date.now() < 3600_000) {
+          return fail(409, 'TOO_LATE_TO_MOVE', "Less than 1 hour to go: this booking can't be moved any more, so no earlier time can be offered.")
+        }
+        b.earlierAlert = body.on
+        return ok(200, b)
+      }
       if (one[2] === '/reschedule') {
+        // BookingService.requireInWindow: the salon's notice (30 minutes here)
+        if (new Date(body.startAt).getTime() < Date.now() + 30 * 60_000) {
+          return fail(400, 'OUTSIDE_WINDOW', 'That time is too soon or too far ahead for this salon.')
+        }
         if (this.moveTakenOnce.has(body.startAt)) {
           this.moveTakenOnce.delete(body.startAt)
           this.gone.add(body.startAt)
           return fail(409, 'SLOT_TAKEN', "That time isn't free any more. Pick one of the nearest free times.", { nearest: [] })
         }
-        // Moving keeps the row (its createdAt), so lateCancelFrom is worked out from the original booking time
-        Object.assign(b, this.makeBooking(b.id as string, (b.services as { serviceId: string }[]).map((s) => s.serviceId), body.startAt, b.createdAt as string))
+        // Moving keeps the row (its createdAt and its earlier-slot switch), so lateCancelFrom is worked out from the
+        // original booking time
+        Object.assign(b, { ...this.makeBooking(b.id as string, (b.services as { serviceId: string }[]).map((s) => s.serviceId), body.startAt, b.createdAt as string), earlierAlert: b.earlierAlert })
         return ok(200, b)
       }
       return ok(200, b)
@@ -428,7 +452,7 @@ export class MockApi {
       priceIsFrom: lines.some((l) => l.priceIsFrom),
       startsAt: new Date(start).toISOString(),
       endsAt: new Date(start + minutes * 60_000).toISOString(),
-      heldUntil: new Date(start + 15 * 60_000).toISOString(),
+      heldUntil: new Date(start + 10 * 60_000).toISOString(),
       status: 'CONFIRMED',
       startCode: '4821',
       cancelReason: null,
@@ -437,6 +461,7 @@ export class MockApi {
       createdAt,
       // BookingService.lateCancelFrom: the later of 1 hour before the start and 10 minutes after booking
       lateCancelFrom: new Date(Math.max(start - LATE_CANCEL_MS, Date.parse(createdAt) + FREE_CANCEL_MINUTES * 60_000)).toISOString(),
+      earlierAlert: false as boolean,
     }
   }
 

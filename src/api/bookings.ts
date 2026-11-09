@@ -88,9 +88,21 @@ export function useBook() {
   const refresh = useRefreshAfterChange()
   const slotsGone = useRefreshSlotsOnTaken()
   return useMutation({
-    mutationFn: (v: { salonId: string; serviceIds: string[]; startAt: string; idempotencyKey: string }) =>
+    mutationFn: (v: {
+      salonId: string
+      serviceIds: string[]
+      startAt: string
+      idempotencyKey: string
+      earlierAlert: boolean
+    }) =>
       api<Booking>('POST', '/api/v1/bookings', {
-        body: { salonId: v.salonId, serviceIds: v.serviceIds, startAt: v.startAt },
+        // Only when on: a backend from before V33 refuses an unknown field, so "off" is sent as nothing at all
+        body: {
+          salonId: v.salonId,
+          serviceIds: v.serviceIds,
+          startAt: v.startAt,
+          ...(v.earlierAlert ? { earlierAlert: true } : {}),
+        },
         headers: { 'Idempotency-Key': v.idempotencyKey },
       }),
     onSuccess: refresh,
@@ -106,13 +118,28 @@ export function useCancelBooking() {
   })
 }
 
+/** "Tell me if an earlier slot opens" on or off for one of my bookings. */
+export function useEarlierAlert() {
+  const refresh = useRefreshAfterChange()
+  return useMutation({
+    mutationFn: (v: { id: string; on: boolean }) =>
+      api<Booking>('PUT', `/api/v1/bookings/${v.id}/earlier-alert`, { body: { on: v.on } }),
+    onSuccess: refresh,
+  })
+}
+
 export function useMoveBooking() {
   const refresh = useRefreshAfterChange()
   const slotsGone = useRefreshSlotsOnTaken()
+  const qc = useQueryClient()
   return useMutation({
     mutationFn: (v: { id: string; salonId: string; startAt: string }) =>
       api<Booking>('POST', `/api/v1/bookings/${v.id}/reschedule`, { body: { startAt: v.startAt } }),
     onSuccess: refresh,
-    onError: (e, v) => slotsGone(e, v.salonId),
+    onError: (e, v) => {
+      slotsGone(e, v.salonId)
+      // Refused for a reason about the booking itself (its last hour, the salon paused): show what it can do now
+      if (e instanceof ApiError && e.status > 0) void qc.invalidateQueries({ queryKey: bookingKeys.one(v.id) })
+    },
   })
 }

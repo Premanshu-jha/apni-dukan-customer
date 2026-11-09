@@ -120,6 +120,11 @@ export interface Booking {
   createdAt: string
   /** A cancel after this moment counts as late: the later of 1 hour before the start and 10 minutes after booking. */
   lateCancelFrom?: string
+  /**
+   * "Tell me if an earlier slot opens": a message comes when someone's cancel or move frees an earlier time that day.
+   * Missing from a backend older than V33 (then it is off).
+   */
+  earlierAlert?: boolean
 }
 
 export interface CancelResult {

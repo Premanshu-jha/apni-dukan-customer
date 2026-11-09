@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 import { Navigate, useNavigate, useParams } from 'react-router'
 import { useBooking, useMoveBooking } from '../../api/bookings'
 import { useSalon } from '../../api/salons'
@@ -16,6 +16,11 @@ export function MoveBooking() {
   const move = useMoveBooking()
   const [date, setDate] = useState<string | null>(null)
   const [startAt, setStartAt] = useState<string | null>(null)
+  const [taken, setTaken] = useState(false)
+  const selectedGone = useCallback(() => {
+    setStartAt(null)
+    setTaken(true)
+  }, [])
 
   if (booking.isPending) {
     return (
@@ -64,6 +69,7 @@ export function MoveBooking() {
       <p className="text-muted">
         Now: <span className="text-ink">{dateTimeIst(b.startsAt)}</span> at {b.salonName}
       </p>
+      {taken && !startAt && !move.isError && <Banner tone="warn">That time isn't free any more. Pick another one.</Banner>}
       {move.isError && (
         <Banner tone="bad">
           {isApiError(move.error, 'SLOT_TAKEN') ? 'Someone just booked that time. Pick another one.' : messageOf(move.error)}
@@ -75,6 +81,7 @@ export function MoveBooking() {
         onChange={(d) => {
           setDate(d)
           setStartAt(null)
+          setTaken(false)
         }}
       />
       <SlotGrid
@@ -82,9 +89,13 @@ export function MoveBooking() {
         serviceIds={b.services.map((s) => s.serviceId)}
         date={day}
         selected={startAt}
-        onPick={(at) => setStartAt(at)}
+        onPick={(at) => {
+          setTaken(false)
+          setStartAt(at)
+        }}
         exclude={b.startsAt}
         moving={b.id}
+        onSelectedGone={selectedGone}
       />
     </Page>
   )

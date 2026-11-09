@@ -1,13 +1,14 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router'
-import { useBooking, useCancelBooking } from '../../api/bookings'
-import { messageOf } from '../../api/errors'
-import { Banner, Button, Card, ErrorState, Loading, Page, Sheet } from '../../components/ui'
+import { useBooking, useCancelBooking, useEarlierAlert, useMoveBooking } from '../../api/bookings'
+import { isApiError, messageOf } from '../../api/errors'
+import { Banner, Button, Card, ErrorState, Loading, Page, Sheet, Switch } from '../../components/ui'
 import { dateTimeIst, minutesUntil, timeIst } from '../../lib/ist'
 import { duration, rupees } from '../../lib/money'
 import { NotificationsPrompt } from '../profile/Notifications'
 import { StatusPill } from './StatusPill'
 import { cancelIsLate, lateCancelFromOf } from './lateCancel'
+import { earlierOffer, isEarlier } from './status'
 
 /** Bookings can't be moved within this many minutes of the start (the backend's TOO_LATE_TO_MOVE). */
 const NO_MOVE_MIN = 60
@@ -15,12 +16,28 @@ const NO_MOVE_MIN = 60
 export function BookingDetail() {
   const { id = '' } = useParams()
   const navigate = useNavigate()
-  const [params] = useSearchParams()
+  const [params, setParams] = useSearchParams()
   const justBooked = params.get('new') === '1'
+  const earlier = earlierOffer(params.get('earlier'))
   const booking = useBooking(id)
   const cancel = useCancelBooking()
+  const earlierSwitch = useEarlierAlert()
+  const move = useMoveBooking()
   const [asking, setAsking] = useState(false)
   const [note, setNote] = useState<string | null>(null)
+  // Another offer opened on this same screen (from the bell): the last offer's answer no longer applies
+  const resetMove = move.reset
+  useEffect(() => resetMove(), [earlier, resetMove])
+  // After a move from the offer card, focus goes to the result (the card it was in is gone)
+  const offerRef = useRef<HTMLDivElement>(null)
+  const noteRef = useRef<HTMLDivElement>(null)
+  const focusNote = useRef(false)
+  useEffect(() => {
+    if (note && focusNote.current) {
+      focusNote.current = false
+      noteRef.current?.focus()
+    }
+  }, [note])
 
   if (booking.isPending) {
     return (
@@ -46,7 +63,64 @@ export function BookingDetail() {
   return (
     <Page back="/bookings" title={`Booking ${b.bookingNo}`}>
       {justBooked && b.status === 'CONFIRMED' && <Banner tone="good">You're booked! See you at {timeIst(b.startsAt)}.</Banner>}
-      {note && <Banner tone="info">{note}</Banner>}
+      {note && (
+        <div ref={noteRef} tabIndex={-1} role="status" className="outline-none">
+          <Banner tone="info">{note}</Banner>
+        </div>
+      )}
+
+      {earlier && b.status === 'CONFIRMED' && isEarlier(earlier, b.startsAt) && (
+        <div ref={offerRef} tabIndex={-1} className="outline-none">
+          <Card className="flex flex-col gap-3">
+            <p className="font-semibold">An earlier time opened: {dateTimeIst(earlier)}</p>
+            {!b.canMove ? (
+              <p className="text-sm text-muted">
+                This booking can't be moved any more, so it stays at {timeIst(b.startsAt)}.
+              </p>
+            ) : minutesUntil(earlier) <= 0 ? (
+              <p className="text-sm text-muted">This time has passed. Your booking stays at {timeIst(b.startsAt)}.</p>
+            ) : isApiError(move.error, 'SLOT_TAKEN') || isApiError(move.error, 'OUTSIDE_WINDOW') ? (
+              <>
+                <Banner tone="warn">
+                  {isApiError(move.error, 'SLOT_TAKEN')
+                    ? `Someone else took ${timeIst(earlier)} first.`
+                    : `${timeIst(earlier)} is too soon to book now.`}{' '}
+                  Your booking stays at {timeIst(b.startsAt)}.
+                </Banner>
+                <Button variant="secondary" onClick={() => navigate(`/bookings/${b.id}/move`)}>
+                  See other times
+                </Button>
+              </>
+            ) : (
+              <>
+                <p className="text-sm text-muted">
+                  Whoever moves first gets it. Your booking stays at {timeIst(b.startsAt)} if you don't.
+                </p>
+                {move.isError && <Banner tone="bad">{messageOf(move.error)}</Banner>}
+                <Button
+                  busy={move.isPending}
+                  onClick={() =>
+                    move.mutate(
+                      { id: b.id, salonId: b.salonId, startAt: earlier },
+                      {
+                        onSuccess: (moved) => {
+                          setNote(`Moved to ${dateTimeIst(moved.startsAt)}.`)
+                          setParams({}, { replace: true })
+                          focusNote.current = true
+                        },
+                        // The button is replaced by the answer: keep focus on the card, not the page top
+                        onError: () => offerRef.current?.focus(),
+                      },
+                    )
+                  }
+                >
+                  Move to {timeIst(earlier)}
+                </Button>
+              </>
+            )}
+          </Card>
+        </div>
+      )}
 
       <Card className="flex flex-col gap-3">
         <div className="flex items-start justify-between gap-3">
@@ -97,6 +171,19 @@ export function BookingDetail() {
       </Card>
 
       {justBooked && <NotificationsPrompt />}
+
+      {b.status === 'CONFIRMED' && b.canMove && (
+        <Card className="flex flex-col gap-2">
+          <Switch
+            label="Tell me if an earlier time opens"
+            hint="If someone cancels earlier that day, we'll send you a message. You choose whether to move."
+            on={Boolean(b.earlierAlert)}
+            busy={earlierSwitch.isPending}
+            onChange={(on) => earlierSwitch.mutate({ id: b.id, on })}
+          />
+          {earlierSwitch.isError && <Banner tone="bad">{messageOf(earlierSwitch.error)}</Banner>}
+        </Card>
+      )}
 
       {(b.canMove || b.canChange) && (
         <div className="flex flex-col gap-2">

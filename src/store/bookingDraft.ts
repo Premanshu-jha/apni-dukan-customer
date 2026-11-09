@@ -17,6 +17,8 @@ export interface Draft {
   terms?: CancelTerms | null
   /** One key per booking attempt, so a retried Book never makes two bookings. */
   idempotencyKey: string
+  /** "Tell me if an earlier time opens", as set on Confirm (kept across a taken time or a sign-up step). */
+  earlierAlert?: boolean
 }
 
 export interface CancelTerms {
@@ -32,6 +34,7 @@ interface DraftState {
   toggleService: (serviceId: string) => void
   pickDate: (date: string) => void
   pickSlot: (startAt: string | null, terms?: CancelTerms | null) => void
+  setEarlierAlert: (on: boolean) => void
   /** Forgets picked services this salon no longer offers. */
   keepOnly: (salonId: string, serviceIds: string[]) => void
   /** A new key after an answer from the backend that is final for that attempt. */
@@ -88,6 +91,7 @@ export const useDraft = create<DraftState>((set, get) => {
     },
     pickDate: (date) => update({ date, startAt: null }),
     pickSlot: (startAt, terms = null) => update({ startAt, terms }),
+    setEarlierAlert: (on) => update({ earlierAlert: on }),
     newAttempt: () => update({ idempotencyKey: crypto.randomUUID() }),
     keepOnly: (salonId, serviceIds) => {
       const d = get().draft
