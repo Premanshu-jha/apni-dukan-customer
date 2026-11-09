@@ -45,6 +45,11 @@ export function dateOfIst(instant: string): string {
   return formatInTimeZone(new Date(instant), IST, 'yyyy-MM-dd')
 }
 
+/** Whether an instant is at least this many minutes away, to the millisecond (no rounding at the edge). */
+export function isAtLeastMinutesAway(instant: string, minutes: number, now: Date = new Date()): boolean {
+  return new Date(instant).getTime() - now.getTime() >= minutes * 60_000
+}
+
 /** Minutes from now until an instant (negative once it has passed). */
 export function minutesUntil(instant: string, now: Date = new Date()): number {
   return Math.round((new Date(instant).getTime() - now.getTime()) / 60000)
