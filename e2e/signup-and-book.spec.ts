@@ -24,6 +24,8 @@ test('a new customer signs up (phone, email, name last), finds a salon and books
   await page.getByRole('button', { name: 'Done' }).click()
 
   await expect(page).toHaveURL(/\/$/)
+  // The same radius as the list and the backend (2 km), not the old "5 km"
+  await expect(page.getByText('Clozest needs your location to show salons within 2 km.')).toBeVisible()
   await page.getByRole('button', { name: 'Allow location' }).click()
   await page.getByText('Shine Unisex Salon').click()
 

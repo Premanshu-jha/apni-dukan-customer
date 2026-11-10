@@ -85,6 +85,24 @@ const SALON = {
   hours: [1, 2, 3, 4, 5, 6].map((w) => ({ weekday: w, open: '10:00', close: '20:00' })),
   pausedUntil: null as string | null,
   photoUrl: null,
+  maxDaysAhead: 7,
+  closedDates: [] as string[],
+  rating: { count: 12, average: 4.6, tags: [{ tag: 'CLEAN', label: 'Clean', count: 9 }, { tag: 'ON_TIME', label: 'On time', count: 4 }] },
+}
+
+/** BookingResponses.SalonSummary: what a card shows (s1 open now, s2 new and closed today). */
+function card(over: Record<string, unknown>) {
+  return {
+    addressLine: 'Shop 12, Ithum Tower',
+    rating: { count: 0, average: null, tags: [] },
+    topServices: [],
+    serviceCount: 0,
+    today: null,
+    openNow: null,
+    closedToday: false,
+    registered: true,
+    ...over,
+  }
 }
 
 export const SERVICES = [
@@ -122,10 +140,24 @@ export class MockApi {
   /** Start times (ISO) no longer offered. */
   gone = new Set<string>()
   /** Approved salons within 2 km, nearest first (BookingService.salonsNear). */
-  salons = [
-    { id: 's1', name: SALON.name, area: SALON.area, city: SALON.city, distanceKm: 0.8, photoUrl: null, distanceMetres: 812.4 },
-    { id: 's2', name: 'Royal Cuts', area: 'Sector 63', city: 'Noida', distanceKm: 1.9, photoUrl: null, distanceMetres: 1934.7 },
+  /** GET /salons: SalonSummary records (the card fields optional here: a test's own list may leave them out). */
+  salons: Array<Record<string, any>> = [
+    card({
+      id: 's1', name: SALON.name, area: SALON.area, city: SALON.city, distanceKm: 0.8, photoUrl: null, distanceMetres: 812.4,
+      rating: { count: 12, average: 4.6, tags: [] },
+      topServices: [{ name: 'Haircut', pricePaise: 20000, priceIsFrom: false }, { name: 'Beard trim', pricePaise: 10000, priceIsFrom: false }, { name: 'Hair colour', pricePaise: 80000, priceIsFrom: true }],
+      serviceCount: 5,
+      today: { weekday: 2, open: '00:00', close: '24:00' },
+      openNow: true,
+    }),
+    card({ id: 's2', name: 'Royal Cuts', addressLine: 'Plot 4', area: 'Sector 63', city: 'Noida', distanceKm: 1.9, photoUrl: null, distanceMetres: 1934.7, rating: { count: 2, average: null, tags: [] }, topServices: [{ name: 'Haircut', pricePaise: 15000, priceIsFrom: false }], serviceCount: 1, openNow: false, closedToday: true, registered: false }),
   ]
+  /** s1's closed days (holidays) in its booking window, yyyy-MM-dd */
+  closedDates: string[] = []
+  /** The salon this customer works in (owner, helper or barber), if any: its visits can't be rated (OWN_SALON). */
+  worksAt: string | null = null
+  /** GET /me/salon-preferences */
+  comeBackReminders = true
   private refreshCount = 0
   private accessValid = new Set<string>()
   refreshTokens = new Map<string, 'live' | 'rotated'>()
@@ -181,6 +213,15 @@ export class MockApi {
     const refresh = `refresh-saved-${++this.refreshCount}`
     this.refreshTokens.set(refresh, 'live')
     return JSON.stringify({ refreshToken: refresh, user: this.user })
+  }
+
+  /** A visit that ended an hour ago, still to be rated (for 14 days after it ended). */
+  completedVisit(id = 'b9') {
+    const start = Date.now() - 2 * 3600_000
+    const b = { ...this.makeBooking(id, ['v1'], new Date(start).toISOString()), status: 'COMPLETED', startCode: null, canChange: false, canMove: false }
+    b.rateUntil = new Date(start + 30 * 60_000 + 14 * 86400_000).toISOString()
+    this.bookings.push(b)
+    return b
   }
 
   booking(id: string) {
@@ -304,7 +345,7 @@ export class MockApi {
       this.salonReads.push(now)
     }
     if (p.startsWith('/salons/s1') && this.salonGone) return fail(404, 'SALON_NOT_FOUND', 'This salon is not on Apni Dukan right now.')
-    if (p === '/salons/s1') return ok(200, { ...SALON, maxDaysAhead: this.maxDaysAhead })
+    if (p === '/salons/s1') return ok(200, { ...SALON, maxDaysAhead: this.maxDaysAhead, closedDates: this.closedDates })
     if (p === '/salons/s1/services') return ok(200, SERVICES)
     if (p === '/salons/s1/availability') {
       if (this.failSlotsOnce) {
@@ -341,6 +382,10 @@ export class MockApi {
       this.inbox.unshift({ id: `n${this.inbox.length + 1}`, type: 'BOOKING_CONFIRMED', title: 'Booking confirmed', body: `${SALON.name}, booked.`, url: `/bookings/${booking.id}`, sentAt: new Date().toISOString(), read: false })
       return ok(201, booking)
     }
+    if (p === '/me/salon-preferences') {
+      if (method === 'PUT') this.comeBackReminders = body.comeBackReminders
+      return ok(200, { comeBackReminders: this.comeBackReminders })
+    }
     if (p === '/me/bookings') {
       // Spring reads the cursor first (one it can't read is 400 BAD_REQUEST, as handleTypeMismatch; an empty one
       // counts as not sent), then half of one is VALIDATION_FAILED naming afterId, then a cursor with when=upcoming
@@ -375,7 +420,7 @@ export class MockApi {
           .slice(0, PAST_PAGE),
       )
     }
-    const one = p.match(/^\/bookings\/([^/]+)(\/cancel|\/reschedule|\/earlier-alert)?$/)
+    const one = p.match(/^\/bookings\/([^/]+)(\/cancel|\/reschedule|\/earlier-alert|\/rating)?$/)
     if (one) {
       const b = this.booking(one[1])
       if (!b) return fail(404, 'NOT_FOUND', 'Booking not found')
@@ -395,6 +440,34 @@ export class MockApi {
           return fail(409, 'TOO_LATE_TO_MOVE', "Less than 1 hour to go: this booking can't be moved any more, so no earlier time can be offered.")
         }
         b.earlierAlert = body.on
+        return ok(200, b)
+      }
+      if (one[2] === '/rating') {
+        // BookingRequests.RateVisit (@Valid, checked first), then BookingService.rate in its order
+        const invalid: Record<string, string> = {}
+        if (!(body.stars >= 1 && body.stars <= 5)) invalid.stars = 'must be between 1 and 5'
+        if ((body.tags ?? []).length > 5) invalid.tags = 'size must be between 0 and 5'
+        if ((body.comment ?? '').length > 300) invalid.comment = 'size must be between 0 and 300'
+        if (Object.keys(invalid).length) return fail(400, 'VALIDATION_FAILED', 'Some fields are not valid', invalid)
+        if (b.status !== 'COMPLETED') return fail(409, 'NOT_RATEABLE', "You can rate a visit once it's done.")
+        if (!b.rateUntil || Date.parse(b.rateUntil as string) <= Date.now()) {
+          return fail(409, 'RATING_CLOSED', "Visits can be rated for 14 days. This one can't be rated any more.")
+        }
+        if (this.worksAt === b.salonId) return fail(409, 'OWN_SALON', "You can't rate the salon you work in.")
+        // TextCleaner: a comment needs at least 2 letters or digits
+        if (body.comment && (body.comment.match(/[\p{L}\p{N}]/gu) ?? []).length < 2) {
+          return fail(400, 'VALIDATION_FAILED', 'Some fields are not valid', { comment: 'must have at least 2 letters or digits' })
+        }
+        const now = new Date().toISOString()
+        const order = ['ON_TIME', 'CLEAN', 'FRIENDLY', 'SKILLED', 'GOOD_VALUE']
+        const before = b.rating as { ratedAt: string } | null
+        b.rating = {
+          stars: body.stars,
+          tags: order.filter((t) => (body.tags ?? []).includes(t)),
+          comment: body.comment?.trim() ? body.comment.trim() : null,
+          ratedAt: before?.ratedAt ?? now,
+          updatedAt: now,
+        }
         return ok(200, b)
       }
       if (one[2] === '/reschedule') {
@@ -462,6 +535,8 @@ export class MockApi {
       // BookingService.lateCancelFrom: the later of 1 hour before the start and 10 minutes after booking
       lateCancelFrom: new Date(Math.max(start - LATE_CANCEL_MS, Date.parse(createdAt) + FREE_CANCEL_MINUTES * 60_000)).toISOString(),
       earlierAlert: false as boolean,
+      rating: null as Record<string, unknown> | null,
+      rateUntil: null as string | null,
     }
   }
 
