@@ -1,4 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react'
+import { SALONS_RADIUS_KM } from '../../api/salons'
 import { Banner, Button, Loading } from '../../components/ui'
 import { platform } from '../../lib/device'
 import { permissionState, STALE_MS, useLocation, type Place } from '../../store/location'
@@ -37,8 +38,9 @@ export function LocationGate({ children }: { children: (place: Place) => ReactNo
       <div className="flex flex-col gap-2">
         <p className="text-xl font-semibold">Find salons near you</p>
         <p className="max-w-xs text-muted">
-          Clozest needs your location to show salons within 5 km. It is used only to find salons and is never
-          shared.
+          {/* The same radius as the list and the backend (BookingService.RADIUS_METRES) */}
+          Clozest needs your location to show salons within {SALONS_RADIUS_KM} km. It is used only to find salons and is
+          never shared.
         </p>
       </div>
       {error === 'timeout' && <Banner tone="warn">That took too long. Move near a window or turn on GPS, then try again.</Banner>}

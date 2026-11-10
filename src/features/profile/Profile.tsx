@@ -8,6 +8,7 @@ import { formatPhone } from '../../lib/phone'
 import { SUPPORT_EMAIL } from '../../lib/config'
 import { useSession } from '../../store/session'
 import { NotificationsRow } from './Notifications'
+import { ComeBackReminders } from './ComeBackReminders'
 import { signOutHere } from './signOut'
 
 export function Profile() {
@@ -87,8 +88,9 @@ export function Profile() {
         />
       </Card>
 
-      <Card>
+      <Card className="flex flex-col gap-4">
         <NotificationsRow />
+        <ComeBackReminders />
       </Card>
 
       <Card className="flex flex-col gap-1">

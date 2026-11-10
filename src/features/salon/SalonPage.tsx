@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
-import { useNavigate, useParams } from 'react-router'
+import { useNavigate, useParams, useSearchParams } from 'react-router'
 import { salonReadMessage } from '../../api/errors'
 import { useSalon, useSalonServices } from '../../api/salons'
 import { Banner, Button, ErrorState, Loading, Page } from '../../components/ui'
-import { clock12, dateTimeIst, weekdayName } from '../../lib/ist'
+import { clock12, dateTimeIst, dayLabel, weekdayName } from '../../lib/ist'
+import { ratingText } from '../../lib/salonCard'
 import { duration, rupees } from '../../lib/money'
 import { MAX_SERVICES, useDraft } from '../../store/bookingDraft'
 import { SalonPhoto } from './SalonList'
@@ -15,10 +16,23 @@ export function SalonPage() {
   const services = useSalonServices(id)
   const { draft, open, toggleService } = useDraft()
   const [now] = useState(() => Date.now())
+  const [params, setParams] = useSearchParams()
+  const again = params.get('services')
 
   useEffect(() => {
     open(id)
   }, [id, open])
+
+  // "Book again" (the come-back message): those services picked, once the salon's list says which it still offers;
+  // then the link's part goes, so a reload or Back doesn't pick them again over the person's own changes
+  useEffect(() => {
+    if (!again || !services.data) return
+    const offered = new Set(services.data.map((x) => x.id))
+    const picked = again.split(',').filter((x) => offered.has(x))
+    // None still offered: keep whatever the person had picked here
+    if (picked.length > 0) useDraft.getState().pickOnly(id, picked)
+    setParams({}, { replace: true })
+  }, [again, id, services.data, setParams])
 
   // A service the salon has since removed can't be seen or unticked: drop it from the saved draft
   const known = services.data
@@ -85,6 +99,14 @@ export function SalonPage() {
       )}
       <SalonPhoto url={s.photoUrl} name={s.name} large />
       <div className="flex flex-col gap-1">
+        {s.rating && (
+          <p className={s.rating.average !== null ? 'font-semibold text-warn' : 'text-sm text-muted'}>
+            {ratingText(s.rating)}
+            {s.rating.tags.length > 0 && (
+              <span className="font-normal text-muted"> · {s.rating.tags.slice(0, 3).map((t) => t.label).join(', ')}</span>
+            )}
+          </p>
+        )}
         <p className="text-muted">
           {s.addressLine}, {s.area}, {s.city} {s.pincode}
         </p>
@@ -153,6 +175,9 @@ export function SalonPage() {
               )
             })}
           </dl>
+          {s.closedDates?.length > 0 && (
+            <p className="text-sm text-muted">Holidays: {s.closedDates.map((d) => dayLabel(d)).join(', ')}.</p>
+          )}
         </section>
       )}
     </Page>
