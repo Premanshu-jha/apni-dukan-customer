@@ -112,3 +112,13 @@ test('come-back reminders that could not be read are not shown as on', async ({ 
   await expect(toggle).toHaveAttribute('aria-checked', 'false')
   await expect(toggle).toBeDisabled()
 })
+
+test('rating closed while the form was open says so instead of the form vanishing', async ({ page, context, api }) => {
+  await signedIn(context, api)
+  const b = api.completedVisit()
+  await page.goto(`/bookings/${b.id}`)
+  await page.getByRole('radio', { name: '5 stars' }).click()
+  b.rateUntil = new Date(Date.now() - 60_000).toISOString()   // the 14 days ran out meanwhile
+  await page.getByRole('button', { name: 'Send rating' }).click()
+  await expect(page.getByText("Visits can be rated for 14 days. This one can't be rated any more.")).toBeVisible()
+})
