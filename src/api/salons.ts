@@ -35,7 +35,11 @@ export function useNearbySalons(lat: number | null, lng: number | null) {
       const after = pageParam
         ? `&afterDistance=${encodeURIComponent(String(pageParam.distanceMetres))}&afterId=${encodeURIComponent(pageParam.id)}`
         : ''
-      return api<SalonSummary[]>('GET', `/api/v1/salons?lat=${round6(lat!)}&lng=${round6(lng!)}${after}`)
+      // Each card's openNow is as of when its page was read: keep that moment with it ("Opens at …" is told from it)
+      return api<SalonSummary[]>('GET', `/api/v1/salons?lat=${round6(lat!)}&lng=${round6(lng!)}${after}`).then((list) => {
+        const readAt = Date.now()
+        return list.map((s) => ({ ...s, readAt }))
+      })
     },
     getNextPageParam: (last: SalonSummary[]) => (last.length < SALONS_PAGE ? undefined : last[last.length - 1]),
     enabled: lat !== null && lng !== null,

@@ -4,7 +4,13 @@ import { isApiError, messageOf } from '../../api/errors'
 import { SALONS_RADIUS_KM, useNearbySalons } from '../../api/salons'
 import { Button, EmptyState, ErrorState, Loading } from '../../components/ui'
 import { SUPPORT_EMAIL } from '../../lib/config'
+import { openText, ratingText, servicesText } from '../../lib/salonCard'
 
+
+/** A moment as India time "HH:mm", for "Opens at …" on the cards. */
+function hhmmIst(at: number): string {
+  return new Date(at + 5.5 * 3600_000).toISOString().slice(11, 16)
+}
 
 export function SalonList({ lat, lng }: { lat: number; lng: number }) {
   const salons = useNearbySalons(lat, lng)
@@ -21,6 +27,8 @@ export function SalonList({ lat, lng }: { lat: number; lng: number }) {
       focusIndex.current = null
     }
   }, [loaded])
+  // Each page's cards are told from when that page was read, like their openNow (a page read later doesn't move them)
+  const fallbackNow = salons.dataUpdatedAt
 
   if (salons.isPending) return <Loading label="Looking for salons near you…" />
   // Only when nothing is on screen yet: a failed "Show more" (or a background refresh) keeps the list and says so
@@ -75,11 +83,32 @@ export function SalonList({ lat, lng }: { lat: number; lng: number }) {
             >
               <SalonPhoto url={s.photoUrl} name={s.name} />
               <div className="flex min-w-0 flex-1 flex-col justify-center gap-1">
-                <p className="truncate font-semibold">{s.name}</p>
+                <div className="flex items-start justify-between gap-2">
+                  <p className="truncate font-semibold">{s.name}</p>
+                  <span className={`shrink-0 text-sm ${s.rating && s.rating.average !== null ? 'font-semibold text-warn' : 'text-muted'}`}>
+                    {s.rating ? ratingText(s.rating) : ''}
+                  </span>
+                </div>
                 <p className="truncate text-sm text-muted">
-                  {s.area}, {s.city}
+                  {s.addressLine ? `${s.addressLine}, ` : ''}
+                  {s.area}
                 </p>
-                <p className="text-sm text-link">{s.distanceKm.toFixed(1)} km away</p>
+                {s.topServices?.length > 0 && (
+                  <p className="line-clamp-2 text-sm">{servicesText(s.topServices, s.serviceCount)}</p>
+                )}
+                <p className="text-sm">
+                  <span
+                    className={`mr-2 inline-block rounded-full border px-2 text-xs font-medium ${
+                      s.registered ? 'border-good text-good' : 'border-line text-muted'
+                    }`}
+                  >
+                    {s.registered ? 'Registered' : 'Unregistered'}
+                  </span>
+                  <span className="text-link">{s.distanceKm.toFixed(1)} km away</span>
+                  {openText(s, hhmmIst(s.readAt ?? fallbackNow)) && (
+                    <span className={s.openNow ? ' text-good' : ' text-muted'}> · {openText(s, hhmmIst(s.readAt ?? fallbackNow))}</span>
+                  )}
+                </p>
               </div>
             </Link>
           </li>

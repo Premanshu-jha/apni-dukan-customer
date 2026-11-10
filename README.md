@@ -326,6 +326,30 @@ switches over. Change `OFFLINE_CACHE` in `sw.js` when the offline page changes.
 
 ## Changelog
 
+### 0.9.0 — 2026-11-10
+
+Needs the backend with V34–V36 (ratings, salon cards, come-back reminders).
+
+- **Salon cards** show the rating ("★ 4.6 (12)", or "New" until 5 ratings), the address, the first services with
+  prices ("+2 more"), and whether it is open now ("Open · till 9:00 PM", "Opens at 10:00 AM", "Closed today"), and "Registered" or "Unregistered" (whether the
+  salon gave the field team its registration document, which is optional).
+- Review fixes: a refused rating comment says why under the comment; "Keep my rating" puts back the saved rating;
+  a come-back link whose services are all gone keeps the person's own picks; the come-back switch isn't shown as on
+  when it couldn't be read; a salon open till the end of the day says "till midnight"; the cards' "Opens at" uses the
+  time the list was read.
+- **The salon's page** shows its rating with what customers liked most, its own opening hours and its holidays.
+- **Rating a visit.** A completed booking's page asks "How was your visit?": stars, what went well, a comment only the
+  salon sees; it can be changed for 14 days. My bookings (Past) marks visits still to rate. The "How was your visit?"
+  message opens the booking with the stars ready.
+- **Come-back reminders.** "Time for your next Haircut?" opens the salon with the same services picked. Profile has a
+  switch to turn these messages off.
+- More review fixes: the stars are one tab stop with arrow keys; the come-back switch waits while a change saves;
+  each page of salon cards keeps the time it was read; a rating that closed while the form was open says so.
+- "Registered" means the salon's document was checked by our field team. A salon with no working barber that day
+  shows "Closed today".
+- The location screen says "within 2 km" (it said 5 km; the list and the backend use 2 km).
+- Scenarios 204–219 in `docs/scenarios.md`; end-to-end journeys in `e2e/ratings.spec.ts`.
+
 ### 0.8.0 — 2026-11-09
 
 - "Tell me if an earlier time opens": a switch on Confirm (kept in the draft; not shown within the hour) and on the
