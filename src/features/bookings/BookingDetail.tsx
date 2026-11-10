@@ -6,6 +6,7 @@ import { Banner, Button, Card, ErrorState, Loading, Page, Sheet, Switch } from '
 import { dateTimeIst, minutesUntil, timeIst } from '../../lib/ist'
 import { duration, rupees } from '../../lib/money'
 import { NotificationsPrompt } from '../profile/Notifications'
+import { RateVisit } from '../ratings/RateVisit'
 import { StatusPill } from './StatusPill'
 import { cancelIsLate, lateCancelFromOf } from './lateCancel'
 import { earlierOffer, isEarlier } from './status'
@@ -19,6 +20,8 @@ export function BookingDetail() {
   const [params, setParams] = useSearchParams()
   const justBooked = params.get('new') === '1'
   const earlier = earlierOffer(params.get('earlier'))
+  // Opened from "How was your visit?"
+  const toRate = params.get('rate') === '1'
   const booking = useBooking(id)
   const cancel = useCancelBooking()
   const earlierSwitch = useEarlierAlert()
@@ -169,6 +172,8 @@ export function BookingDetail() {
         </div>
         <p className="text-sm text-muted">Pay at the salon.</p>
       </Card>
+
+      {b.status === 'COMPLETED' && <RateVisit booking={b} focus={toRate} />}
 
       {justBooked && <NotificationsPrompt />}
 

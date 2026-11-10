@@ -20,15 +20,52 @@ export interface Tokens {
   newUser: boolean
 }
 
+export type RatingTag = 'ON_TIME' | 'CLEAN' | 'FRIENDLY' | 'SKILLED' | 'GOOD_VALUE'
+
+export interface TagCount {
+  tag: RatingTag
+  label: string
+  count: number
+}
+
+/** A salon's ratings. average is null until it has 5 ratings (the app shows "New"). */
+export interface RatingSummary {
+  count: number
+  average: number | null
+  /** What customers said went well, most mentioned first (empty on the list's cards). */
+  tags: TagCount[]
+}
+
+/** A service's name and price on a salon card. */
+export interface PriceLine {
+  name: string
+  pricePaise: number
+  priceIsFrom: boolean
+}
+
 export interface SalonSummary {
   id: string
   name: string
+  addressLine: string
   area: string
   city: string
   distanceKm: number
   photoUrl: string | null
   /** Exact distance in metres: sent back to ask for the next page */
   distanceMetres: number
+  rating: RatingSummary
+  /** Its first 3 services, with prices. */
+  topServices: PriceLine[]
+  /** How many services in all ("+5 more"). */
+  serviceCount: number
+  /** Today's hours; null when closed today or not set. */
+  today: DayHours | null
+  /** Open right now; null when the salon hasn't set its hours. */
+  openNow: boolean | null
+  /** Its weekly off or a holiday. */
+  closedToday: boolean
+  /** It added its registration document (optional for salons): "Registered", else "Unregistered". */
+  registered: boolean
 }
 
 export interface DayHours {
@@ -53,6 +90,9 @@ export interface SalonDetails {
   photoUrl: string | null
   /** How many days after today it takes online bookings (1–30, the owner's setting); missing from older backends. */
   maxDaysAhead?: number
+  /** Its closed days (holidays) within its booking window, yyyy-MM-dd. */
+  closedDates: string[]
+  rating: RatingSummary
 }
 
 export interface SalonService {
@@ -125,6 +165,30 @@ export interface Booking {
    * Missing from a backend older than V33 (then it is off).
    */
   earlierAlert?: boolean
+  /** My rating of this visit; null if not rated. */
+  rating: MyRating | null
+  /** While set, I can rate the visit (or change my rating) until then: 14 days after a completed visit. */
+  rateUntil: string | null
+}
+
+export interface MyRating {
+  stars: number
+  tags: RatingTag[]
+  /** Only the salon sees it. */
+  comment: string | null
+  ratedAt: string
+  updatedAt: string
+}
+
+export interface RateVisit {
+  stars: number
+  tags: RatingTag[]
+  comment: string | null
+}
+
+export interface SalonPreferences {
+  /** "Time for your next haircut?" messages after a visit. */
+  comeBackReminders: boolean
 }
 
 export interface CancelResult {

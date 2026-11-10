@@ -7,6 +7,7 @@ import type { Booking } from '../../api/types'
 import { Button, Chip, EmptyState, ErrorState, Loading, Page } from '../../components/ui'
 import { dateTimeIst } from '../../lib/ist'
 import { rupees } from '../../lib/money'
+import { canRate } from '../../lib/ratings'
 import { StatusPill } from './StatusPill'
 
 export function MyBookings() {
@@ -149,6 +150,7 @@ function Past() {
 }
 
 function BookingCard({ b, index }: { b: Booking; index: number }) {
+  const [now] = useState(Date.now)
   return (
     <Link
       to={`/bookings/${b.id}`}
@@ -163,6 +165,7 @@ function BookingCard({ b, index }: { b: Booking; index: number }) {
       <p className="truncate text-sm text-muted">
         {b.services.map((s) => s.name).join(', ')} · {rupees(b.totalPricePaise, b.priceIsFrom)}
       </p>
+      {!b.rating && canRate(b.rateUntil, now) && <p className="text-sm font-semibold text-warn">★ Rate your visit</p>}
     </Link>
   )
 }

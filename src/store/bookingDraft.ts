@@ -37,6 +37,8 @@ interface DraftState {
   setEarlierAlert: (on: boolean) => void
   /** Forgets picked services this salon no longer offers. */
   keepOnly: (salonId: string, serviceIds: string[]) => void
+  /** Picks exactly these services at this salon (a "book again" link), with no day or time yet. */
+  pickOnly: (salonId: string, serviceIds: string[]) => void
   /** A new key after an answer from the backend that is final for that attempt. */
   newAttempt: () => void
   clear: () => void
@@ -98,6 +100,10 @@ export const useDraft = create<DraftState>((set, get) => {
       if (!d || d.salonId !== salonId) return
       const kept = d.serviceIds.filter((s) => serviceIds.includes(s))
       if (kept.length !== d.serviceIds.length) update({ serviceIds: kept, startAt: null })
+    },
+    pickOnly: (salonId, serviceIds) => {
+      get().open(salonId)
+      update({ serviceIds: [...new Set(serviceIds)].slice(0, MAX_SERVICES), date: null, startAt: null })
     },
     clear: () => {
       save(null)

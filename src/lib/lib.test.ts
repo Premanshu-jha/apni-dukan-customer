@@ -31,6 +31,7 @@ describe('India time', () => {
     expect(clock12('09:05')).toBe('9:05 AM')
     expect(clock12('12:00')).toBe('12:00 PM')
     expect(clock12('00:30')).toBe('12:30 AM')
+    expect(clock12('24:00')).toBe('midnight')   // a salon open till the end of the day
     expect(weekdayName(1)).toBe('Mon')
     expect(weekdayName(7)).toBe('Sun')
   })
