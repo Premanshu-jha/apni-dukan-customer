@@ -1,8 +1,8 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from './client'
-import { ApiError } from './errors'
+import { ApiError, isApiError } from './errors'
 import { cursorQuery, nextAfterLast, type AfterCursor } from './pages'
-import type { Booking, CancelResult } from './types'
+import type { Booking, CancelResult, RateVisit, SalonPreferences } from './types'
 
 export const bookingKeys = {
   mine: (when: 'upcoming' | 'past') => ['bookings', when] as const,
@@ -125,6 +125,45 @@ export function useEarlierAlert() {
     mutationFn: (v: { id: string; on: boolean }) =>
       api<Booking>('PUT', `/api/v1/bookings/${v.id}/earlier-alert`, { body: { on: v.on } }),
     onSuccess: refresh,
+  })
+}
+
+export function useRateVisit() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (v: { id: string; rating: RateVisit }) =>
+      api<Booking>('POST', `/api/v1/bookings/${v.id}/rating`, { body: v.rating }),
+    onSuccess: (b) => {
+      qc.setQueryData(bookingKeys.one(b.id), b)
+      void qc.invalidateQueries({ queryKey: ['bookings', 'past'] })
+      // The salon's average and count on its page and card
+      void qc.invalidateQueries({ queryKey: ['salons'] })
+    },
+    onError: (e, v) => {
+      // Closed meanwhile (14 days passed while the form was open): read the booking again, the form goes read-only
+      if (isApiError(e, 'RATING_CLOSED')) void qc.invalidateQueries({ queryKey: bookingKeys.one(v.id) })
+    },
+  })
+}
+
+export const prefsKey = ['me', 'salon-preferences'] as const
+
+export function useSalonPreferences() {
+  return useQuery({ queryKey: prefsKey, queryFn: () => api<SalonPreferences>('GET', '/api/v1/me/salon-preferences') })
+}
+
+export function useSetSalonPreferences() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (p: SalonPreferences) => api<SalonPreferences>('PUT', '/api/v1/me/salon-preferences', { body: p }),
+    // The switch moves at once; a failure puts it back
+    onMutate: (p) => {
+      const before = qc.getQueryData<SalonPreferences>(prefsKey)
+      qc.setQueryData(prefsKey, p)
+      return { before }
+    },
+    onError: (_e, _p, ctx) => qc.setQueryData(prefsKey, ctx?.before),
+    onSuccess: (p) => qc.setQueryData(prefsKey, p),
   })
 }
 
