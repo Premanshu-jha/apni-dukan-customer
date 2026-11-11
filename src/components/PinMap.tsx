@@ -58,6 +58,8 @@ export function PinMap({
       const at = m.latLngToContainerPoint(mk.getLatLng()).add(L.point(by[0], by[1]))
       const next = m.containerPointToLatLng(at)
       mk.setLatLng(next)
+      // Near the edge: the map follows, so the focused pin stays in sight
+      if (!m.getBounds().pad(-0.15).contains(next)) m.panTo(next)
       moved.current(next.lat, next.lng)
     })
     m.on('click', (e: L.LeafletMouseEvent) => {
