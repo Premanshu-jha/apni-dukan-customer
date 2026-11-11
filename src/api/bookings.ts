@@ -155,15 +155,27 @@ export function useSalonPreferences() {
 export function useSetSalonPreferences() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (p: SalonPreferences) => api<SalonPreferences>('PUT', '/api/v1/me/salon-preferences', { body: p }),
+    // One switch at a time: the other is left out and kept (the backend answers with both)
+    mutationFn: (p: Partial<SalonPreferences>) => api<SalonPreferences>('PUT', '/api/v1/me/salon-preferences', { body: p }),
     // The switch moves at once; a failure puts it back
+    // Only the fields this save is about are touched (the other switch may be saving too), and the whole is read
+    // again afterwards, so two saves answering out of order can't leave either switch wrong
     onMutate: (p) => {
       const before = qc.getQueryData<SalonPreferences>(prefsKey)
-      qc.setQueryData(prefsKey, p)
-      return { before }
+      if (before) qc.setQueryData(prefsKey, { ...before, ...p })
+      const undo = before ? Object.fromEntries(Object.keys(p).map((k) => [k, before[k as keyof SalonPreferences]])) : null
+      return { undo }
     },
-    onError: (_e, _p, ctx) => qc.setQueryData(prefsKey, ctx?.before),
-    onSuccess: (p) => qc.setQueryData(prefsKey, p),
+    onError: (_e, _p, ctx) => {
+      const now = qc.getQueryData<SalonPreferences>(prefsKey)
+      if (now && ctx?.undo) qc.setQueryData(prefsKey, { ...now, ...ctx.undo })
+    },
+    onSuccess: (saved, p) => {
+      const now = qc.getQueryData<SalonPreferences>(prefsKey)
+      const mine = Object.fromEntries(Object.keys(p).map((k) => [k, saved[k as keyof SalonPreferences]]))
+      qc.setQueryData(prefsKey, now ? { ...now, ...mine } : saved)
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: prefsKey }),
   })
 }
 

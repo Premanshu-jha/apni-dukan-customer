@@ -68,14 +68,14 @@ Everything needs sign-in, because the backend's salon endpoints need a signed-in
 | `/welcome/email` | Step 2 of 3: email and its code | `POST auth/email/send-code`, `auth/email/verify` |
 | `/welcome/name` | Step 3 of 3, last: "What should we call you?" | `PATCH auth/me` |
 | `/` | Home: category tabs; Salon tab = location, then salons within 2 km, 30 at a time ("Show more salons") | `GET salons?lat&lng[&afterDistance&afterId]` |
-| `/salons/:id` | Salon: photo, address, services to tick, opening hours | `GET salons/{id}`, `salons/{id}/services` |
+| `/salons/:id` | Salon: photo, address, offers (and its offer-messages switch once visited), services to tick (with offer prices), opening hours; `?offer=` picks the offer's services | `GET salons/{id}`, `salons/{id}/services`, `PUT salons/{id}/offer-messages` |
 | `/salons/:id/book` | Day chips (7 days) and free times | `GET salons/{id}/availability?services&date` |
 | `/salons/:id/confirm` | Summary and Book now | `POST bookings` (with `Idempotency-Key`) |
 | `/bookings` | Upcoming / Past | `GET me/bookings?when=` |
 | `/bookings/:id` | Start code, arrive-by time, services, Move, Cancel, notifications offer | `GET bookings/{id}`, `POST bookings/{id}/cancel` |
 | `/bookings/:id/move` | New day and time | `POST bookings/{id}/reschedule` |
 | `/notifications` | Messages: newest first, unread marked, tap to open the booking, Mark all read, Show older | `GET me/notifications?app=customer`, `POST me/notifications/read` |
-| `/profile` | Name, mobile, email, notifications switch, help email, sign out, sign out everywhere | `PATCH auth/me`, `POST auth/logout`, `auth/logout-all` |
+| `/profile` | Name, mobile, email, notifications switch, come-back reminders and offers switches, help email, sign out, sign out everywhere | `PATCH auth/me`, `PUT me/salon-preferences`, `POST auth/logout`, `auth/logout-all` |
 | `/profile/email` | Change email (SMS code first when the old email is verified) | `POST auth/email/change-phone-code`, `auth/email/send-code`, `auth/email/verify` |
 | `/profile/delete` | Delete account with an SMS code | `POST auth/me/delete-code`, `auth/me/delete` |
 
@@ -325,6 +325,21 @@ version of `sw.js` waits after installing; the app shows "New version available 
 switches over. Change `OFFLINE_CACHE` in `sw.js` when the offline page changes.
 
 ## Changelog
+
+### 0.10.0 — 2026-11-11
+
+Needs the backend with V37–V39 (salon offers); against an older backend nothing about offers shows.
+
+- **Salon offers:**
+  - The salon card has a badge: "20% off · till 16 Nov", "· today" on its last day, "from 14 Nov" before it starts.
+  - The salon's page lists its offers (the discount, the services, the days and hours) and shows each service's
+    offer price next to its own.
+  - Free times inside an offer are marked "%" (read out as "offer price"); Confirm shows the total crossed out and
+    the offer price; the booking keeps it ("Booked at the salon's offer price"), even if the salon ends the offer.
+  - The offer message opens the salon with the offer's services picked.
+- **Offer messages can be stopped:** for one salon with the switch on its page (only salons you visited, since only
+  they send them), or for every salon with "Offers from salons I've visited" on Profile, next to the come-back
+  reminders. Each switch sends only its own choice; the two share one "Try again" when they can't be read.
 
 ### 0.9.0 — 2026-11-10
 

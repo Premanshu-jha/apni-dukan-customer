@@ -162,14 +162,23 @@ export function BookingDetail() {
               <span>
                 {s.name} <span className="text-sm text-muted">· {duration(s.durationMinutes)}</span>
               </span>
-              <span>{rupees(s.pricePaise, s.priceIsFrom)}</span>
+              <span>
+                {s.listPricePaise != null && <s className="text-sm text-muted">{rupees(s.listPricePaise, s.priceIsFrom)}</s>}{' '}
+                {rupees(s.pricePaise, s.priceIsFrom)}
+              </span>
             </li>
           ))}
         </ul>
         <div className="flex justify-between border-t border-line pt-2 font-semibold">
           <span>Total · about {duration(minutes)}</span>
-          <span>{rupees(b.totalPricePaise, b.priceIsFrom)}</span>
+          <span>
+            {b.totalListPricePaise != null && (
+              <s className="font-normal text-muted">{rupees(b.totalListPricePaise, b.priceIsFrom)}</s>
+            )}{' '}
+            {rupees(b.totalPricePaise, b.priceIsFrom)}
+          </span>
         </div>
+        {b.totalListPricePaise != null && <p className="text-sm text-link">Booked at the salon's offer price.</p>}
         <p className="text-sm text-muted">Pay at the salon.</p>
       </Card>
 

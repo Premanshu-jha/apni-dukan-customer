@@ -1,4 +1,4 @@
-import type { PriceLine, RatingSummary, SalonSummary } from '../api/types'
+import type { Offer, OfferBadge, PriceLine, RatingSummary, SalonSummary } from '../api/types'
 import { clock12 } from './ist'
 import { rupees } from './money'
 
@@ -25,4 +25,31 @@ export function openText(s: Pick<SalonSummary, 'openNow' | 'today' | 'closedToda
   if (s.openNow && s.today) return `Open · till ${clock12(s.today.close)}`
   if (s.today && nowHHmm < s.today.open) return `Opens at ${clock12(s.today.open)}`
   return 'Closed now'
+}
+
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+
+/** "12 Nov" for a yyyy-MM-dd date. */
+export function shortDate(date: string): string {
+  const [, m, d] = date.split('-').map(Number)
+  return `${d} ${MONTHS[m - 1]}`
+}
+
+/** The card's badge: "20% off · today", "20% off · till 16 Nov", or "20% off from 14 Nov" while still to come. */
+export function offerBadgeText(b: OfferBadge, today: string): string {
+  if (b.startsOn > today) return `${b.percentOff}% off from ${shortDate(b.startsOn)}`
+  return b.endsOn === today ? `${b.percentOff}% off · today` : `${b.percentOff}% off · till ${shortDate(b.endsOn)}`
+}
+
+/** "12 Nov – 14 Nov, 12:00–16:00", "12 Nov" for one day; the hours only when set. The same text as the message. */
+export function offerWhen(o: Pick<Offer, 'startsOn' | 'endsOn' | 'from' | 'until'>): string {
+  const days = o.startsOn === o.endsOn ? shortDate(o.startsOn) : `${shortDate(o.startsOn)} – ${shortDate(o.endsOn)}`
+  return o.from && o.until ? `${days}, ${o.from}–${o.until}` : days
+}
+
+/** "on all services", or "on Haircut, Beard trim" (the salon's services it still offers; others are left out). */
+export function offerWhat(o: Pick<Offer, 'allServices' | 'serviceIds'>, names: Map<string, string>): string {
+  if (o.allServices) return 'on all services'
+  const known = o.serviceIds.map((id) => names.get(id)).filter((n): n is string => !!n)
+  return known.length ? `on ${known.join(', ')}` : 'on some services'
 }
