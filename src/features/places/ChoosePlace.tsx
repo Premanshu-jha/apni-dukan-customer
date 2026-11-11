@@ -38,7 +38,7 @@ export function ChoosePlace() {
               <span className="block font-semibold">Current location</span>
               <span className="block text-sm text-muted">From your phone's GPS</span>
             </span>
-            {chosen === null && <span className="text-sm text-brand">Selected</span>}
+            {chosen === null && <span className="text-sm text-link">Selected</span>}
           </button>
         </li>
         {list.map((p) => {
@@ -53,7 +53,7 @@ export function ChoosePlace() {
                     {placeShort(p)}, {p.city} {p.pincode}
                   </span>
                 </span>
-                {on && <span className="text-sm text-brand">Selected</span>}
+                {on && <span className="text-sm text-link">Selected</span>}
               </button>
               <Link to={`/places/${p.id}`} className="flex items-center px-4 text-sm text-link" aria-label={`Change ${placeLabel(p)}`}>
                 Change
