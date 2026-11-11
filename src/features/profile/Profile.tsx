@@ -103,6 +103,14 @@ export function Profile() {
         </a>
       </Card>
 
+      <Card className="flex flex-col gap-1">
+        <p className="font-medium">Saved addresses</p>
+        <p className="text-sm text-muted">Home, Work and other places, to find salons near them.</p>
+        <Link to="/places" className="text-sm text-link underline">
+          Manage addresses
+        </Link>
+      </Card>
+
       <div className="flex flex-col gap-2">
         <Button variant="secondary" busy={busy} onClick={() => out(false)}>
           Sign out
