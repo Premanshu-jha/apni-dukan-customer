@@ -102,6 +102,9 @@ test('too many wrong codes: send the codes again, then it works', async ({ page,
   }
   await expect(page.getByText(/Too many wrong codes\. Ask for a new one\. Tap "Send the codes again"\./)).toBeVisible()
   await page.getByRole('button', { name: 'Send the codes again' }).click()
+  // Sending clears both boxes when the new codes are out: typing before that would be wiped
+  await expect(page.getByLabel('Code sent to the new number')).toHaveValue('')
+  await expect(page.getByRole('button', { name: 'Send the codes again' })).toBeEnabled()
   await page.getByLabel('Code sent to the new number').fill('123456')
   await page.getByLabel(/Code sent to your email/).fill('654321')
   await page.getByRole('button', { name: 'Change number' }).click()
