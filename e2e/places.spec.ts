@@ -351,3 +351,18 @@ test('the current location shows its address, asked for once and kept; not for a
   await expect(page.getByText('Lake View Apartments')).toHaveCount(0)
   await expect(page.getByRole('alert')).toHaveCount(0)
 })
+
+test('arrow keys far from the middle: the map follows, so the pin stays in sight', async ({ page, context, api }) => {
+  await signedIn(context, api)
+  await context.setGeolocation({ latitude: 17.4402, longitude: 78.3489, accuracy: 12 })
+  await page.goto('/places/new')
+  await page.getByRole('button', { name: 'Use current location' }).click()
+  const pin = page.locator('.leaflet-marker-icon')
+  await pin.focus()
+  await page.keyboard.press('Shift+ArrowDown', { delay: 20 })
+  for (let i = 0; i < 6; i++) await page.keyboard.press('Shift+ArrowDown')
+  await expect(pin).toBeInViewport()
+  const box = (await page.getByRole('application', { name: /drag the pin/ }).boundingBox())!
+  const at = (await pin.boundingBox())!
+  expect(at.y + at.height / 2).toBeLessThan(box.y + box.height)
+})
