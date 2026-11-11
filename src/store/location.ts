@@ -2,6 +2,17 @@ import { create } from 'zustand'
 import { storage } from '../lib/storage'
 
 const KEY = 'ad.location'
+const CHOSEN_KEY = 'ad.chosenPlace'
+/** A new place's form as typed, kept in this tab only (sessionStorage). */
+export const PLACE_DRAFT_KEY = 'ad.placeDraft'
+
+export function forgetPlaceDraft(): void {
+  try {
+    window.sessionStorage.removeItem(PLACE_DRAFT_KEY)
+  } catch {
+    /* nothing to do */
+  }
+}
 
 export interface Place {
   lat: number
@@ -19,18 +30,44 @@ export const STALE_MS = 30 * 60_000
 
 export type LocateError = 'denied' | 'unavailable' | 'timeout' | 'unsupported'
 
+/**
+ * A saved place picked to find salons near (instead of the phone's GPS point). The point and words are a copy of the
+ * saved place as it was picked; Home puts them right when the list says it changed, or forgets the choice when the
+ * place was deleted (here or on another phone).
+ */
+export interface ChosenPlace {
+  id: string
+  /** "Home", "Work" or its own name. */
+  label: string
+  /** "Flat 4B, Kondapur". */
+  short: string
+  lat: number
+  lng: number
+}
+
 interface LocationState {
   place: Place | null
+  /** null: salons near the phone's GPS point. */
+  chosen: ChosenPlace | null
   finding: boolean
   error: LocateError | null
   locate: () => Promise<void>
+  /** Picks a saved place, or (null) goes back to the current location. */
+  choose: (p: ChosenPlace | null) => void
   clear: () => void
 }
 
 export const useLocation = create<LocationState>((set) => ({
   place: storage.getJson<Place>(KEY),
+  chosen: storage.getJson<ChosenPlace>(CHOSEN_KEY),
   finding: false,
   error: null,
+
+  choose: (chosen) => {
+    if (chosen) storage.setJson(CHOSEN_KEY, chosen)
+    else storage.remove(CHOSEN_KEY)
+    set({ chosen })
+  },
 
   locate: () =>
     new Promise<void>((resolve) => {
@@ -62,11 +99,21 @@ export const useLocation = create<LocationState>((set) => ({
       )
     }),
 
+  /** Signing out: neither the last GPS point nor a saved address stays for the next person on this phone. */
   clear: () => {
     storage.remove(KEY)
-    set({ place: null, error: null })
+    storage.remove(CHOSEN_KEY)
+    forgetPlaceDraft()
+    set({ place: null, chosen: null, error: null })
   },
 }))
+
+// Another tab picked a place (or went back to the current location, or signed out): this one follows
+if (typeof window !== 'undefined') {
+  window.addEventListener('storage', (e) => {
+    if (e.key === CHOSEN_KEY || e.key === null) useLocation.setState({ chosen: storage.getJson<ChosenPlace>(CHOSEN_KEY) })
+  })
+}
 
 /** 'denied' when the browser already says no, so the guide can show without asking again. */
 export async function permissionState(): Promise<PermissionState | 'unknown'> {
