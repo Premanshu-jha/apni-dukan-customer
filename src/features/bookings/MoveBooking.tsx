@@ -77,7 +77,7 @@ export function MoveBooking() {
         <p role="status">
           At {timeIst(startAt)}: <strong>{rupees(price.pricePaise, b.priceIsFrom)}</strong>{' '}
           <span className="text-muted">(now {rupees(b.totalPricePaise, b.priceIsFrom)}).</span>{' '}
-          {price.listPricePaise !== null ? "That time has the salon's offer price." : "The salon's offer doesn't cover that time."}
+          {price.listPricePaise !== null ? <span className="text-accent">That time has the salon's offer price.</span> : "The salon's offer doesn't cover that time."}
         </p>
       )}
       {taken && !startAt && !move.isError && <Banner tone="warn">That time isn't free any more. Pick another one.</Banner>}

@@ -116,7 +116,7 @@ export function SalonPage() {
       <SalonPhoto url={s.photoUrl} name={s.name} large />
       <div className="flex flex-col gap-1">
         {s.rating && (
-          <p className={s.rating.average !== null ? 'font-semibold text-warn' : 'text-sm text-muted'}>
+          <p className={s.rating.average !== null ? 'font-semibold text-accent' : 'text-sm text-muted'}>
             {ratingText(s.rating)}
             {s.rating.tags.length > 0 && (
               <span className="font-normal text-muted"> · {s.rating.tags.slice(0, 3).map((t) => t.label).join(', ')}</span>
@@ -136,15 +136,15 @@ export function SalonPage() {
         <Banner tone="warn">This salon isn't taking bookings until {dateTimeIst(s.pausedUntil!)}.</Banner>
       )}
 
-      {linkedOffer && !(s.offers ?? []).some((o) => o.id === linkedOffer) && <Banner tone="warn">That offer has ended. The prices below are the salon's own.</Banner>}
+      {linkedOffer && !(s.offers ?? []).some((o) => o.id === linkedOffer) && <Banner tone="info">That offer has ended. The prices below are the salon's own.</Banner>}
       {((s.offers?.length ?? 0) > 0 || (s.offerMessages ?? null) !== null) && (
         <section aria-labelledby="offers-title" className="flex flex-col gap-2">
           <h2 id="offers-title" className="text-lg font-semibold">
             Offers
           </h2>
           {(s.offers ?? []).map((o) => (
-            <p key={o.id} className="rounded-xl border border-brand/40 bg-brand/10 px-4 py-3">
-              <span className="font-semibold">{o.percentOff}% off</span> {offerWhat(o, names)}
+            <p key={o.id} className="rounded-xl border border-accent/40 bg-accent/10 px-4 py-3">
+              <span className="font-semibold text-accent">{o.percentOff}% off</span> {offerWhat(o, names)}
               <span className="block text-sm text-muted">{offerWhen(o)}. The price shows when you pick a time.</span>
             </p>
           ))}
@@ -191,7 +191,7 @@ export function SalonPage() {
                     {x.offerPricePaise != null ? (
                       <span className="text-right">
                         <s className="block text-sm text-muted">{rupees(x.pricePaise, x.priceIsFrom)}</s>
-                        <span className="font-semibold text-link">{rupees(x.offerPricePaise, x.priceIsFrom)}</span>
+                        <span className="font-semibold text-accent">{rupees(x.offerPricePaise, x.priceIsFrom)}</span>
                         <span className="block text-xs text-muted">in the offer's hours</span>
                       </span>
                     ) : (

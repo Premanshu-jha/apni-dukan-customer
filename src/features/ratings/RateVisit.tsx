@@ -42,7 +42,7 @@ export function RateVisit({ booking, focus }: { booking: Booking; focus: boolean
     return (
       <Card className="flex flex-col gap-2">
         <p className="font-semibold">Your rating</p>
-        <p role="img" aria-label={`${mine.stars} out of 5 stars`} className="text-2xl text-warn">
+        <p role="img" aria-label={`${mine.stars} out of 5 stars`} className="text-2xl text-accent">
           <span aria-hidden>{'★'.repeat(mine.stars) + '☆'.repeat(5 - mine.stars)}</span>
         </p>
         {mine.tags.length > 0 && (
@@ -97,7 +97,7 @@ export function RateVisit({ booking, focus }: { booking: Booking; focus: boolean
               setStars(next)
               ;(e.currentTarget.parentElement?.children[next - 1] as HTMLElement | undefined)?.focus()
             }}
-            className={`min-h-12 min-w-12 text-4xl ${n <= stars ? 'text-warn' : 'text-line'}`}
+            className={`min-h-12 min-w-12 text-4xl ${n <= stars ? 'text-accent' : 'text-line'}`}
           >
             ★
           </button>

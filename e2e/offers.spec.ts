@@ -10,6 +10,7 @@ test("a salon's offer: the badge, the page, the prices at the offer's times, and
   api.salons[0].offer = { percentOff: 25, startsOn: tomorrow(), endsOn: tomorrow() }
   await page.goto('/')
   await expect(page.getByText(/^25% off from \d+ \w{3}$/)).toBeVisible()
+  await expect(page.getByText(/^25% off from \d+ \w{3}$/)).toHaveClass(/text-accent/)   // deals are the logo's orange
 
   await page.getByRole('link', { name: /Shine Unisex Salon/ }).click()
   const offers = page.getByRole('region', { name: 'Offers' })
@@ -21,6 +22,8 @@ test("a salon's offer: the badge, the page, the prices at the offer's times, and
   const haircut = page.getByRole('listitem').filter({ hasText: 'Haircut' })
   await expect(haircut).toContainText('₹200')
   await expect(haircut).toContainText('₹150')
+  await expect(offers.getByText('25% off', { exact: true })).toHaveClass(/text-accent/)
+  await expect(haircut.getByText('₹150', { exact: true })).toHaveClass(/text-accent/)
 
   await page.getByLabel(/Haircut/).check()
   await page.getByRole('button', { name: 'Pick a time' }).click()

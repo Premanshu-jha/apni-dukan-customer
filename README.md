@@ -341,6 +341,19 @@ switches over. Change `OFFLINE_CACHE` in `sw.js` when the offline page changes.
 
 ## Changelog
 
+### 0.14.0 — 2026-11-11
+
+- **The logo's orange in the app.** Offers (offer cards, offer prices, the % on time chips, the offer-price lines on
+  confirm, move and booking), star ratings (they were the warning yellow) and new messages (the bell's count, the unread
+  dot) use the accent orange. The home question uses Poppins. `src/theme.test.ts` checks navy on orange and text on an
+  offer card are AA.
+- The salon list's offer badge, the confirm and booking offer prices and unread messages' cards are orange too; "That
+  offer has ended" is a plain grey note so it isn't mistaken for a deal. Unread messages' dot is read as "Unread" by
+  screen readers (its label was on an element they skip).
+- End-to-end test fix: "too many wrong codes" waits for the new codes to be sent before typing them (typing earlier was
+  wiped when the send finished, so the test failed now and then, on `main` too).
+- Scenarios 287–288 in `docs/scenarios.md`.
+
 ### 0.13.0 — 2026-11-11
 
 - **New look from the Clozest logo.** The theme's colours (`src/index.css`) now come from the dark logo: background

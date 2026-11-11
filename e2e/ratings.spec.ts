@@ -5,6 +5,7 @@ test('the salon cards show the rating, the services with prices, whether it is o
   await page.goto('/')
   const first = page.getByRole('link', { name: /Shine Unisex Salon/ })
   await expect(first).toContainText('★ 4.6 (12)')
+  await expect(first.getByText(/★ 4\.6/)).toHaveClass(/text-accent/)   // stars are orange, not the warning yellow
   await expect(first).toContainText('Shop 12, Ithum Tower, Sector 62')
   await expect(first).toContainText('Haircut ₹200 · Beard trim ₹100 · Hair colour from ₹800 · +2 more')
   await expect(first).toContainText('Open · till midnight')

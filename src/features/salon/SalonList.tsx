@@ -86,7 +86,7 @@ export function SalonList({ lat, lng }: { lat: number; lng: number }) {
               <div className="flex min-w-0 flex-1 flex-col justify-center gap-1">
                 <div className="flex items-start justify-between gap-2">
                   <p className="truncate font-semibold">{s.name}</p>
-                  <span className={`shrink-0 text-sm ${s.rating && s.rating.average !== null ? 'font-semibold text-warn' : 'text-muted'}`}>
+                  <span className={`shrink-0 text-sm ${s.rating && s.rating.average !== null ? 'font-semibold text-accent' : 'text-muted'}`}>
                     {s.rating ? ratingText(s.rating) : ''}
                   </span>
                 </div>
@@ -96,7 +96,7 @@ export function SalonList({ lat, lng }: { lat: number; lng: number }) {
                 </p>
                 {s.offer && (
                   <p>
-                    <span className="inline-block rounded-full bg-brand/15 px-2 text-xs font-semibold text-link">
+                    <span className="inline-block rounded-full bg-accent/15 px-2 text-xs font-semibold text-accent">
                       {offerBadgeText(s.offer, todayIst(new Date(s.readAt ?? fallbackNow)))}
                     </span>
                   </p>

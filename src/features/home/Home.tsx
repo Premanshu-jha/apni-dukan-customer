@@ -28,7 +28,7 @@ export function Home() {
       <div className="flex items-start justify-between gap-3">
         <div className="flex flex-col gap-1">
           <p className="text-sm text-muted">Hi {name?.split(' ')[0]},</p>
-          <p className="text-2xl font-bold">What do you need today?</p>
+          <p className="font-display text-2xl font-bold">What do you need today?</p>
         </div>
         <Bell />
       </div>

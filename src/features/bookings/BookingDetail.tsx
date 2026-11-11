@@ -164,7 +164,7 @@ export function BookingDetail() {
               </span>
               <span>
                 {s.listPricePaise != null && <s className="text-sm text-muted">{rupees(s.listPricePaise, s.priceIsFrom)}</s>}{' '}
-                {rupees(s.pricePaise, s.priceIsFrom)}
+                <span className={s.listPricePaise != null ? 'text-accent' : ''}>{rupees(s.pricePaise, s.priceIsFrom)}</span>
               </span>
             </li>
           ))}
@@ -175,10 +175,10 @@ export function BookingDetail() {
             {b.totalListPricePaise != null && (
               <s className="font-normal text-muted">{rupees(b.totalListPricePaise, b.priceIsFrom)}</s>
             )}{' '}
-            {rupees(b.totalPricePaise, b.priceIsFrom)}
+            <span className={b.totalListPricePaise != null ? 'text-accent' : ''}>{rupees(b.totalPricePaise, b.priceIsFrom)}</span>
           </span>
         </div>
-        {b.totalListPricePaise != null && <p className="text-sm text-link">Booked at the salon's offer price.</p>}
+        {b.totalListPricePaise != null && <p className="text-sm text-accent">Booked at the salon's offer price.</p>}
         <p className="text-sm text-muted">Pay at the salon.</p>
       </Card>
 
