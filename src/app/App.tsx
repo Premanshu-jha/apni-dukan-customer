@@ -10,6 +10,7 @@ import { MyBookings } from '../features/bookings/MyBookings'
 import { Home } from '../features/home/Home'
 import { Inbox } from '../features/notifications/Inbox'
 import { ChangeEmail } from '../features/profile/ChangeEmail'
+import { ChangePhone } from '../features/profile/ChangePhone'
 import { DeleteAccount } from '../features/profile/DeleteAccount'
 import { Profile } from '../features/profile/Profile'
 import { BookTime } from '../features/salon/BookTime'
@@ -48,6 +49,7 @@ export function App() {
           <Route path="/bookings/:id/move" element={<MoveBooking />} />
           <Route path="/notifications" element={<Inbox />} />
           <Route path="/profile/email" element={<ChangeEmail />} />
+          <Route path="/profile/phone" element={<ChangePhone />} />
           <Route path="/profile/delete" element={<DeleteAccount />} />
         </Route>
       </Route>

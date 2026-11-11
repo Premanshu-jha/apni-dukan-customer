@@ -5,6 +5,7 @@ import { authApi } from '../../api/auth'
 import { fieldError, messageOf } from '../../api/errors'
 import { Banner, Button, Card, Field, Page, Sheet } from '../../components/ui'
 import { formatPhone } from '../../lib/phone'
+import { takePhoneChanged } from '../../lib/phoneMoved'
 import { SUPPORT_EMAIL } from '../../lib/config'
 import { useSession } from '../../store/session'
 import { NotificationsRow } from './Notifications'
@@ -14,6 +15,7 @@ import { signOutHere } from './signOut'
 export function Profile() {
   const qc = useQueryClient()
   const navigate = useNavigate()
+  const [phoneChanged] = useState(takePhoneChanged)
   const user = useSession((s) => s.user)!
   const setUser = useSession((s) => s.setUser)
   const [editing, setEditing] = useState(false)
@@ -52,6 +54,12 @@ export function Profile() {
 
   return (
     <Page title="Profile">
+      {phoneChanged && (
+        <Banner tone="good">
+          Your mobile number is now +91 {formatPhone(phoneChanged)}. Other devices were signed out; sign in there with
+          the new number.
+        </Banner>
+      )}
       <Card className="flex flex-col gap-4">
         {editing ? (
           <div className="flex flex-col gap-3">
@@ -76,7 +84,15 @@ export function Profile() {
         ) : (
           <Row label="Name" value={user.name ?? ''} action={<button type="button" className="text-link" onClick={() => setEditing(true)}>Edit</button>} />
         )}
-        <Row label="Mobile" value={`+91 ${formatPhone(user.phone)}`} />
+        <Row
+          label="Mobile"
+          value={`+91 ${formatPhone(user.phone)}`}
+          action={
+            <Link to="/profile/phone" className="text-link" aria-label="Change mobile number">
+              Change
+            </Link>
+          }
+        />
         <Row
           label="Email"
           value={user.email ?? ''}
