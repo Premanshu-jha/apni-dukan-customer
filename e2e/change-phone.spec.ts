@@ -34,8 +34,6 @@ test('changing the mobile number: a taken or same number is refused; both codes 
   await expect(page.getByText('+91 97000 00003', { exact: true })).toBeVisible()
   await expect(page.getByText(/Your mobile number is now/)).toHaveCount(0)
   // Back from Profile doesn't land on the change screen again
-  await page.goto('/')
-  await page.goto('/profile')
   await page.getByRole('link', { name: 'Change mobile number' }).click()
   await page.getByRole('button', { name: 'Back' }).click()
   await expect(page).toHaveURL(/\/profile$/)
