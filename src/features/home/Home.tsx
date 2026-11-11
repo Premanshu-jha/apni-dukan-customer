@@ -1,5 +1,7 @@
-import { useState } from 'react'
-import { useLocation as useLocationStore, ROUGH_METRES } from '../../store/location'
+import { useEffect, useState } from 'react'
+import { Link } from 'react-router'
+import { chosenOf, useAddressNear, usePlaces } from '../../api/places'
+import { useLocation as useLocationStore, ROUGH_METRES, type ChosenPlace } from '../../store/location'
 import { Banner, Page } from '../../components/ui'
 import { useSession } from '../../store/session'
 import { LocationGate } from '../location/LocationGate'
@@ -19,6 +21,7 @@ export function Home() {
   const name = useSession((s) => s.user?.name)
   const [tab, setTab] = useState<CategoryId>('salon')
   const active = categories.find((c) => c.id === tab)!
+  const chosen = useChosenPlace()
 
   return (
     <Page>
@@ -49,7 +52,12 @@ export function Home() {
           </button>
         ))}
       </div>
-      {active.live ? (
+      {active.live && chosen ? (
+        <>
+          <PlaceBar chosen={chosen} />
+          <SalonList lat={chosen.lat} lng={chosen.lng} />
+        </>
+      ) : active.live ? (
         <LocationGate>
           {(place) => (
             <>
@@ -74,9 +82,50 @@ export function Home() {
   )
 }
 
+/**
+ * The saved place salons are found near, kept in step with the saved list: changed there (or on another phone), its
+ * pin follows; deleted, the choice goes back to the current location. Offline or still loading: the copy kept.
+ */
+function useChosenPlace(): ChosenPlace | null {
+  const chosen = useLocationStore((s) => s.chosen)
+  const choose = useLocationStore((s) => s.choose)
+  const places = usePlaces()
+  const saved = chosen && places.data ? places.data.find((p) => p.id === chosen.id) : undefined
+  const gone = chosen !== null && places.data !== undefined && !saved
+  const fresh = saved ? chosenOf(saved) : null
+  const changed =
+    fresh !== null &&
+    chosen !== null &&
+    (fresh.lat !== chosen.lat || fresh.lng !== chosen.lng || fresh.label !== chosen.label || fresh.short !== chosen.short)
+  useEffect(() => {
+    if (gone) choose(null)
+    else if (changed && fresh) choose(fresh)
+  }, [gone, changed, fresh, choose])
+  return gone ? null : (fresh ?? chosen)
+}
+
+/** Salons near a saved place, and the way to pick another (or the current location). */
+function PlaceBar({ chosen }: { chosen: ChosenPlace }) {
+  return (
+    <Link
+      to="/places"
+      className="flex items-center justify-between gap-3 rounded-xl border border-line bg-surface px-4 py-2"
+      aria-label={`Salons near ${chosen.label}, ${chosen.short}. Change`}
+    >
+      <span className="min-w-0 text-sm">
+        <span aria-hidden>⌂ </span>Near <span className="font-semibold">{chosen.label}</span>
+        <span className="block truncate text-muted">{chosen.short}</span>
+      </span>
+      <span className="text-sm font-semibold text-link">Change</span>
+    </Link>
+  )
+}
+
 function LocationBar() {
   const { place, finding, error, locate } = useLocationStore()
   const [now] = useState(() => Date.now())
+  // Where that is, in words (only for a point close enough to mean something: a laptop's guess isn't)
+  const near = useAddressNear(place?.lat ?? 0, place?.lng ?? 0, place !== null && place.accuracy <= ROUGH_METRES)
   if (!place) return null
   const minutes = Math.round((now - place.at) / 60_000)
   return (
@@ -89,17 +138,27 @@ function LocationBar() {
       </Banner>
     )}
     <div className="flex items-center justify-between rounded-xl border border-line bg-surface px-4 py-2">
-      <span className="text-sm">
+      <span className="min-w-0 text-sm">
         <span aria-hidden>⌖ </span>Near your current location
         <span className="text-muted">
           {' '}
           · ±{place.accuracy < 1000 ? `${place.accuracy} m` : `${Math.round(place.accuracy / 1000)} km`}
           {minutes >= 30 && ` · ${minutes < 120 ? `${minutes} min` : `${Math.round(minutes / 60)} h`} ago`}
         </span>
+        {near.data && (
+          <span className="block truncate text-muted" title={near.data}>
+            {near.data}
+          </span>
+        )}
       </span>
-      <button type="button" onClick={locate} disabled={finding} className="text-sm font-semibold text-link disabled:opacity-50">
-        {finding ? 'Updating…' : 'Update'}
-      </button>
+      <span className="flex items-center gap-4">
+        <button type="button" onClick={locate} disabled={finding} className="text-sm font-semibold text-link disabled:opacity-50">
+          {finding ? 'Updating…' : 'Update'}
+        </button>
+        <Link to="/places" className="text-sm font-semibold text-link" aria-label="Change where to find salons">
+          Change
+        </Link>
+      </span>
     </div>
     </div>
   )
