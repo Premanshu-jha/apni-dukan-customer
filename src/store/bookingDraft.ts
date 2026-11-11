@@ -15,6 +15,8 @@ export interface Draft {
    * booking it never does. Only for the time it was given with (`startAt` equal); a draft saved before has none.
    */
   terms?: CancelTerms | null
+  /** The picked time's price from the free times (the salon's offer, if one applies there); only for that time. */
+  price?: SlotPrice | null
   /** One key per booking attempt, so a retried Book never makes two bookings. */
   idempotencyKey: string
   /** "Tell me if an earlier time opens", as set on Confirm (kept across a taken time or a sign-up step). */
@@ -27,13 +29,20 @@ export interface CancelTerms {
   freeCancelMinutes: number
 }
 
+/** What the chosen services cost at one start time: with the offer, listPricePaise is the price without it. */
+export interface SlotPrice {
+  startAt: string
+  pricePaise: number
+  listPricePaise: number | null
+}
+
 interface DraftState {
   draft: Draft | null
   /** Starts a draft for this salon, or keeps the one already open for it. */
   open: (salonId: string) => Draft
   toggleService: (serviceId: string) => void
   pickDate: (date: string) => void
-  pickSlot: (startAt: string | null, terms?: CancelTerms | null) => void
+  pickSlot: (startAt: string | null, terms?: CancelTerms | null, price?: SlotPrice | null) => void
   setEarlierAlert: (on: boolean) => void
   /** Forgets picked services this salon no longer offers. */
   keepOnly: (salonId: string, serviceIds: string[]) => void
@@ -92,7 +101,7 @@ export const useDraft = create<DraftState>((set, get) => {
       })
     },
     pickDate: (date) => update({ date, startAt: null }),
-    pickSlot: (startAt, terms = null) => update({ startAt, terms }),
+    pickSlot: (startAt, terms = null, price = null) => update({ startAt, terms, price }),
     setEarlierAlert: (on) => update({ earlierAlert: on }),
     newAttempt: () => update({ idempotencyKey: crypto.randomUUID() }),
     keepOnly: (salonId, serviceIds) => {

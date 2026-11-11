@@ -9,6 +9,8 @@ import { MoveBooking } from '../features/bookings/MoveBooking'
 import { MyBookings } from '../features/bookings/MyBookings'
 import { Home } from '../features/home/Home'
 import { Inbox } from '../features/notifications/Inbox'
+import { ChoosePlace } from '../features/places/ChoosePlace'
+import { EditPlace } from '../features/places/EditPlace'
 import { ChangeEmail } from '../features/profile/ChangeEmail'
 import { ChangePhone } from '../features/profile/ChangePhone'
 import { DeleteAccount } from '../features/profile/DeleteAccount'
@@ -51,6 +53,9 @@ export function App() {
           <Route path="/profile/email" element={<ChangeEmail />} />
           <Route path="/profile/phone" element={<ChangePhone />} />
           <Route path="/profile/delete" element={<DeleteAccount />} />
+          <Route path="/places" element={<ChoosePlace />} />
+          <Route path="/places/new" element={<EditPlace />} />
+          <Route path="/places/:id" element={<EditPlace />} />
         </Route>
       </Route>
 

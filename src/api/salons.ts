@@ -1,4 +1,4 @@
-import { useInfiniteQuery, useQuery } from '@tanstack/react-query'
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from './client'
 import type { SalonDetails, SalonService, SalonSummary, Slots } from './types'
 
@@ -53,6 +53,28 @@ export function useSalon(id: string) {
     queryFn: () => api<SalonDetails>('GET', `/api/v1/salons/${id}`),
     staleTime: 60_000,
     enabled: id !== '',
+  })
+}
+
+/**
+ * Stops or allows again this salon's offer messages for me. The switch moves at once; a failure puts it back. Its
+ * offers still show on its card and page either way.
+ */
+export function useSetOfferMessages(id: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (on: boolean) => api<{ on: boolean }>('PUT', `/api/v1/salons/${id}/offer-messages`, { body: { on } }),
+    onMutate: (on) => {
+      const before = qc.getQueryData<SalonDetails>(salonKeys.one(id))
+      if (before) qc.setQueryData(salonKeys.one(id), { ...before, offerMessages: on })
+      return { before }
+    },
+    onError: (_e, _on, ctx) => {
+      const now = qc.getQueryData<SalonDetails>(salonKeys.one(id))
+      if (now && ctx?.before) qc.setQueryData(salonKeys.one(id), { ...now, offerMessages: ctx.before.offerMessages })
+    },
+    // A refresh of the page while saving could have put the old value back: read it again
+    onSettled: () => qc.invalidateQueries({ queryKey: salonKeys.one(id) }),
   })
 }
 

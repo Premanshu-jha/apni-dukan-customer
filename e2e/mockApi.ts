@@ -57,6 +57,12 @@ export interface Call {
 }
 
 /** "2026-11-05" + "15:45" India time → ISO instant. */
+/** SalonOffer.priceOf: to the rupee, half up, never below ₹1. */
+function offerPriceOf(paise: number, pct: number): number {
+  if (paise <= 0) return paise
+  return Math.max(1, Math.floor((paise * (100 - pct) + 5000) / 10000)) * 100
+}
+
 export function istInstant(date: string, hhmm: string): string {
   const [y, m, d] = date.split('-').map(Number)
   const [h, min] = hhmm.split(':').map(Number)
@@ -124,6 +130,18 @@ function normalize(input: unknown): string | null {
   return /^[6-9]\d{9}$/.test(d) ? d : null
 }
 
+/** @Size and @NotBlank of a place's address fields (PlaceRequests): each field's own key, as bean validation gives. */
+function sizeErrors(b: Record<string, any>): Record<string, string> {
+  const out: Record<string, string> = {}
+  for (const [field, min, max] of [['addressLine', 2, 200], ['area', 2, 100], ['city', 2, 60]] as const) {
+    const v = b?.[field]
+    if (typeof v !== 'string' || !v.trim()) out[field] = 'must not be blank'
+    else if (v.length < min || v.length > max) out[field] = `size must be between ${min} and ${max}`
+  }
+  if (!/^[1-9][0-9]{5}$/.test(b?.pincode ?? '')) out.pincode = 'must be a 6-digit pincode'
+  return out
+}
+
 export class MockApi {
   user: MockUser = { id: 'u1', phone: '9848012345', name: null, email: null, emailVerified: false, admin: false }
   /** Paths (with the query) answered 304 Not Modified, in order. */
@@ -139,6 +157,17 @@ export class MockApi {
   /** The salon's booking window (its owner's setting, 1–30; GET /salons/{id} `maxDaysAhead`); undefined: not sent. */
   maxDaysAhead: number | undefined = 7
   calls: Call[] = []
+  /** Saved places (PlacesController), as the backend keeps them: Home, Work, then others as saved. */
+  places: Array<Record<string, any>> = []
+  /** "Find on map": the answer for any address, or an error code to answer with. */
+  geocodeAnswer: { latitude: number; longitude: number; precision: 'EXACT' | 'STREET' | 'AREA'; formattedAddress: string } = {
+    latitude: 17.4651, longitude: 78.3644, precision: 'STREET', formattedAddress: 'Lake View Apartments, Kondapur, Hyderabad 500084',
+  }
+  geocodeError: { status: number; code: string; retryAfter?: number } | null = null
+  /** The next new place is saved but its answer is lost on the way back. */
+  loseNextAdd = false
+  /** "Use current location": the address at any GPS point. */
+  reverseAnswer = { addressLine: 'Lake View Apartments', area: 'Kondapur', city: 'Hyderabad', pincode: '500084', formattedAddress: 'Lake View Apartments, Kondapur, Hyderabad 500084' }
   bookings: Record<string, unknown>[] = []
   inbox: { id: string; type: string; title: string; body: string; url: string | null; sentAt: string; read: boolean }[] = []
   /** Start times (ISO) that answer 409 SLOT_TAKEN once. */
@@ -166,6 +195,12 @@ export class MockApi {
   worksAt: string | null = null
   /** GET /me/salon-preferences */
   comeBackReminders = true
+  salonOffers = true
+  /** s1's offers running or to come (SalonOfferResponses.OfferView), soonest first */
+  offers: { id: string; percentOff: number; allServices: boolean; serviceIds: string[]; startsOn: string; endsOn: string; from: string | null; until: string | null }[] = []
+  /** The customer completed a visit at s1 (then its page has the offer-messages switch), and stopped them or not */
+  visitedS1 = false
+  mutedS1 = false
   private refreshCount = 0
   private accessValid = new Set<string>()
   refreshTokens = new Map<string, 'live' | 'rotated' | 'revoked'>()
@@ -411,8 +446,20 @@ export class MockApi {
       this.salonReads.push(now)
     }
     if (p.startsWith('/salons/s1') && this.salonGone) return fail(404, 'SALON_NOT_FOUND', 'This salon is not on Apni Dukan right now.')
-    if (p === '/salons/s1') return ok(200, { ...SALON, maxDaysAhead: this.maxDaysAhead, closedDates: this.closedDates })
-    if (p === '/salons/s1/services') return ok(200, SERVICES)
+    if (p === '/salons/s1/offer-messages' && method === 'PUT') {
+      this.mutedS1 = !body.on
+      return ok(200, { on: body.on })
+    }
+    if (p === '/salons/s1') {
+      return ok(200, { ...SALON, maxDaysAhead: this.maxDaysAhead, closedDates: this.closedDates, offers: this.offers, offerMessages: this.visitedS1 ? !this.mutedS1 : null })
+    }
+    if (p === '/salons/s1/services') {
+      // BookingService.salonServices: each service's price in its best offer (running or to come)
+      return ok(200, SERVICES.map((s) => {
+        const best = this.offers.filter((o) => o.allServices || o.serviceIds.includes(s.id)).sort((a, b) => b.percentOff - a.percentOff)[0]
+        return { ...s, offerPricePaise: best ? offerPriceOf(s.pricePaise, best.percentOff) : null }
+      }))
+    }
     if (p === '/salons/s1/availability') {
       if (this.failSlotsOnce) {
         this.failSlotsOnce = false
@@ -427,7 +474,17 @@ export class MockApi {
       const starts = times
         .map((t) => ({ startAt: istInstant(date, t), time: t }))
         .filter((s) => !this.gone.has(s.startAt))
-        .map((s) => ({ ...s, lateCancelFrom: new Date(Date.parse(s.startAt) - LATE_CANCEL_MS).toISOString() }))
+        .map((s) => {
+          // Slot.of: what the chosen services cost at this start, and without the offer when one applies
+          const lines = this.priced(ids, date, s.time)
+          const offer = lines.some((l) => l.listPricePaise !== null)
+          return {
+            ...s,
+            lateCancelFrom: new Date(Date.parse(s.startAt) - LATE_CANCEL_MS).toISOString(),
+            pricePaise: lines.reduce((t, l) => t + l.pricePaise, 0),
+            listPricePaise: offer ? lines.reduce((t, l) => t + (l.listPricePaise ?? l.pricePaise), 0) : null,
+          }
+        })
       return ok(200, { date, durationMinutes: minutes, freeCancelMinutes: FREE_CANCEL_MINUTES, starts })
     }
 
@@ -449,8 +506,13 @@ export class MockApi {
       return ok(201, booking)
     }
     if (p === '/me/salon-preferences') {
-      if (method === 'PUT') this.comeBackReminders = body.comeBackReminders
-      return ok(200, { comeBackReminders: this.comeBackReminders })
+      // Either or both; neither: 400 (BookingService.setPreferences)
+      if (method === 'PUT') {
+        if (body.comeBackReminders == null && body.salonOffers == null) return fail(400, 'VALIDATION_FAILED', 'Some fields are not valid', { comeBackReminders: 'send comeBackReminders, salonOffers or both' })
+        if (body.comeBackReminders != null) this.comeBackReminders = body.comeBackReminders
+        if (body.salonOffers != null) this.salonOffers = body.salonOffers
+      }
+      return ok(200, { comeBackReminders: this.comeBackReminders, salonOffers: this.salonOffers })
     }
     if (p === '/me/bookings') {
       // Spring reads the cursor first (one it can't read is 400 BAD_REQUEST, as handleTypeMismatch; an empty one
@@ -563,6 +625,82 @@ export class MockApi {
       return ok(200, { items: this.inbox.slice(from, from + INBOX_PAGE), unread: Math.min(100, this.inbox.filter((i) => !i.read).length), next }, {}, cursor === null ? this.inboxTag('list') : undefined)
     }
     if (p === '/me/notifications/unread-count') return ok(200, { unread: Math.min(100, this.inbox.filter((i) => !i.read).length) }, {}, this.inboxTag('count'))
+    // ---------- saved places (PlacesController, PlaceService), in the backend's order of checks ----------
+    if (p === '/me/places/geocode' || p === '/me/places/reverse-geocode') {
+      // @Valid first, then the search (GEOCODING_OFF and the limits)
+      if (p === '/me/places/reverse-geocode') {
+        if (!(body.latitude >= 6 && body.latitude <= 37.6)) return fail(400, 'VALIDATION_FAILED', 'Some fields are not valid', { latitude: 'must be less than or equal to 37.6' })
+        if (!(body.longitude >= 68 && body.longitude <= 97.5)) return fail(400, 'VALIDATION_FAILED', 'Some fields are not valid', { longitude: 'must be less than or equal to 97.5' })
+      } else {
+        const bad = sizeErrors(body)
+        if (Object.keys(bad).length) return fail(400, 'VALIDATION_FAILED', 'Some fields are not valid', bad)
+      }
+      if (this.geocodeError) {
+        const { status, code, retryAfter } = this.geocodeError
+        return ok(status, { code, message: 'Address search failed', details: {} }, retryAfter ? { 'Retry-After': String(retryAfter) } : {})
+      }
+      return ok(200, p === '/me/places/geocode' ? this.geocodeAnswer : this.reverseAnswer)
+    }
+    const view = (x: Record<string, any>) => {
+      const { createdAt: _created, ...rest } = x
+      void _created
+      return rest
+    }
+    if (p === '/me/places' && method === 'GET') {
+      const order = { HOME: 0, WORK: 1, OTHER: 2 } as Record<string, number>
+      return ok(200, [...this.places].sort((a, b) => order[a.kind] - order[b.kind] || a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id)).map(view))
+    }
+    if ((p === '/me/places' && method === 'POST') || (/^\/me\/places\/[^/]+$/.test(p) && (method === 'PUT' || method === 'DELETE'))) {
+      const id = p === '/me/places' ? null : decodeURIComponent(p.slice('/me/places/'.length))
+      // A path id that isn't a UUID: the type-mismatch handler
+      if (id !== null && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) return fail(400, 'BAD_REQUEST', 'The request is not valid')
+      if (method === 'DELETE') {
+        this.places = this.places.filter((x) => x.id !== id)
+        return ok(204)
+      }
+      // 1. @Valid (each field's own key); 2. an Other's name; 3. TextCleaner; then 404, the limit, Home/Work
+      const bad = sizeErrors(body)
+      if (!['HOME', 'WORK', 'OTHER'].includes(body.kind)) bad.kind = 'must not be null'
+      if (!/^[1-9][0-9]{5}$/.test(body.pincode ?? '')) bad.pincode = 'must be a 6-digit pincode'
+      if (!(body.latitude >= 6 && body.latitude <= 37.6)) bad.latitude = 'must be less than or equal to 37.6'
+      if (!(body.longitude >= 68 && body.longitude <= 97.5)) bad.longitude = 'must be less than or equal to 97.5'
+      if (Object.keys(bad).length) return fail(400, 'VALIDATION_FAILED', 'Some fields are not valid', bad)
+      if (body.kind === 'OTHER' && !(body.name ?? '').trim()) return fail(400, 'VALIDATION_FAILED', 'Some fields are not valid', { name: 'give this place a name' })
+      const cleaned: Record<string, string> = {}
+      for (const [field, min, max] of [['name', 2, 30], ['addressLine', 2, 200], ['area', 2, 100], ['city', 2, 60]] as const) {
+        if (field === 'name' && body.kind !== 'OTHER') continue
+        const v = String(body[field]).normalize('NFKC').replace(/\s+/g, ' ').trim()
+        if ((v.match(/[\p{L}\p{N}]/gu) ?? []).length < 2) return fail(400, 'VALIDATION_FAILED', 'Some fields are not valid', { [field]: 'must have at least 2 letters or digits' })
+        if (v.length < min || v.length > max) return fail(400, 'VALIDATION_FAILED', 'Some fields are not valid', { [field]: `must be ${min} to ${max} characters` })
+        cleaned[field] = v
+      }
+      const old = id ? this.places.find((x) => x.id === id) : undefined
+      if (id && !old) return fail(404, 'PLACE_NOT_FOUND', "That place isn't saved any more.")
+      if (!id && this.places.length >= 10) return fail(409, 'TOO_MANY_PLACES', "You can save up to 10 places. Delete one you don't use, then add this one.", { max: 10 })
+      const holder = body.kind !== 'OTHER' && this.places.find((x) => x.kind === body.kind && x.id !== id)
+      if (holder) {
+        const what = body.kind === 'HOME' ? 'Home' : 'Work'
+        return fail(409, 'PLACE_KIND_TAKEN', `You already have a ${what} address. Change that one, or save this as another place.`, { placeId: holder.id })
+      }
+      const now = new Date().toISOString()
+      const saved = {
+        id: id ?? crypto.randomUUID(),
+        kind: body.kind,
+        name: body.kind === 'OTHER' ? cleaned.name : null,
+        addressLine: cleaned.addressLine, area: cleaned.area, city: cleaned.city, pincode: body.pincode,
+        latitude: Math.round(body.latitude * 1e6) / 1e6, longitude: Math.round(body.longitude * 1e6) / 1e6,
+        updatedAt: now, createdAt: old?.createdAt ?? now,
+      }
+      if (old) Object.assign(old, saved)
+      else this.places.push(saved)
+      // Saved, but the answer never reaches the phone
+      if (!id && this.loseNextAdd) {
+        this.loseNextAdd = false
+        return route.abort('connectionreset')
+      }
+      return ok(id ? 200 : 201, view(saved))
+    }
+    if (p.startsWith('/tiles/')) return route.fulfill({ status: 404, body: '' })
     if (p === '/me/notifications/read') {
       const ids: string[] = body?.ids ?? []
       this.inbox.forEach((i) => {
@@ -574,8 +712,18 @@ export class MockApi {
     return fail(404, 'NOT_FOUND', `No mock for ${method} ${p}`)
   }
 
+  /** SalonOffer.price: the services at this India date and time, each covered one at its best offer's price. */
+  priced(serviceIds: string[], date: string, time: string) {
+    const live = this.offers.filter((o) => date >= o.startsOn && date <= o.endsOn && (!o.from || (time >= o.from && time < o.until!)))
+    return SERVICES.filter((s) => serviceIds.includes(s.id)).map((s) => {
+      const best = live.filter((o) => o.allServices || o.serviceIds.includes(s.id)).sort((a, b) => b.percentOff - a.percentOff)[0]
+      return { serviceId: s.id, name: s.name, durationMinutes: s.durationMinutes, pricePaise: best ? offerPriceOf(s.pricePaise, best.percentOff) : s.pricePaise, priceIsFrom: s.priceIsFrom, listPricePaise: best ? s.pricePaise : null }
+    })
+  }
+
   makeBooking(id: string, serviceIds: string[], startAt: string, createdAt: string = new Date().toISOString()) {
-    const lines = SERVICES.filter((s) => serviceIds.includes(s.id)).map((s) => ({ serviceId: s.id, name: s.name, durationMinutes: s.durationMinutes, pricePaise: s.pricePaise, priceIsFrom: s.priceIsFrom }))
+    const ist = new Date(Date.parse(startAt) + IST).toISOString()
+    const lines = this.priced(serviceIds, ist.slice(0, 10), ist.slice(11, 16))
     const start = new Date(startAt).getTime()
     const minutes = lines.reduce((t, l) => t + l.durationMinutes, 0)
     const movable = start - Date.now() >= 3600_000
@@ -588,6 +736,7 @@ export class MockApi {
       mapLink: SALON.mapLink,
       services: lines,
       totalPricePaise: lines.reduce((t, l) => t + l.pricePaise, 0),
+      totalListPricePaise: lines.some((l) => l.listPricePaise !== null) ? lines.reduce((t, l) => t + (l.listPricePaise ?? l.pricePaise), 0) : null,
       priceIsFrom: lines.some((l) => l.priceIsFrom),
       startsAt: new Date(start).toISOString(),
       endsAt: new Date(start + minutes * 60_000).toISOString(),

@@ -21,6 +21,7 @@ npm run dev                    # http://localhost:5173
 | `VITE_API_URL` | The backend's address, no trailing slash | `http://localhost:8080` or `https://apni-dukan-backend-production.up.railway.app` |
 | `VITE_TURNSTILE_SITE_KEY` | Cloudflare Turnstile **site** key (public). Leave empty when the backend has no `TURNSTILE_SECRET_KEY` | `0x4AAAAAAA…` |
 | `VITE_SUPPORT_EMAIL` | Where customers write for help (Profile, and "No salons near you yet"). Default `support@apnidukan.in` | `support@apnidukan.in` |
+| `VITE_MAP_TILES` | Map tiles for a saved place's pin. Default OpenStreetMap's, fine for low traffic (see its tile policy) | empty |
 
 All are public values baked into the page at build time. No secret ever goes in this app.
 
@@ -68,14 +69,14 @@ Everything needs sign-in, because the backend's salon endpoints need a signed-in
 | `/welcome/email` | Step 2 of 3: email and its code | `POST auth/email/send-code`, `auth/email/verify` |
 | `/welcome/name` | Step 3 of 3, last: "What should we call you?" | `PATCH auth/me` |
 | `/` | Home: category tabs; Salon tab = location, then salons within 2 km, 30 at a time ("Show more salons") | `GET salons?lat&lng[&afterDistance&afterId]` |
-| `/salons/:id` | Salon: photo, address, services to tick, opening hours | `GET salons/{id}`, `salons/{id}/services` |
+| `/salons/:id` | Salon: photo, address, offers (and its offer-messages switch once visited), services to tick (with offer prices), opening hours; `?offer=` picks the offer's services | `GET salons/{id}`, `salons/{id}/services`, `PUT salons/{id}/offer-messages` |
 | `/salons/:id/book` | Day chips (7 days) and free times | `GET salons/{id}/availability?services&date` |
 | `/salons/:id/confirm` | Summary and Book now | `POST bookings` (with `Idempotency-Key`) |
 | `/bookings` | Upcoming / Past | `GET me/bookings?when=` |
 | `/bookings/:id` | Start code, arrive-by time, services, Move, Cancel, notifications offer | `GET bookings/{id}`, `POST bookings/{id}/cancel` |
 | `/bookings/:id/move` | New day and time | `POST bookings/{id}/reschedule` |
 | `/notifications` | Messages: newest first, unread marked, tap to open the booking, Mark all read, Show older | `GET me/notifications?app=customer`, `POST me/notifications/read` |
-| `/profile` | Name, mobile, email, notifications switch, help email, sign out, sign out everywhere | `PATCH auth/me`, `POST auth/logout`, `auth/logout-all` |
+| `/profile` | Name, mobile, email, notifications switch, come-back reminders and offers switches, help email, sign out, sign out everywhere | `PATCH auth/me`, `PUT me/salon-preferences`, `POST auth/logout`, `auth/logout-all` |
 | `/profile/email` | Change email (SMS code first when the old email is verified) | `POST auth/email/change-phone-code`, `auth/email/send-code`, `auth/email/verify` |
 | `/profile/delete` | Delete account with an SMS code | `POST auth/me/delete-code`, `auth/me/delete` |
 
@@ -216,9 +217,23 @@ public/         sw.js (push notifications), manifest, icon
 
 ### Location and nearby salons
 
-- Location comes from the phone only; there is no pincode option. Before the browser's Allow/Block prompt the app
-  explains why. If location is blocked or off, a guide shows the steps for Android, iPhone or a computer.
-- The location is saved on the phone (`ad.location`) and shown as "Near your current location · ±30 m · Update".
+- Salons are found near the phone's location, or near a saved place. Before the browser's Allow/Block prompt the app
+  explains why. If location is blocked or off, a guide shows the steps for Android, iPhone or a computer, and "Or
+  enter an address" leads to the saved places.
+- The location is saved on the phone (`ad.location`) and shown as "Near your current location · ±30 m · Update ·
+  Change", with the address there underneath ("Lake View Apartments, Kondapur"), from
+  `POST /me/places/reverse-geocode` (the point rounded to 3 decimals). Sparing with Google lookups: within 300 m of
+  the last point looked up its words are shown again, and Home looks up at most 3 times a day, so the person's own
+  10 a day stay for setting places. Kept on the phone (`ad.locationAddress`, forgotten on sign-out). Not shown for a
+  point worse than 1 km, or when the search is off or used up.
+- **Saved places** (`/places`, also Profile → Saved addresses): Home, Work and others with a name, up to 10, kept on
+  the backend (`/api/v1/me/places`). Each is set like a salon's address in the partner app: the four fields typed,
+  then "Find on map", or "Use current location" (the pin at the GPS point, empty fields filled from the address
+  there); then the pin is dragged (or the map tapped) onto the building. The map is Leaflet with OpenStreetMap tiles
+  (`VITE_MAP_TILES`).
+- Picking a place keeps a copy of it on the phone (`ad.chosenPlace`) and Home shows "Near Home · Flat 4B, …". Home
+  reads the saved list and follows a change to the picked place, or goes back to the current location when it was
+  deleted (here or on another phone). Signing out forgets both.
 - Accuracy worse than 1 km (usual on laptops) shows a warning that results may be off.
 - The backend returns approved salons within 2 km, nearest first, 30 at a time (found by a map index, so a dense
   city is as fast as a quiet one). "Show more salons" asks for the next 30 after the last one's distance and id,
@@ -305,7 +320,7 @@ links point). Then add the site's address to the backend's `CORS_ALLOWED_ORIGINS
 
 | Header | Value |
 | --- | --- |
-| `Content-Security-Policy` | `default-src 'self'`; scripts from the site (plus `https://challenges.cloudflare.com` when the Turnstile key is set, also its frame); API calls only to `VITE_API_URL`; images from the site, `data:`, `blob:` and `PHOTO_ORIGIN`; styles allow inline (the Turnstile widget); no plugins; `frame-ancestors 'none'` (never inside another site's frame) |
+| `Content-Security-Policy` | `default-src 'self'`; scripts from the site (plus `https://challenges.cloudflare.com` when the Turnstile key is set, also its frame); API calls only to `VITE_API_URL`; images from the site, `data:`, `blob:`, `PHOTO_ORIGIN` and the map tiles (`VITE_MAP_TILES`); styles allow inline (the map's pin and the Turnstile widget); no plugins; `frame-ancestors 'none'` (never inside another site's frame) |
 | `Strict-Transport-Security` | `max-age=63072000; includeSubDomains` |
 | `Referrer-Policy` | `strict-origin-when-cross-origin` |
 | `X-Content-Type-Options` | `nosniff` |
@@ -337,7 +352,35 @@ Needs the backend with `POST /auth/me/phone/send-code` and `POST /auth/me/phone`
 - A lost answer after the change went through: the sign-in screen says the number probably moved and fills it in (an
   old-number sign-in would make a new, empty account). This device's notifications are registered again after the
   change. The "number is now …" notice shows once.
-- Scenarios 266–279 in `docs/scenarios.md`; end-to-end journeys in `e2e/change-phone.spec.ts`.
+- Scenarios 267–280 in `docs/scenarios.md`; end-to-end journeys in `e2e/change-phone.spec.ts`.
+### 0.11.0 — 2026-11-11
+
+Needs the backend with V40 (saved places).
+
+- **Saved places.** Home, Work and other addresses (up to 10), set exactly like a salon's address in the partner app:
+  type it and "Find on map", or "Use current location" (fills the empty fields from the address there); either way a
+  pin on the map to drag onto the building. Home and Work are one each; another place needs a name.
+- **The current location in words:** under "Near your current location", the address there ("Lake View Apartments,
+  Kondapur"); looked up again only after moving 300 m, at most 3 times a day, and kept on the phone.
+- **A place picker above the salons:** "Near Home · Flat 4B, …" or "Near your current location"; Change opens the
+  list (current location and every saved place), where each can be changed or deleted and new ones added.
+- Location blocked or not allowed: "Or enter an address" instead of a dead end.
+- The security headers allow the map tiles (`VITE_MAP_TILES`, default OpenStreetMap's).
+- Scenarios 237–266 in `docs/scenarios.md`; end-to-end journeys in `e2e/places.spec.ts`.
+### 0.10.0 — 2026-11-11
+
+Needs the backend with V37–V39 (salon offers); against an older backend nothing about offers shows.
+
+- **Salon offers:**
+  - The salon card has a badge: "20% off · till 16 Nov", "· today" on its last day, "from 14 Nov" before it starts.
+  - The salon's page lists its offers (the discount, the services, the days and hours) and shows each service's
+    offer price next to its own.
+  - Free times inside an offer are marked "%" (read out as "offer price"); Confirm shows the total crossed out and
+    the offer price; the booking keeps it ("Booked at the salon's offer price"), even if the salon ends the offer.
+  - The offer message opens the salon with the offer's services picked.
+- **Offer messages can be stopped:** for one salon with the switch on its page (only salons you visited, since only
+  they send them), or for every salon with "Offers from salons I've visited" on Profile, next to the come-back
+  reminders. Each switch sends only its own choice; the two share one "Try again" when they can't be read.
 
 ### 0.9.0 — 2026-11-10
 

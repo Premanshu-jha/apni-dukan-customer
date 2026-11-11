@@ -4,7 +4,8 @@ import { isApiError, messageOf } from '../../api/errors'
 import { SALONS_RADIUS_KM, useNearbySalons } from '../../api/salons'
 import { Button, EmptyState, ErrorState, Loading } from '../../components/ui'
 import { SUPPORT_EMAIL } from '../../lib/config'
-import { openText, ratingText, servicesText } from '../../lib/salonCard'
+import { offerBadgeText, openText, ratingText, servicesText } from '../../lib/salonCard'
+import { todayIst } from '../../lib/ist'
 
 
 /** A moment as India time "HH:mm", for "Opens at …" on the cards. */
@@ -93,6 +94,13 @@ export function SalonList({ lat, lng }: { lat: number; lng: number }) {
                   {s.addressLine ? `${s.addressLine}, ` : ''}
                   {s.area}
                 </p>
+                {s.offer && (
+                  <p>
+                    <span className="inline-block rounded-full bg-brand/15 px-2 text-xs font-semibold text-link">
+                      {offerBadgeText(s.offer, todayIst(new Date(s.readAt ?? fallbackNow)))}
+                    </span>
+                  </p>
+                )}
                 {s.topServices?.length > 0 && (
                   <p className="line-clamp-2 text-sm">{servicesText(s.topServices, s.serviceCount)}</p>
                 )}

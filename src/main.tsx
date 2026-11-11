@@ -12,6 +12,7 @@ import { UpdatePrompt } from './components/UpdatePrompt'
 import { forgetReturn } from './features/auth/flow'
 import { useDraft } from './store/bookingDraft'
 import { followOtherTabs, useSession } from './store/session'
+import { useLocation } from './store/location'
 import './index.css'
 
 const queryClient = new QueryClient({
@@ -32,12 +33,16 @@ whenSessionEnds(() => {
   void closeShownNotifications()
   forgetReturn()
   useDraft.getState().clear()
+  // A shared phone: the next person mustn't see this one's saved address or last GPS point
+  useLocation.getState().clear()
   queryClient.clear()
 })
 
 // Each new sign-in claims this browser's notification address for the person now signed in.
 useSession.subscribe((now, before) => {
   if (now.status === 'signedIn' && before.status !== 'signedIn') void claimSubscription()
+  // Signed out in any way, also from another tab: this tab forgets the places too (its draft is its own)
+  if (now.status === 'signedOut' && before.status === 'signedIn') useLocation.getState().clear()
 })
 
 followOtherTabs()

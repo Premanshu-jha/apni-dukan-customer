@@ -9,7 +9,7 @@ import { takePhoneChanged } from '../../lib/phoneMoved'
 import { SUPPORT_EMAIL } from '../../lib/config'
 import { useSession } from '../../store/session'
 import { NotificationsRow } from './Notifications'
-import { ComeBackReminders } from './ComeBackReminders'
+import { SalonMessageSwitches } from './SalonMessageSwitches'
 import { signOutHere } from './signOut'
 
 export function Profile() {
@@ -106,7 +106,7 @@ export function Profile() {
 
       <Card className="flex flex-col gap-4">
         <NotificationsRow />
-        <ComeBackReminders />
+        <SalonMessageSwitches />
       </Card>
 
       <Card className="flex flex-col gap-1">
@@ -117,6 +117,14 @@ export function Profile() {
         <a href={`mailto:${SUPPORT_EMAIL}`} className="text-sm text-link underline">
           {SUPPORT_EMAIL}
         </a>
+      </Card>
+
+      <Card className="flex flex-col gap-1">
+        <p className="font-medium">Saved addresses</p>
+        <p className="text-sm text-muted">Home, Work and other places, to find salons near them.</p>
+        <Link to="/places" className="text-sm text-link underline">
+          Manage addresses
+        </Link>
       </Card>
 
       <div className="flex flex-col gap-2">

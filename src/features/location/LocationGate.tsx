@@ -1,12 +1,14 @@
 import { useEffect, useState, type ReactNode } from 'react'
+import { Link } from 'react-router'
 import { SALONS_RADIUS_KM } from '../../api/salons'
 import { Banner, Button, Loading } from '../../components/ui'
 import { platform } from '../../lib/device'
 import { permissionState, STALE_MS, useLocation, type Place } from '../../store/location'
 
 /**
- * Salons are found from the phone's location only. Before the browser asks, we say why; if location is off
- * or blocked we show how to turn it on, step by step for the person's phone.
+ * Salons near the phone's location. Before the browser asks, we say why; if location is off or blocked we show how to
+ * turn it on, step by step for the person's phone. Either way the customer can instead pick a saved place or enter an
+ * address (/places).
  */
 export function LocationGate({ children }: { children: (place: Place) => ReactNode }) {
   const { place, finding, error, locate } = useLocation()
@@ -28,7 +30,14 @@ export function LocationGate({ children }: { children: (place: Place) => ReactNo
 
   if (place) return <>{children(place)}</>
   if (finding) return <Loading label="Finding where you are…" />
-  if (blocked || error === 'denied') return <LocationGuide onRetry={locate} />
+  if (blocked || error === 'denied') {
+    return (
+      <>
+        <LocationGuide onRetry={locate} />
+        <OrAnAddress />
+      </>
+    )
+  }
 
   return (
     <div className="flex flex-col items-center gap-5 py-10 text-center">
@@ -49,7 +58,17 @@ export function LocationGate({ children }: { children: (place: Place) => ReactNo
       <Button className="w-full max-w-xs" onClick={locate}>
         Allow location
       </Button>
+      <OrAnAddress />
     </div>
+  )
+}
+
+/** The way round location: a saved place, or an address typed in. */
+function OrAnAddress() {
+  return (
+    <Link to="/places" className="py-2 text-center text-link underline">
+      Or enter an address
+    </Link>
   )
 }
 
