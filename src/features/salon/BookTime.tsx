@@ -64,9 +64,9 @@ export function BookTime() {
         serviceIds={draft.serviceIds}
         date={date}
         selected={draft.startAt}
-        onPick={(t, terms) => {
+        onPick={(t, terms, price) => {
           setTaken(false)
-          pickSlot(t, terms)
+          pickSlot(t, terms, price)
         }}
         onSelectedGone={selectedGone}
       />

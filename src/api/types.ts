@@ -66,8 +66,31 @@ export interface SalonSummary {
   closedToday: boolean
   /** It has a registration document (optional) that our field team checked: "Registered", else "Unregistered". */
   registered: boolean
+  /** Its offer running now or coming next (the card's badge); null if none. Missing from older backends. */
+  offer?: OfferBadge | null
   /** When this app read it (ms; not from the backend): openNow is as of then. */
   readAt?: number
+}
+
+/** A card's offer badge: "20% off · till 16 Nov" (or "from 14 Nov" while still to come). */
+export interface OfferBadge {
+  percentOff: number
+  startsOn: string
+  endsOn: string
+}
+
+/** A salon's offer (SalonOfferResponses.OfferView): dates yyyy-MM-dd, times "HH:mm" in India time. */
+export interface Offer {
+  id: string
+  percentOff: number
+  allServices: boolean
+  /** The services it covers; empty when allServices */
+  serviceIds: string[]
+  startsOn: string
+  endsOn: string
+  /** Each day from; null: all day */
+  from: string | null
+  until: string | null
 }
 
 export interface DayHours {
@@ -95,6 +118,10 @@ export interface SalonDetails {
   /** Its closed days (holidays) within its booking window, yyyy-MM-dd. */
   closedDates: string[]
   rating: RatingSummary
+  /** Its offers running now or still to come, soonest first. Missing from older backends. */
+  offers?: Offer[]
+  /** Whether I get its offer messages: null if I never completed a visit there; false once I stopped them. */
+  offerMessages?: boolean | null
 }
 
 export interface SalonService {
@@ -103,6 +130,8 @@ export interface SalonService {
   durationMinutes: number
   pricePaise: number
   priceIsFrom: boolean
+  /** Its price in the salon's best offer for it (only at that offer's days and hours); null if none. */
+  offerPricePaise?: number | null
 }
 
 export interface Slot {
@@ -111,6 +140,10 @@ export interface Slot {
   time: string
   /** 1 hour before the start: a cancel after it counts as late, unless within freeCancelMinutes of booking. */
   lateCancelFrom?: string
+  /** What the chosen services cost at this start (with the salon's offer, if one applies). */
+  pricePaise?: number
+  /** Their price without the offer; null when no offer applies at this start. */
+  listPricePaise?: number | null
 }
 
 export interface Slots {
@@ -133,8 +166,11 @@ export interface ServiceLine {
   serviceId: string
   name: string
   durationMinutes: number
+  /** What I pay (with an offer: the offer price) */
   pricePaise: number
   priceIsFrom: boolean
+  /** The price before the salon's offer; null if booked without one */
+  listPricePaise?: number | null
 }
 
 export interface Booking {
@@ -146,6 +182,8 @@ export interface Booking {
   mapLink: string | null
   services: ServiceLine[]
   totalPricePaise: number
+  /** The total before the salon's offer; null if booked without one */
+  totalListPricePaise?: number | null
   priceIsFrom: boolean
   startsAt: string
   endsAt: string
@@ -191,6 +229,8 @@ export interface RateVisit {
 export interface SalonPreferences {
   /** "Time for your next haircut?" messages after a visit. */
   comeBackReminders: boolean
+  /** Offer messages from salons I visited (each salon can also be stopped on its page). Missing from older backends. */
+  salonOffers?: boolean
 }
 
 export interface CancelResult {

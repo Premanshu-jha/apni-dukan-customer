@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { canRate } from './ratings'
-import { openText, ratingText, servicesText } from './salonCard'
+import { offerBadgeText, offerWhat, offerWhen, openText, ratingText, servicesText } from './salonCard'
 
 describe('salon cards', () => {
   it('shows the average from 5 ratings, "New" before', () => {
@@ -35,5 +35,21 @@ describe('salon cards', () => {
     expect(canRate(null, now)).toBe(false)
     expect(canRate('2026-11-24T06:00:00Z', now)).toBe(true)
     expect(canRate('2026-11-10T06:00:00Z', now)).toBe(false)
+  })
+})
+
+describe('offers', () => {
+  it('badges a running, a last-day and a coming offer', () => {
+    expect(offerBadgeText({ percentOff: 20, startsOn: '2026-11-10', endsOn: '2026-11-16' }, '2026-11-11')).toBe('20% off · till 16 Nov')
+    expect(offerBadgeText({ percentOff: 20, startsOn: '2026-11-10', endsOn: '2026-11-11' }, '2026-11-11')).toBe('20% off · today')
+    expect(offerBadgeText({ percentOff: 15, startsOn: '2026-11-14', endsOn: '2026-11-16' }, '2026-11-11')).toBe('15% off from 14 Nov')
+  })
+
+  it('says when and on what, like the message', () => {
+    expect(offerWhen({ startsOn: '2026-11-12', endsOn: '2026-11-14', from: '12:00', until: '16:00' })).toBe('12 Nov – 14 Nov, 12:00–16:00')
+    expect(offerWhen({ startsOn: '2026-12-01', endsOn: '2026-12-01', from: null, until: null })).toBe('1 Dec')
+    const names = new Map([['a', 'Haircut'], ['b', 'Beard trim']])
+    expect(offerWhat({ allServices: true, serviceIds: [] }, names)).toBe('on all services')
+    expect(offerWhat({ allServices: false, serviceIds: ['a', 'gone'] }, names)).toBe('on Haircut')
   })
 })

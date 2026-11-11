@@ -57,6 +57,12 @@ export interface Call {
 }
 
 /** "2026-11-05" + "15:45" India time → ISO instant. */
+/** SalonOffer.priceOf: to the rupee, half up, never below ₹1. */
+function offerPriceOf(paise: number, pct: number): number {
+  if (paise <= 0) return paise
+  return Math.max(1, Math.floor((paise * (100 - pct) + 5000) / 10000)) * 100
+}
+
 export function istInstant(date: string, hhmm: string): string {
   const [y, m, d] = date.split('-').map(Number)
   const [h, min] = hhmm.split(':').map(Number)
@@ -181,6 +187,12 @@ export class MockApi {
   worksAt: string | null = null
   /** GET /me/salon-preferences */
   comeBackReminders = true
+  salonOffers = true
+  /** s1's offers running or to come (SalonOfferResponses.OfferView), soonest first */
+  offers: { id: string; percentOff: number; allServices: boolean; serviceIds: string[]; startsOn: string; endsOn: string; from: string | null; until: string | null }[] = []
+  /** The customer completed a visit at s1 (then its page has the offer-messages switch), and stopped them or not */
+  visitedS1 = false
+  mutedS1 = false
   private refreshCount = 0
   private accessValid = new Set<string>()
   refreshTokens = new Map<string, 'live' | 'rotated'>()
@@ -368,8 +380,20 @@ export class MockApi {
       this.salonReads.push(now)
     }
     if (p.startsWith('/salons/s1') && this.salonGone) return fail(404, 'SALON_NOT_FOUND', 'This salon is not on Apni Dukan right now.')
-    if (p === '/salons/s1') return ok(200, { ...SALON, maxDaysAhead: this.maxDaysAhead, closedDates: this.closedDates })
-    if (p === '/salons/s1/services') return ok(200, SERVICES)
+    if (p === '/salons/s1/offer-messages' && method === 'PUT') {
+      this.mutedS1 = !body.on
+      return ok(200, { on: body.on })
+    }
+    if (p === '/salons/s1') {
+      return ok(200, { ...SALON, maxDaysAhead: this.maxDaysAhead, closedDates: this.closedDates, offers: this.offers, offerMessages: this.visitedS1 ? !this.mutedS1 : null })
+    }
+    if (p === '/salons/s1/services') {
+      // BookingService.salonServices: each service's price in its best offer (running or to come)
+      return ok(200, SERVICES.map((s) => {
+        const best = this.offers.filter((o) => o.allServices || o.serviceIds.includes(s.id)).sort((a, b) => b.percentOff - a.percentOff)[0]
+        return { ...s, offerPricePaise: best ? offerPriceOf(s.pricePaise, best.percentOff) : null }
+      }))
+    }
     if (p === '/salons/s1/availability') {
       if (this.failSlotsOnce) {
         this.failSlotsOnce = false
@@ -384,7 +408,17 @@ export class MockApi {
       const starts = times
         .map((t) => ({ startAt: istInstant(date, t), time: t }))
         .filter((s) => !this.gone.has(s.startAt))
-        .map((s) => ({ ...s, lateCancelFrom: new Date(Date.parse(s.startAt) - LATE_CANCEL_MS).toISOString() }))
+        .map((s) => {
+          // Slot.of: what the chosen services cost at this start, and without the offer when one applies
+          const lines = this.priced(ids, date, s.time)
+          const offer = lines.some((l) => l.listPricePaise !== null)
+          return {
+            ...s,
+            lateCancelFrom: new Date(Date.parse(s.startAt) - LATE_CANCEL_MS).toISOString(),
+            pricePaise: lines.reduce((t, l) => t + l.pricePaise, 0),
+            listPricePaise: offer ? lines.reduce((t, l) => t + (l.listPricePaise ?? l.pricePaise), 0) : null,
+          }
+        })
       return ok(200, { date, durationMinutes: minutes, freeCancelMinutes: FREE_CANCEL_MINUTES, starts })
     }
 
@@ -406,8 +440,13 @@ export class MockApi {
       return ok(201, booking)
     }
     if (p === '/me/salon-preferences') {
-      if (method === 'PUT') this.comeBackReminders = body.comeBackReminders
-      return ok(200, { comeBackReminders: this.comeBackReminders })
+      // Either or both; neither: 400 (BookingService.setPreferences)
+      if (method === 'PUT') {
+        if (body.comeBackReminders == null && body.salonOffers == null) return fail(400, 'VALIDATION_FAILED', 'Some fields are not valid', { comeBackReminders: 'send comeBackReminders, salonOffers or both' })
+        if (body.comeBackReminders != null) this.comeBackReminders = body.comeBackReminders
+        if (body.salonOffers != null) this.salonOffers = body.salonOffers
+      }
+      return ok(200, { comeBackReminders: this.comeBackReminders, salonOffers: this.salonOffers })
     }
     if (p === '/me/bookings') {
       // Spring reads the cursor first (one it can't read is 400 BAD_REQUEST, as handleTypeMismatch; an empty one
@@ -607,8 +646,18 @@ export class MockApi {
     return fail(404, 'NOT_FOUND', `No mock for ${method} ${p}`)
   }
 
+  /** SalonOffer.price: the services at this India date and time, each covered one at its best offer's price. */
+  priced(serviceIds: string[], date: string, time: string) {
+    const live = this.offers.filter((o) => date >= o.startsOn && date <= o.endsOn && (!o.from || (time >= o.from && time < o.until!)))
+    return SERVICES.filter((s) => serviceIds.includes(s.id)).map((s) => {
+      const best = live.filter((o) => o.allServices || o.serviceIds.includes(s.id)).sort((a, b) => b.percentOff - a.percentOff)[0]
+      return { serviceId: s.id, name: s.name, durationMinutes: s.durationMinutes, pricePaise: best ? offerPriceOf(s.pricePaise, best.percentOff) : s.pricePaise, priceIsFrom: s.priceIsFrom, listPricePaise: best ? s.pricePaise : null }
+    })
+  }
+
   makeBooking(id: string, serviceIds: string[], startAt: string, createdAt: string = new Date().toISOString()) {
-    const lines = SERVICES.filter((s) => serviceIds.includes(s.id)).map((s) => ({ serviceId: s.id, name: s.name, durationMinutes: s.durationMinutes, pricePaise: s.pricePaise, priceIsFrom: s.priceIsFrom }))
+    const ist = new Date(Date.parse(startAt) + IST).toISOString()
+    const lines = this.priced(serviceIds, ist.slice(0, 10), ist.slice(11, 16))
     const start = new Date(startAt).getTime()
     const minutes = lines.reduce((t, l) => t + l.durationMinutes, 0)
     const movable = start - Date.now() >= 3600_000
@@ -621,6 +670,7 @@ export class MockApi {
       mapLink: SALON.mapLink,
       services: lines,
       totalPricePaise: lines.reduce((t, l) => t + l.pricePaise, 0),
+      totalListPricePaise: lines.some((l) => l.listPricePaise !== null) ? lines.reduce((t, l) => t + (l.listPricePaise ?? l.pricePaise), 0) : null,
       priceIsFrom: lines.some((l) => l.priceIsFrom),
       startsAt: new Date(start).toISOString(),
       endsAt: new Date(start + minutes * 60_000).toISOString(),

@@ -8,7 +8,7 @@ import { formatPhone } from '../../lib/phone'
 import { SUPPORT_EMAIL } from '../../lib/config'
 import { useSession } from '../../store/session'
 import { NotificationsRow } from './Notifications'
-import { ComeBackReminders } from './ComeBackReminders'
+import { SalonMessageSwitches } from './SalonMessageSwitches'
 import { signOutHere } from './signOut'
 
 export function Profile() {
@@ -90,7 +90,7 @@ export function Profile() {
 
       <Card className="flex flex-col gap-4">
         <NotificationsRow />
-        <ComeBackReminders />
+        <SalonMessageSwitches />
       </Card>
 
       <Card className="flex flex-col gap-1">
