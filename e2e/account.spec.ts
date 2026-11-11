@@ -8,6 +8,7 @@ test('messages: the bell shows unread, opening one marks it read and opens its b
     { id: 'n1', type: 'BOOKING_CONFIRMED', title: 'Booking confirmed', body: 'Shine Unisex Salon', url: 'https://evil.example/x', sentAt: new Date(Date.now() - 86400_000).toISOString(), read: true },
   )
   await page.goto('/')
+  await expect(page.getByLabel('Messages, 1 unread').getByText('1', { exact: true })).toHaveClass(/bg-accent/)
   await page.getByLabel('Messages, 1 unread').click()
   await page.getByText('Your booking is in 1 hour').click()
   await expect(page).toHaveURL(/\/bookings\/b1$/)

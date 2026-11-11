@@ -96,7 +96,11 @@ export function SlotGrid({
   return (
     <div className="flex flex-col gap-4">
       {stale}
-      {anyOffer && <p className="text-sm text-muted">Times marked % have the salon's offer price.</p>}
+      {anyOffer && (
+        <p className="text-sm text-muted">
+          Times marked <span className="font-semibold text-accent">%</span> have the salon's offer price.
+        </p>
+      )}
       {groups.map((g) => (
         <section key={g.name} aria-label={g.name} className="flex flex-col gap-2">
           <h3 className="text-sm font-medium text-muted">{g.name}</h3>
@@ -107,7 +111,10 @@ export function SlotGrid({
                 {s.listPricePaise != null && (
                   <>
                     <span className="sr-only">, offer price</span>
-                    <span aria-hidden> %</span>
+                    <span aria-hidden className={s.startAt === selected ? '' : 'font-semibold text-accent'}>
+                      {' '}
+                      %
+                    </span>
                   </>
                 )}
               </Chip>

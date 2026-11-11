@@ -203,10 +203,10 @@ export function ConfirmBooking() {
                 <s className="font-normal text-muted">{rupees(slotPrice.listPricePaise!, isFrom)}</s>{' '}
               </>
             )}
-            {rupees(paise, isFrom)}
+            <span className={offer ? 'text-accent' : ''}>{rupees(paise, isFrom)}</span>
           </span>
         </div>
-        {offer && <p className="text-sm text-link">The salon's offer price at this time.</p>}
+        {offer && <p className="text-sm text-accent">The salon's offer price at this time.</p>}
       </Card>
       {soon &&
         (Date.parse(terms.lateCancelFrom) <= now ? (

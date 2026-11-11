@@ -165,7 +165,7 @@ function BookingCard({ b, index }: { b: Booking; index: number }) {
       <p className="truncate text-sm text-muted">
         {b.services.map((s) => s.name).join(', ')} · {rupees(b.totalPricePaise, b.priceIsFrom)}
       </p>
-      {!b.rating && canRate(b.rateUntil, now) && <p className="text-sm font-semibold text-warn">★ Rate your visit</p>}
+      {!b.rating && canRate(b.rateUntil, now) && <p className="text-sm font-semibold text-accent">★ Rate your visit</p>}
     </Link>
   )
 }
