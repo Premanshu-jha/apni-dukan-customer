@@ -41,6 +41,8 @@ whenSessionEnds(() => {
 // Each new sign-in claims this browser's notification address for the person now signed in.
 useSession.subscribe((now, before) => {
   if (now.status === 'signedIn' && before.status !== 'signedIn') void claimSubscription()
+  // Signed out in any way, also from another tab: this tab forgets the places too (its draft is its own)
+  if (now.status === 'signedOut' && before.status === 'signedIn') useLocation.getState().clear()
 })
 
 followOtherTabs()

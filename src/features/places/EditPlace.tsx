@@ -39,7 +39,7 @@ import { goBack, screensBehind } from '../../lib/nav'
 import { forgetPlaceDraft, PLACE_DRAFT_KEY, permissionState, useLocation } from '../../store/location'
 import { LocationGuide } from '../location/LocationGate'
 
-const PinMap = lazy(() => import('../../components/PinMap').then((m) => ({ default: m.PinMap })))
+const loadMap = () => lazy(() => import('../../components/PinMap').then((m) => ({ default: m.PinMap })))
 
 interface Form {
   kind: PlaceKind
@@ -103,8 +103,11 @@ export function EditPlace() {
   return <PlaceForm key={id ?? 'new'} existing={existing ?? null} all={places.data} />
 }
 
-/** The map couldn't be loaded (offline, or a new version of the app meanwhile): the form stays usable. */
-class MapBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
+/**
+ * The map couldn't be loaded (offline, or a new version of the app meanwhile): the form stays usable, and "Try again"
+ * loads it afresh (a failed lazy import is remembered, so the parent makes a new one).
+ */
+class MapBoundary extends Component<{ children: ReactNode; onRetry: () => void }, { failed: boolean }> {
   state = { failed: false }
 
   static getDerivedStateFromError() {
@@ -114,8 +117,17 @@ class MapBoundary extends Component<{ children: ReactNode }, { failed: boolean }
   render() {
     return this.state.failed ? (
       <Banner tone="warn">
-        The map couldn't load. Your pin is kept and can be saved; to move it on the map, check your connection and open
-        this page again.
+        The map couldn't load. Your pin is kept and can be saved.{' '}
+        <button
+          type="button"
+          className="underline"
+          onClick={() => {
+            this.props.onRetry()
+            this.setState({ failed: false })
+          }}
+        >
+          Try again
+        </button>
       </Banner>
     ) : (
       this.props.children
@@ -181,6 +193,7 @@ function PlaceForm({ existing, all }: { existing: SavedPlace | null; all: SavedP
   const [pin, setPin] = useState<Pin | null>(() =>
     existing ? { lat: existing.latitude, lng: existing.longitude, gps: null, zoom: 18, placement: 0 } : (draft?.pin ?? null),
   )
+  const [PinMap, setPinMap] = useState(loadMap)
   /** Saving a change found the place deleted on another phone: offer to save it as a new one. */
   const [gone, setGone] = useState(false)
   const [locating, setLocating] = useState(false)
@@ -208,15 +221,16 @@ function PlaceForm({ existing, all }: { existing: SavedPlace | null; all: SavedP
     void permissionState().then((s) => setBlocked(s === 'denied'))
   }, [locError])
 
-  // A new place: what is typed survives a reload of this tab
+  // A new place: what is typed survives a reload of this tab (only once something was typed or placed)
+  const [startForm] = useState(form)
   useEffect(() => {
-    if (existing) return
+    if (existing || (form === startForm && pin === null)) return
     try {
       window.sessionStorage.setItem(PLACE_DRAFT_KEY, JSON.stringify({ form, pin } satisfies Draft))
     } catch {
       /* storage blocked: the form lives only on screen */
     }
-  }, [existing, form, pin])
+  }, [existing, form, pin, startForm])
 
   // Home and Work are one each: taken by another of this person's places
   const takenBy = (k: PlaceKind) => (k === 'OTHER' ? undefined : all.find((p) => p.kind === k && p.id !== existing?.id))
@@ -495,7 +509,7 @@ function PlaceForm({ existing, all }: { existing: SavedPlace | null; all: SavedP
         </div>
         {pin && (
           <>
-            <MapBoundary>
+            <MapBoundary onRetry={() => setPinMap(loadMap)}>
               <Suspense fallback={<Loading label="Loading the map…" />}>
                 <PinMap lat={pin.lat} lng={pin.lng} zoom={pin.zoom} placement={pin.placement} onMove={moveByHand} />
               </Suspense>

@@ -252,8 +252,8 @@ How to use it: every new feature or fix adds or updates rows here. A row is done
 | 258 | Places | Reload while adding a place | n/a | What was typed and the pin come back (kept in this tab only; forgotten on save and on sign-out) | — | e2e:places "…a reload keeps what was typed" | OK-tested |
 | 259 | Places | The place deleted on another phone while being changed | PUT 404 PLACE_NOT_FOUND | The form stays with the typing: "This place was deleted on another phone. Save it as a new place" | — | e2e:places "a place deleted on another phone while being changed…" | OK-tested |
 | 260 | Places | Poor GPS (over 150 m) | n/a | "The phone isn't sure where it is. Drag the pin onto your building…" | — | e2e:places "the pin… poor GPS" | OK-tested |
-| 261 | Places | The map can't load (offline, a new version meanwhile) | n/a | "The map couldn't load. Your pin is kept and can be saved…" instead of the whole screen failing | — | — | OK-untested |
-| 262 | Places | Several tabs | n/a | Picking a place (or the current location) in one tab: the others follow | — | — | OK-untested |
+| 261 | Places | The map can't load (offline, a new version meanwhile) | n/a | "The map couldn't load. Your pin is kept and can be saved. Try again" (loads it afresh) instead of the whole screen failing | — | — | OK-untested |
+| 262 | Places | Several tabs | n/a | Picking a place (or the current location) in one tab: the others follow; signing out in one: every tab forgets the picked place and GPS point | — | — | OK-untested |
 | 263 | Places | Back | n/a | Back goes to the screen the list or form was opened from (Profile or Home); after picking, the phone's Back doesn't reopen the list | — | e2e:places "back goes where the customer came from…" | OK-tested |
 | 264 | Places | Two phones changing the same place | PUT has no version: the last save wins | Each phone shows its own save; the next list read shows the last | — | — | N/A-v1 |
 | 265 | Places | A pin in the sea or just over a border inside India's box | Accepted (the same box as a salon's pin) | Salons near it: usually none | — | — | N/A-v1 |
