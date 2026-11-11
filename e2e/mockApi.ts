@@ -116,6 +116,14 @@ export const TIMES = ['10:00', '11:30', '13:00', '15:45', '17:15', '18:30']
 const LATE_CANCEL_MS = 3600_000
 const FREE_CANCEL_MINUTES = 10
 
+/** PhoneNumbers.normalize: "+91 98480 12345" → "9848012345", or null. */
+function normalize(input: unknown): string | null {
+  let d = String(input ?? '').replace(/\D/g, '')
+  if (d.length === 12 && d.startsWith('91')) d = d.slice(2)
+  else if (d.length === 11 && d.startsWith('0')) d = d.slice(1)
+  return /^[6-9]\d{9}$/.test(d) ? d : null
+}
+
 export class MockApi {
   user: MockUser = { id: 'u1', phone: '9848012345', name: null, email: null, emailVerified: false, admin: false }
   /** Paths (with the query) answered 304 Not Modified, in order. */
@@ -161,6 +169,10 @@ export class MockApi {
   private refreshCount = 0
   private accessValid = new Set<string>()
   refreshTokens = new Map<string, 'live' | 'rotated'>()
+  /** Numbers with an account of their own (PHONE_IN_USE). */
+  takenPhones = new Set<string>()
+  /** Phone-change codes sent: new number → whether an email code went too. Codes: 123456 (SMS), 654321 (email). */
+  phoneChangeCodes = new Map<string, { email: boolean }>()
   /** How many refreshes sent a token that had already been swapped (the backend would sign out everywhere). */
   reused = 0
   /** The next booking is refused with PROFILE_INCOMPLETE (the saved profile in the app was out of date). */
@@ -300,6 +312,32 @@ export class MockApi {
       }
     }
 
+    // ---------- changing the phone number (AuthService.sendPhoneChangeCode, changePhone) ----------
+    if (p === '/auth/me/phone/send-code') {
+      const phone = normalize(body.newPhone)
+      if (!phone) return fail(400, 'INVALID_PHONE', 'Enter a 10-digit Indian mobile number')
+      if (phone === this.user.phone) return fail(400, 'SAME_PHONE', 'This is already your number.')
+      if (this.takenPhones.has(phone)) return fail(409, 'PHONE_IN_USE', 'This phone number already has its own account')
+      this.phoneChangeCodes.set(phone, { email: this.user.emailVerified })
+      return ok(202)
+    }
+    if (p === '/auth/me/phone') {
+      const phone = normalize(body.newPhone)
+      if (!phone) return fail(400, 'INVALID_PHONE', 'Enter a 10-digit Indian mobile number')
+      if (this.user.emailVerified && !body.emailCode) return fail(400, 'EMAIL_CODE_REQUIRED', 'Enter the code we emailed you too.')
+      const sent = this.phoneChangeCodes.get(phone)
+      if (!sent) return fail(400, 'CODE_EXPIRED', 'This code has expired. Ask for a new one.')
+      if (body.phoneCode !== '123456' || (this.user.emailVerified && body.emailCode !== '654321')) {
+        return fail(400, 'WRONG_CODE', 'That code is not right. 4 tries left.')
+      }
+      this.phoneChangeCodes.delete(phone)
+      if (this.takenPhones.has(phone)) return fail(409, 'PHONE_IN_USE', 'This phone number already has its own account')
+      // Every earlier token ends; this device gets a new pair
+      for (const t of this.refreshTokens.keys()) this.refreshTokens.set(t, 'rotated')
+      this.accessValid.clear()
+      this.user = { ...this.user, phone }
+      return ok(200, this.tokens())
+    }
     if (p === '/auth/me' && method === 'GET') return ok(200, this.user)
     if (p === '/auth/me' && method === 'PATCH') {
       this.user = { ...this.user, name: body.name }
