@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { ApiError } from '../api/errors'
-import { addressProblems, addressSearchOff, canSearchAddress, fillEmpty, insideIndia, metresBetween, precisionHint, resetAddressSearch, round6, searchFailure, zoomFor } from './addressPin'
+import { waitEndsText, addressProblems, addressSearchOff, canSearchAddress, fillEmpty, insideIndia, metresBetween, precisionHint, resetAddressSearch, round6, searchFailure, zoomFor } from './addressPin'
 
 const address = { addressLine: 'Shop 12, Ithum Tower', area: 'Sector 62', city: 'Noida', pincode: '201309' }
 
@@ -43,10 +43,10 @@ describe('Find on map (a saved place)', () => {
       hide: false,
       text: 'Many address searches in a short time. Try again in 1 minute, or use your current location.',
     })
-    expect(searchFailure(new ApiError(429, { code: 'TRY_LATER', message: 'x' }, 80_000))).toEqual({
-      hide: false,
-      text: "You've used today's address searches. Try again tomorrow, or use your current location.",
-    })
+    expect(searchFailure(new ApiError(429, { code: 'TRY_LATER', message: 'x' }, 80_000)).hide).toBe(false)
+    expect((searchFailure(new ApiError(429, { code: 'TRY_LATER', message: 'x' }, 80_000)) as { text: string }).text).toMatch(
+      /^You've used your searches for new addresses for now\. Try again after (tomorrow, )?\d{1,2}:\d{2} [AP]M, or use your current location\.$/,
+    )
     const down = "Address search isn't working right now. Use your current location, or try again later."
     expect(searchFailure(new ApiError(503, { code: 'GEOCODING_UNAVAILABLE', message: 'x' }))).toEqual({ hide: false, text: down })
     expect(searchFailure(ApiError.network())).toEqual({ hide: false, text: down })
@@ -108,5 +108,16 @@ describe('the address and the pin, as the backend checks them', () => {
     expect(round6(17.4651234)).toBe(17.465123)
     expect(metresBetween({ lat: 17.4651, lng: 78.3644 }, { lat: 17.4651, lng: 78.3644 })).toBe(0)
     expect(metresBetween({ lat: 17.4651, lng: 78.3644 }, { lat: 17.4660, lng: 78.3644 })).toBe(100)
+  })
+})
+
+describe('when the day\'s address searches come back', () => {
+  // 22:30 India time on 11 Nov (17:00 UTC)
+  const now = new Date('2026-11-11T17:00:00Z')
+
+  it('is a time today, or tomorrow with its time (a 24-hour window from the first search, not midnight)', () => {
+    expect(waitEndsText(2 * 3600, now)).toBe('tomorrow, 12:30 AM')
+    expect(waitEndsText(45 * 60, now)).toBe('11:15 PM')
+    expect(waitEndsText(11 * 3600, now)).toBe('tomorrow, 9:30 AM')
   })
 })
