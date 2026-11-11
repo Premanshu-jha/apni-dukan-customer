@@ -131,6 +131,15 @@ export class MockApi {
   /** The salon's booking window (its owner's setting, 1–30; GET /salons/{id} `maxDaysAhead`); undefined: not sent. */
   maxDaysAhead: number | undefined = 7
   calls: Call[] = []
+  /** Saved places (PlacesController), as the backend keeps them: Home, Work, then others as saved. */
+  places: Array<Record<string, any>> = []
+  /** "Find on map": the answer for any address, or an error code to answer with. */
+  geocodeAnswer: { latitude: number; longitude: number; precision: 'EXACT' | 'STREET' | 'AREA'; formattedAddress: string } = {
+    latitude: 17.4651, longitude: 78.3644, precision: 'STREET', formattedAddress: 'Lake View Apartments, Kondapur, Hyderabad 500084',
+  }
+  geocodeError: { status: number; code: string } | null = null
+  /** "Use current location": the address at any GPS point. */
+  reverseAnswer = { addressLine: 'Lake View Apartments', area: 'Kondapur', city: 'Hyderabad', pincode: '500084', formattedAddress: 'Lake View Apartments, Kondapur, Hyderabad 500084' }
   bookings: Record<string, unknown>[] = []
   inbox: { id: string; type: string; title: string; body: string; url: string | null; sentAt: string; read: boolean }[] = []
   /** Start times (ISO) that answer 409 SLOT_TAKEN once. */
@@ -497,6 +506,54 @@ export class MockApi {
       return ok(200, { items: this.inbox.slice(from, from + INBOX_PAGE), unread: Math.min(100, this.inbox.filter((i) => !i.read).length), next }, {}, cursor === null ? this.inboxTag('list') : undefined)
     }
     if (p === '/me/notifications/unread-count') return ok(200, { unread: Math.min(100, this.inbox.filter((i) => !i.read).length) }, {}, this.inboxTag('count'))
+    // ---------- saved places (PlacesController, PlaceService) ----------
+    if (p === '/me/places/geocode' || p === '/me/places/reverse-geocode') {
+      if (this.geocodeError) return fail(this.geocodeError.status, this.geocodeError.code, 'Address search failed')
+      if (p === '/me/places/reverse-geocode') {
+        if (body.latitude < 6 || body.latitude > 37.6 || body.longitude < 68 || body.longitude > 97.5) {
+          return fail(400, 'VALIDATION_FAILED', 'Some fields are not valid', { latitude: 'must be in India' })
+        }
+        return ok(200, this.reverseAnswer)
+      }
+      return ok(200, this.geocodeAnswer)
+    }
+    if (p === '/me/places' && method === 'GET') {
+      const order = { HOME: 0, WORK: 1, OTHER: 2 } as Record<string, number>
+      return ok(200, [...this.places].sort((a, b) => order[a.kind] - order[b.kind] || a.createdAt.localeCompare(b.createdAt)))
+    }
+    if (p === '/me/places' || /^\/me\/places\/[^/]+$/.test(p)) {
+      const id = p === '/me/places' ? null : decodeURIComponent(p.slice('/me/places/'.length))
+      if (method === 'DELETE') {
+        this.places = this.places.filter((x) => x.id !== id)
+        return ok(204)
+      }
+      const old = id ? this.places.find((x) => x.id === id) : undefined
+      if (id && !old) return fail(404, 'PLACE_NOT_FOUND', "That place isn't saved any more.")
+      const fields: Record<string, string> = {}
+      if (body.kind === 'OTHER' && !(body.name ?? '').trim()) fields.name = 'give this place a name'
+      if (!/^[1-9][0-9]{5}$/.test(body.pincode ?? '')) fields.pincode = 'must be a 6-digit pincode'
+      if (!(body.latitude >= 6 && body.latitude <= 37.6 && body.longitude >= 68 && body.longitude <= 97.5)) fields.latitude = 'must be in India'
+      if (Object.keys(fields).length) return fail(400, 'VALIDATION_FAILED', 'Some fields are not valid', fields)
+      if (!id && this.places.length >= 10) return fail(409, 'TOO_MANY_PLACES', "You can save up to 10 places. Delete one you don't use, then add this one.", { max: 10 })
+      const holder = body.kind !== 'OTHER' && this.places.find((x) => x.kind === body.kind && x.id !== id)
+      if (holder) {
+        const what = body.kind === 'HOME' ? 'Home' : 'Work'
+        return fail(409, 'PLACE_KIND_TAKEN', `You already have a ${what} address. Change that one, or save this as another place.`, { placeId: holder.id })
+      }
+      const now = new Date().toISOString()
+      const saved = {
+        id: id ?? `pl${this.places.length + 1}-${Math.random().toString(36).slice(2, 6)}`,
+        kind: body.kind,
+        name: body.kind === 'OTHER' ? body.name.trim() : null,
+        addressLine: body.addressLine, area: body.area, city: body.city, pincode: body.pincode,
+        latitude: Math.round(body.latitude * 1e6) / 1e6, longitude: Math.round(body.longitude * 1e6) / 1e6,
+        updatedAt: now, createdAt: old?.createdAt ?? now,
+      }
+      if (old) Object.assign(old, saved)
+      else this.places.push(saved)
+      return ok(id ? 200 : 201, saved)
+    }
+    if (p.startsWith('/tiles/')) return route.fulfill({ status: 404, body: '' })
     if (p === '/me/notifications/read') {
       const ids: string[] = body?.ids ?? []
       this.inbox.forEach((i) => {
