@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 import { Navigate, useNavigate, useParams } from 'react-router'
 import { useBook } from '../../api/bookings'
 import { isApiError, messageOf, salonReadMessage } from '../../api/errors'
-import { useSalon, useSalonServices } from '../../api/salons'
+import { useSalon, useSalonServices, useSlots } from '../../api/salons'
 import { Banner, Button, Card, ErrorState, Loading, Page, Switch } from '../../components/ui'
 import { dateTimeIst, isAtLeastMinutesAway, timeIst } from '../../lib/ist'
 import { duration, rupees } from '../../lib/money'
@@ -47,6 +47,16 @@ export function ConfirmBooking() {
     const t = setInterval(() => setNow(Date.now()), 15_000)
     return () => clearInterval(t)
   }, [])
+  // The free times of the services actually sent, read again here (from the cache when fresh): the price at the
+  // picked time as it is now, so an offer ended or published meanwhile, or a service gone, shows its real price
+  const liveIds = (services.data ?? []).filter((s) => draft?.serviceIds.includes(s.id)).map((s) => s.id)
+  const slots = useSlots(id, draft?.date && draft.startAt ? liveIds : [], draft?.date ?? '')
+  // Once on opening, even if the times were read a moment ago: the price shown is the one asked for now
+  const refetchSlots = slots.refetch
+  const slotsOn = liveIds.length > 0 && Boolean(draft?.date)
+  useEffect(() => {
+    if (slotsOn) void refetchSlots()
+  }, [slotsOn, refetchSlots])
 
   if (leaving) return null
 
@@ -79,7 +89,20 @@ export function ConfirmBooking() {
   // A service the salon removed since it was picked: what is sent must be exactly what is shown
   const sendIds = chosen.map((s) => s.id)
   const minutes = chosen.reduce((t, s) => t + s.durationMinutes, 0)
-  const paise = chosen.reduce((t, s) => t + s.pricePaise, 0)
+  const listPaise = chosen.reduce((t, s) => t + s.pricePaise, 0)
+  // The time's price from the free times as read now (or, until they are, as picked, if for the same services): with
+  // the salon's offer there, less than the services' own prices. The backend prices the booking again when it is
+  // made; an offer ended in the last seconds shows on the booking's page
+  const fresh = slots.data?.starts.find((s) => s.startAt === draft.startAt)
+  const freshPrice = fresh && typeof fresh.pricePaise === 'number'
+    ? { startAt: fresh.startAt, pricePaise: fresh.pricePaise, listPricePaise: fresh.listPricePaise ?? null }
+    : null
+  const picked = draft.price && draft.price.startAt === draft.startAt && liveIds.length === draft.serviceIds.length ? draft.price : null
+  // Read again and the time isn't there any more (taken, or now too soon): no price is claimed for it
+  const timeGone = Boolean(slots.data) && !slots.isError && !fresh
+  const slotPrice = slots.data ? freshPrice : picked
+  const offer = slotPrice !== null && slotPrice.listPricePaise !== null
+  const paise = offer ? slotPrice.pricePaise : listPaise
   const isFrom = chosen.some((s) => s.priceIsFrom)
   const terms = termsFor(draft.startAt, draft.terms)
   const soon = lateCancelSoon(terms.lateCancelFrom, terms.freeCancelMinutes, now)
@@ -146,6 +169,14 @@ export function ConfirmBooking() {
         </Button>
       }
     >
+      {timeGone && (
+        <Banner tone="warn">
+          That time isn't free any more.{' '}
+          <button type="button" className="underline" onClick={() => navigate(`/salons/${id}/book`)}>
+            Pick another time
+          </button>
+        </Banner>
+      )}
       <Card className="flex flex-col gap-3">
         <div>
           <p className="text-lg font-semibold">{salon.data?.name}</p>
@@ -166,8 +197,16 @@ export function ConfirmBooking() {
         </ul>
         <div className="flex justify-between border-t border-line pt-3 font-semibold">
           <span>Total · about {duration(minutes)}</span>
-          <span>{rupees(paise, isFrom)}</span>
+          <span>
+            {offer && (
+              <>
+                <s className="font-normal text-muted">{rupees(slotPrice.listPricePaise!, isFrom)}</s>{' '}
+              </>
+            )}
+            {rupees(paise, isFrom)}
+          </span>
         </div>
+        {offer && <p className="text-sm text-link">The salon's offer price at this time.</p>}
       </Card>
       {soon &&
         (Date.parse(terms.lateCancelFrom) <= now ? (

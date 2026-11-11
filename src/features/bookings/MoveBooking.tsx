@@ -5,6 +5,8 @@ import { useSalon } from '../../api/salons'
 import { isApiError, messageOf } from '../../api/errors'
 import { Banner, Button, ErrorState, Loading, Page } from '../../components/ui'
 import { dateOfIst, dateTimeIst, timeIst } from '../../lib/ist'
+import { rupees } from '../../lib/money'
+import type { SlotPrice } from '../../store/bookingDraft'
 import { DateChips, SlotGrid } from '../salon/SlotGrid'
 
 export function MoveBooking() {
@@ -16,6 +18,8 @@ export function MoveBooking() {
   const move = useMoveBooking()
   const [date, setDate] = useState<string | null>(null)
   const [startAt, setStartAt] = useState<string | null>(null)
+  // The picked time's price (a move is priced again for its new time: the salon's offer there, or none)
+  const [price, setPrice] = useState<SlotPrice | null>(null)
   const [taken, setTaken] = useState(false)
   const selectedGone = useCallback(() => {
     setStartAt(null)
@@ -69,6 +73,13 @@ export function MoveBooking() {
       <p className="text-muted">
         Now: <span className="text-ink">{dateTimeIst(b.startsAt)}</span> at {b.salonName}
       </p>
+      {startAt && price && price.startAt === startAt && price.pricePaise !== b.totalPricePaise && (
+        <p role="status">
+          At {timeIst(startAt)}: <strong>{rupees(price.pricePaise, b.priceIsFrom)}</strong>{' '}
+          <span className="text-muted">(now {rupees(b.totalPricePaise, b.priceIsFrom)}).</span>{' '}
+          {price.listPricePaise !== null ? "That time has the salon's offer price." : "The salon's offer doesn't cover that time."}
+        </p>
+      )}
       {taken && !startAt && !move.isError && <Banner tone="warn">That time isn't free any more. Pick another one.</Banner>}
       {move.isError && (
         <Banner tone="bad">
@@ -89,9 +100,10 @@ export function MoveBooking() {
         serviceIds={b.services.map((s) => s.serviceId)}
         date={day}
         selected={startAt}
-        onPick={(at) => {
+        onPick={(at, _terms, p) => {
           setTaken(false)
           setStartAt(at)
+          setPrice(p)
         }}
         exclude={b.startsAt}
         moving={b.id}
