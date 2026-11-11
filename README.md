@@ -341,6 +341,14 @@ switches over. Change `OFFLINE_CACHE` in `sw.js` when the offline page changes.
 
 ## Changelog
 
+### 0.12.1 — 2026-11-11
+
+- Moving a saved place's pin with the arrow keys: the map follows when the pin nears its edge, so it stays in sight.
+- Screen readers hear each keyboard move of the pin ("Pin moved east.").
+- The day's address searches used up now says when they come back, in India time ("Try again after 11:15 PM", or
+  "tomorrow, 9:30 AM": the window is 24 hours from the first search), not "Try again tomorrow".
+- Scenarios 240 and 243 in `docs/scenarios.md`.
+
 ### 0.12.0 — 2026-11-11
 
 Needs the backend with `POST /auth/me/phone/send-code` and `POST /auth/me/phone`.
