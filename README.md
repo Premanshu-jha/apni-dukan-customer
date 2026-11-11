@@ -341,6 +341,10 @@ switches over. Change `OFFLINE_CACHE` in `sw.js` when the offline page changes.
 
 ## Changelog
 
+### 0.12.1 — 2026-11-11
+
+- Moving a saved place's pin with the arrow keys: the map follows when the pin nears its edge, so it stays in sight.
+
 ### 0.12.0 — 2026-11-11
 
 Needs the backend with `POST /auth/me/phone/send-code` and `POST /auth/me/phone`.
