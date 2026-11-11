@@ -13,6 +13,8 @@ import { forgetReturn } from './features/auth/flow'
 import { useDraft } from './store/bookingDraft'
 import { followOtherTabs, useSession } from './store/session'
 import { useLocation } from './store/location'
+import '@fontsource/poppins/600.css'
+import '@fontsource/poppins/700.css'
 import './index.css'
 
 const queryClient = new QueryClient({
