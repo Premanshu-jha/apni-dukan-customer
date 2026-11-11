@@ -116,6 +116,18 @@ export const TIMES = ['10:00', '11:30', '13:00', '15:45', '17:15', '18:30']
 const LATE_CANCEL_MS = 3600_000
 const FREE_CANCEL_MINUTES = 10
 
+/** @Size and @NotBlank of a place's address fields (PlaceRequests): each field's own key, as bean validation gives. */
+function sizeErrors(b: Record<string, any>): Record<string, string> {
+  const out: Record<string, string> = {}
+  for (const [field, min, max] of [['addressLine', 2, 200], ['area', 2, 100], ['city', 2, 60]] as const) {
+    const v = b?.[field]
+    if (typeof v !== 'string' || !v.trim()) out[field] = 'must not be blank'
+    else if (v.length < min || v.length > max) out[field] = `size must be between ${min} and ${max}`
+  }
+  if (!/^[1-9][0-9]{5}$/.test(b?.pincode ?? '')) out.pincode = 'must be a 6-digit pincode'
+  return out
+}
+
 export class MockApi {
   user: MockUser = { id: 'u1', phone: '9848012345', name: null, email: null, emailVerified: false, admin: false }
   /** Paths (with the query) answered 304 Not Modified, in order. */
@@ -137,7 +149,9 @@ export class MockApi {
   geocodeAnswer: { latitude: number; longitude: number; precision: 'EXACT' | 'STREET' | 'AREA'; formattedAddress: string } = {
     latitude: 17.4651, longitude: 78.3644, precision: 'STREET', formattedAddress: 'Lake View Apartments, Kondapur, Hyderabad 500084',
   }
-  geocodeError: { status: number; code: string } | null = null
+  geocodeError: { status: number; code: string; retryAfter?: number } | null = null
+  /** The next new place is saved but its answer is lost on the way back. */
+  loseNextAdd = false
   /** "Use current location": the address at any GPS point. */
   reverseAnswer = { addressLine: 'Lake View Apartments', area: 'Kondapur', city: 'Hyderabad', pincode: '500084', formattedAddress: 'Lake View Apartments, Kondapur, Hyderabad 500084' }
   bookings: Record<string, unknown>[] = []
@@ -506,34 +520,57 @@ export class MockApi {
       return ok(200, { items: this.inbox.slice(from, from + INBOX_PAGE), unread: Math.min(100, this.inbox.filter((i) => !i.read).length), next }, {}, cursor === null ? this.inboxTag('list') : undefined)
     }
     if (p === '/me/notifications/unread-count') return ok(200, { unread: Math.min(100, this.inbox.filter((i) => !i.read).length) }, {}, this.inboxTag('count'))
-    // ---------- saved places (PlacesController, PlaceService) ----------
+    // ---------- saved places (PlacesController, PlaceService), in the backend's order of checks ----------
     if (p === '/me/places/geocode' || p === '/me/places/reverse-geocode') {
-      if (this.geocodeError) return fail(this.geocodeError.status, this.geocodeError.code, 'Address search failed')
+      // @Valid first, then the search (GEOCODING_OFF and the limits)
       if (p === '/me/places/reverse-geocode') {
-        if (body.latitude < 6 || body.latitude > 37.6 || body.longitude < 68 || body.longitude > 97.5) {
-          return fail(400, 'VALIDATION_FAILED', 'Some fields are not valid', { latitude: 'must be in India' })
-        }
-        return ok(200, this.reverseAnswer)
+        if (!(body.latitude >= 6 && body.latitude <= 37.6)) return fail(400, 'VALIDATION_FAILED', 'Some fields are not valid', { latitude: 'must be less than or equal to 37.6' })
+        if (!(body.longitude >= 68 && body.longitude <= 97.5)) return fail(400, 'VALIDATION_FAILED', 'Some fields are not valid', { longitude: 'must be less than or equal to 97.5' })
+      } else {
+        const bad = sizeErrors(body)
+        if (Object.keys(bad).length) return fail(400, 'VALIDATION_FAILED', 'Some fields are not valid', bad)
       }
-      return ok(200, this.geocodeAnswer)
+      if (this.geocodeError) {
+        const { status, code, retryAfter } = this.geocodeError
+        return ok(status, { code, message: 'Address search failed', details: {} }, retryAfter ? { 'Retry-After': String(retryAfter) } : {})
+      }
+      return ok(200, p === '/me/places/geocode' ? this.geocodeAnswer : this.reverseAnswer)
+    }
+    const view = (x: Record<string, any>) => {
+      const { createdAt: _created, ...rest } = x
+      void _created
+      return rest
     }
     if (p === '/me/places' && method === 'GET') {
       const order = { HOME: 0, WORK: 1, OTHER: 2 } as Record<string, number>
-      return ok(200, [...this.places].sort((a, b) => order[a.kind] - order[b.kind] || a.createdAt.localeCompare(b.createdAt)))
+      return ok(200, [...this.places].sort((a, b) => order[a.kind] - order[b.kind] || a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id)).map(view))
     }
-    if (p === '/me/places' || /^\/me\/places\/[^/]+$/.test(p)) {
+    if ((p === '/me/places' && method === 'POST') || (/^\/me\/places\/[^/]+$/.test(p) && (method === 'PUT' || method === 'DELETE'))) {
       const id = p === '/me/places' ? null : decodeURIComponent(p.slice('/me/places/'.length))
+      // A path id that isn't a UUID: the type-mismatch handler
+      if (id !== null && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) return fail(400, 'BAD_REQUEST', 'The request is not valid')
       if (method === 'DELETE') {
         this.places = this.places.filter((x) => x.id !== id)
         return ok(204)
       }
+      // 1. @Valid (each field's own key); 2. an Other's name; 3. TextCleaner; then 404, the limit, Home/Work
+      const bad = sizeErrors(body)
+      if (!['HOME', 'WORK', 'OTHER'].includes(body.kind)) bad.kind = 'must not be null'
+      if (!/^[1-9][0-9]{5}$/.test(body.pincode ?? '')) bad.pincode = 'must be a 6-digit pincode'
+      if (!(body.latitude >= 6 && body.latitude <= 37.6)) bad.latitude = 'must be less than or equal to 37.6'
+      if (!(body.longitude >= 68 && body.longitude <= 97.5)) bad.longitude = 'must be less than or equal to 97.5'
+      if (Object.keys(bad).length) return fail(400, 'VALIDATION_FAILED', 'Some fields are not valid', bad)
+      if (body.kind === 'OTHER' && !(body.name ?? '').trim()) return fail(400, 'VALIDATION_FAILED', 'Some fields are not valid', { name: 'give this place a name' })
+      const cleaned: Record<string, string> = {}
+      for (const [field, min, max] of [['name', 2, 30], ['addressLine', 2, 200], ['area', 2, 100], ['city', 2, 60]] as const) {
+        if (field === 'name' && body.kind !== 'OTHER') continue
+        const v = String(body[field]).normalize('NFKC').replace(/\s+/g, ' ').trim()
+        if ((v.match(/[\p{L}\p{N}]/gu) ?? []).length < 2) return fail(400, 'VALIDATION_FAILED', 'Some fields are not valid', { [field]: 'must have at least 2 letters or digits' })
+        if (v.length < min || v.length > max) return fail(400, 'VALIDATION_FAILED', 'Some fields are not valid', { [field]: `must be ${min} to ${max} characters` })
+        cleaned[field] = v
+      }
       const old = id ? this.places.find((x) => x.id === id) : undefined
       if (id && !old) return fail(404, 'PLACE_NOT_FOUND', "That place isn't saved any more.")
-      const fields: Record<string, string> = {}
-      if (body.kind === 'OTHER' && !(body.name ?? '').trim()) fields.name = 'give this place a name'
-      if (!/^[1-9][0-9]{5}$/.test(body.pincode ?? '')) fields.pincode = 'must be a 6-digit pincode'
-      if (!(body.latitude >= 6 && body.latitude <= 37.6 && body.longitude >= 68 && body.longitude <= 97.5)) fields.latitude = 'must be in India'
-      if (Object.keys(fields).length) return fail(400, 'VALIDATION_FAILED', 'Some fields are not valid', fields)
       if (!id && this.places.length >= 10) return fail(409, 'TOO_MANY_PLACES', "You can save up to 10 places. Delete one you don't use, then add this one.", { max: 10 })
       const holder = body.kind !== 'OTHER' && this.places.find((x) => x.kind === body.kind && x.id !== id)
       if (holder) {
@@ -542,16 +579,21 @@ export class MockApi {
       }
       const now = new Date().toISOString()
       const saved = {
-        id: id ?? `pl${this.places.length + 1}-${Math.random().toString(36).slice(2, 6)}`,
+        id: id ?? crypto.randomUUID(),
         kind: body.kind,
-        name: body.kind === 'OTHER' ? body.name.trim() : null,
-        addressLine: body.addressLine, area: body.area, city: body.city, pincode: body.pincode,
+        name: body.kind === 'OTHER' ? cleaned.name : null,
+        addressLine: cleaned.addressLine, area: cleaned.area, city: cleaned.city, pincode: body.pincode,
         latitude: Math.round(body.latitude * 1e6) / 1e6, longitude: Math.round(body.longitude * 1e6) / 1e6,
         updatedAt: now, createdAt: old?.createdAt ?? now,
       }
       if (old) Object.assign(old, saved)
       else this.places.push(saved)
-      return ok(id ? 200 : 201, saved)
+      // Saved, but the answer never reaches the phone
+      if (!id && this.loseNextAdd) {
+        this.loseNextAdd = false
+        return route.abort('connectionreset')
+      }
+      return ok(id ? 200 : 201, view(saved))
     }
     if (p.startsWith('/tiles/')) return route.fulfill({ status: 404, body: '' })
     if (p === '/me/notifications/read') {

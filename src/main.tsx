@@ -12,6 +12,7 @@ import { UpdatePrompt } from './components/UpdatePrompt'
 import { forgetReturn } from './features/auth/flow'
 import { useDraft } from './store/bookingDraft'
 import { followOtherTabs, useSession } from './store/session'
+import { useLocation } from './store/location'
 import './index.css'
 
 const queryClient = new QueryClient({
@@ -32,6 +33,8 @@ whenSessionEnds(() => {
   void closeShownNotifications()
   forgetReturn()
   useDraft.getState().clear()
+  // A shared phone: the next person mustn't see this one's saved address or last GPS point
+  useLocation.getState().clear()
   queryClient.clear()
 })
 

@@ -348,7 +348,7 @@ Needs the backend with V40 (saved places).
   list (current location and every saved place), where each can be changed or deleted and new ones added.
 - Location blocked or not allowed: "Or enter an address" instead of a dead end.
 - The security headers allow the map tiles (`VITE_MAP_TILES`, default OpenStreetMap's).
-- Scenarios 237–256 in `docs/scenarios.md`; end-to-end journeys in `e2e/places.spec.ts`.
+- Scenarios 237–265 in `docs/scenarios.md`; end-to-end journeys in `e2e/places.spec.ts`.
 
 ### 0.9.0 — 2026-11-10
 

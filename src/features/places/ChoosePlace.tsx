@@ -2,6 +2,7 @@ import { Link, useNavigate } from 'react-router'
 import { chosenOf, MAX_PLACES, placeLabel, placeShort, usePlaces, type SavedPlace } from '../../api/places'
 import { messageOf } from '../../api/errors'
 import { Card, EmptyState, ErrorState, Loading, Page } from '../../components/ui'
+import { goBack, screensBehind } from '../../lib/nav'
 import { useLocation } from '../../store/location'
 
 const ICON: Record<SavedPlace['kind'], string> = { HOME: '⌂', WORK: '▣', OTHER: '◉' }
@@ -18,12 +19,12 @@ export function ChoosePlace() {
   const choose = useLocation((s) => s.choose)
   const pick = (p: SavedPlace | null) => {
     choose(p ? chosenOf(p) : null)
-    navigate('/', { replace: true })
+    goBack(navigate, '/')
   }
   const list = places.data ?? []
   const full = list.length >= MAX_PLACES
   return (
-    <Page back="/" title="Find salons near">
+    <Page back={screensBehind() > 0 ? true : '/'} title="Find salons near">
       <ul className="flex flex-col gap-2" aria-label="Places">
         <li>
           <button
@@ -75,7 +76,7 @@ export function ChoosePlace() {
           {full ? (
             <p className="text-sm text-muted">You've saved {MAX_PLACES} places, the most there can be. Change or delete one to add another.</p>
           ) : (
-            <Link to="/places/new" className="inline-flex min-h-12 items-center justify-center rounded-xl bg-brand px-5 font-semibold text-brand-ink">
+            <Link to="/places/new" state={{ from: 'places' }} className="inline-flex min-h-12 items-center justify-center rounded-xl bg-brand px-5 font-semibold text-brand-ink">
               Add an address
             </Link>
           )}

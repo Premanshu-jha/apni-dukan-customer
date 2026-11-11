@@ -1,9 +1,10 @@
-import { lazy, Suspense, useEffect, useRef, useState } from 'react'
-import { useNavigate, useParams } from 'react-router'
+import { Component, lazy, Suspense, useEffect, useRef, useState, type ReactNode } from 'react'
+import { useLocation as useRouterLocation, useNavigate, useParams } from 'react-router'
 import { useQueryClient } from '@tanstack/react-query'
 import { fieldError, isApiError, messageOf } from '../../api/errors'
 import {
   chosenOf,
+  MAX_PLACES,
   placeKeys,
   placeLabel,
   placesApi,
@@ -34,7 +35,8 @@ import {
   type Fix,
   type LocateError,
 } from '../../lib/addressPin'
-import { permissionState, useLocation } from '../../store/location'
+import { goBack, screensBehind } from '../../lib/nav'
+import { forgetPlaceDraft, PLACE_DRAFT_KEY, permissionState, useLocation } from '../../store/location'
 import { LocationGuide } from '../location/LocationGate'
 
 const PinMap = lazy(() => import('../../components/PinMap').then((m) => ({ default: m.PinMap })))
@@ -67,19 +69,33 @@ const KINDS: { kind: PlaceKind; label: string }[] = [
 export function EditPlace() {
   const { id } = useParams()
   const places = usePlaces()
-  if (places.isPending) return <Page back="/places" title={id ? 'Change place' : 'Add an address'}><Loading /></Page>
+  // The place as it was when the form opened: deleted on another phone meanwhile, the form stays (Save then offers
+  // to save it as a new place) instead of vanishing with what was typed
+  const [opened, setOpened] = useState<SavedPlace | undefined>(undefined)
+  const found = id ? places.data?.find((p) => p.id === id) : undefined
+  if (found && opened?.id !== found.id) setOpened(found)
+  const back = screensBehind() > 0 ? true : '/places'
+  const title = id ? 'Change place' : 'Add an address'
+  if (places.isPending) return <Page back={back} title={title}><Loading /></Page>
   if (places.isError && !places.data) {
     return (
-      <Page back="/places" title={id ? 'Change place' : 'Add an address'}>
+      <Page back={back} title={title}>
         <ErrorState message={messageOf(places.error)} onRetry={() => places.refetch()} />
       </Page>
     )
   }
-  const existing = id ? places.data.find((p) => p.id === id) : undefined
+  const existing = found ?? (opened?.id === id ? opened : undefined)
   if (id && !existing) {
     return (
-      <Page back="/places" title="Change place">
+      <Page back={back} title="Change place">
         <EmptyState title="That place isn't saved any more" body="It may have been deleted on another phone." />
+      </Page>
+    )
+  }
+  if (!id && places.data.length >= MAX_PLACES) {
+    return (
+      <Page back={back} title={title}>
+        <EmptyState title={`You've saved ${MAX_PLACES} places`} body="That's the most there can be. Change or delete one to add another." />
       </Page>
     )
   }
@@ -87,7 +103,57 @@ export function EditPlace() {
   return <PlaceForm key={id ?? 'new'} existing={existing ?? null} all={places.data} />
 }
 
+/** The map couldn't be loaded (offline, or a new version of the app meanwhile): the form stays usable. */
+class MapBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
+  state = { failed: false }
+
+  static getDerivedStateFromError() {
+    return { failed: true }
+  }
+
+  render() {
+    return this.state.failed ? (
+      <Banner tone="warn">
+        The map couldn't load. Your pin is kept and can be saved; to move it on the map, check your connection and open
+        this page again.
+      </Banner>
+    ) : (
+      this.props.children
+    )
+  }
+}
+
+/** A new place's form as typed, kept in this tab (a reload doesn't lose it); forgotten on save and on sign-out. */
+interface Draft {
+  form: Form
+  pin: Pin | null
+}
+
+function readDraft(): Draft | null {
+  try {
+    const raw = window.sessionStorage.getItem(PLACE_DRAFT_KEY)
+    return raw ? (JSON.parse(raw) as Draft) : null
+  } catch {
+    return null
+  }
+}
+
 /** A new place's kind: Home if there's none yet, then Work, then Other. */
+/** The place in the list is the one being saved (its first answer was lost). */
+function sameAs(p: SavedPlace, b: PlaceIn): boolean {
+  const tidy = (v: string | null | undefined) => (v ?? '').replace(/\s+/g, ' ').trim()
+  return (
+    p.kind === b.kind &&
+    tidy(p.name) === tidy(b.name) &&
+    tidy(p.addressLine) === tidy(b.addressLine) &&
+    tidy(p.area) === tidy(b.area) &&
+    tidy(p.city) === tidy(b.city) &&
+    p.pincode === b.pincode &&
+    Math.abs(p.latitude - b.latitude) < 1e-6 &&
+    Math.abs(p.longitude - b.longitude) < 1e-6
+  )
+}
+
 function firstFreeKind(all: SavedPlace[]): PlaceKind {
   if (!all.some((p) => p.kind === 'HOME')) return 'HOME'
   if (!all.some((p) => p.kind === 'WORK')) return 'WORK'
@@ -103,16 +169,20 @@ function firstFreeKind(all: SavedPlace[]): PlaceKind {
 function PlaceForm({ existing, all }: { existing: SavedPlace | null; all: SavedPlace[] }) {
   const qc = useQueryClient()
   const navigate = useNavigate()
+  const from = (useRouterLocation().state as { from?: string } | null)?.from
   const chosen = useLocation((s) => s.chosen)
   const choose = useLocation((s) => s.choose)
+  const [draft] = useState(() => (existing ? null : readDraft()))
   const [form, setForm] = useState<Form>(() =>
     existing
       ? { kind: existing.kind, name: existing.name ?? '', addressLine: existing.addressLine, area: existing.area, city: existing.city, pincode: existing.pincode }
-      : { kind: firstFreeKind(all), name: '', addressLine: '', area: '', city: '', pincode: '' },
+      : (draft?.form ?? { kind: firstFreeKind(all), name: '', addressLine: '', area: '', city: '', pincode: '' }),
   )
   const [pin, setPin] = useState<Pin | null>(() =>
-    existing ? { lat: existing.latitude, lng: existing.longitude, gps: null, zoom: 18, placement: 0 } : null,
+    existing ? { lat: existing.latitude, lng: existing.longitude, gps: null, zoom: 18, placement: 0 } : (draft?.pin ?? null),
   )
+  /** Saving a change found the place deleted on another phone: offer to save it as a new one. */
+  const [gone, setGone] = useState(false)
   const [locating, setLocating] = useState(false)
   const [locError, setLocError] = useState<LocateError | null>(null)
   const [blocked, setBlocked] = useState(false)
@@ -137,6 +207,16 @@ function PlaceForm({ existing, all }: { existing: SavedPlace | null; all: SavedP
   useEffect(() => {
     void permissionState().then((s) => setBlocked(s === 'denied'))
   }, [locError])
+
+  // A new place: what is typed survives a reload of this tab
+  useEffect(() => {
+    if (existing) return
+    try {
+      window.sessionStorage.setItem(PLACE_DRAFT_KEY, JSON.stringify({ form, pin } satisfies Draft))
+    } catch {
+      /* storage blocked: the form lives only on screen */
+    }
+  }, [existing, form, pin])
 
   // Home and Work are one each: taken by another of this person's places
   const takenBy = (k: PlaceKind) => (k === 'OTHER' ? undefined : all.find((p) => p.kind === k && p.id !== existing?.id))
@@ -233,18 +313,45 @@ function PlaceForm({ existing, all }: { existing: SavedPlace | null; all: SavedP
       setAddressChanged(false)
       if (failure.hide) {
         setSearchHidden(true)
-        // The button that was tapped is gone: on to the way that is left
-        requestAnimationFrame(() => document.getElementById('use-current-location')?.focus())
+        // The button that was tapped is gone: on to the way that is left (or the card's heading when the steps to turn
+        // location on show instead)
+        requestAnimationFrame(() => (document.getElementById('use-current-location') ?? document.getElementById('place-map'))?.focus())
       } else setSearchError(failure.text)
     } finally {
       setSearching(false)
     }
   }
 
-  async function save() {
+  /** Save tapped with something to put right: focus goes to the first thing, so it is seen (and heard). */
+  function focusFirstProblem() {
+    const order: [boolean, string][] = [
+      [takenBy(form.kind) !== undefined, 'kind-label'],
+      [!!problems.name, 'place-name'],
+      [!!problems.addressLine, 'address'],
+      [!!problems.area, 'area'],
+      [!!problems.city, 'city'],
+      [!!problems.pincode, 'pincode'],
+      [!pin || !insideIndia(pin.lat, pin.lng), 'place-map'],
+    ]
+    const first = order.find(([bad]) => bad)
+    if (first) requestAnimationFrame(() => document.getElementById(first[1])?.focus())
+  }
+
+  /** A new place saved: it is picked, and the customer goes back to where the list was opened from (or Home). */
+  function savedNew(saved: SavedPlace) {
+    forgetPlaceDraft()
+    choose(chosenOf(saved))
+    if (from === 'places' && screensBehind() >= 2) goBack(navigate, '/', 2)
+    else navigate('/', { replace: true })
+  }
+
+  async function save(asNew = false) {
     setTouched(true)
     setError(null)
-    if (Object.keys(problems).length || !pin || !insideIndia(pin.lat, pin.lng) || takenBy(form.kind)) return
+    if (Object.keys(problems).length || !pin || !insideIndia(pin.lat, pin.lng) || takenBy(form.kind)) {
+      focusFirstProblem()
+      return
+    }
     const body: PlaceIn = {
       kind: form.kind,
       ...(form.kind === 'OTHER' ? { name: form.name.trim() } : {}),
@@ -255,23 +362,33 @@ function PlaceForm({ existing, all }: { existing: SavedPlace | null; all: SavedP
       latitude: round6(pin.lat),
       longitude: round6(pin.lng),
     }
+    const adding = !existing || asNew
     setBusy(true)
     try {
-      const saved = existing ? await placesApi.update(existing.id, body) : await placesApi.add(body)
+      const saved = adding ? await placesApi.add(body) : await placesApi.update(existing.id, body)
       qc.setQueryData<SavedPlace[]>(placeKeys.all, (old) =>
-        old ? (existing ? old.map((p) => (p.id === saved.id ? saved : p)) : [...old, saved]) : old,
+        old ? (adding ? [...old, saved] : old.map((p) => (p.id === saved.id ? saved : p))) : old,
       )
       void refreshPlaces(qc)
-      if (!existing) {
-        // A new place is where the customer wants salons now
-        choose(chosenOf(saved))
-        navigate('/', { replace: true })
+      if (adding) {
+        if (existing && chosen?.id === existing.id) choose(null)
+        savedNew(saved)
       } else {
         if (chosen?.id === saved.id) choose(chosenOf(saved))
-        navigate('/places', { replace: true })
+        goBack(navigate, '/places')
       }
     } catch (e) {
+      // The first tap's answer was lost but it was saved: the same place is in the list now, so it is done
+      if (adding && isApiError(e) && (e.status === 0 || isApiError(e, 'PLACE_KIND_TAKEN'))) {
+        const list = await qc.fetchQuery({ queryKey: placeKeys.all, queryFn: placesApi.list, staleTime: 0 }).catch(() => null)
+        const same = list?.find((p) => sameAs(p, body) && (!existing || p.id !== existing.id))
+        if (same) {
+          savedNew(same)
+          return
+        }
+      }
       setError(e)
+      if (isApiError(e, 'PLACE_NOT_FOUND')) setGone(true)
       // Changed or deleted on another phone meanwhile, or a Home saved there: read the list again
       if (isApiError(e, 'PLACE_NOT_FOUND') || isApiError(e, 'PLACE_KIND_TAKEN') || isApiError(e, 'TOO_MANY_PLACES')) {
         void refreshPlaces(qc)
@@ -290,7 +407,7 @@ function PlaceForm({ existing, all }: { existing: SavedPlace | null; all: SavedP
       if (chosen?.id === existing.id) choose(null)
       qc.setQueryData<SavedPlace[]>(placeKeys.all, (old) => old?.filter((p) => p.id !== existing.id))
       void refreshPlaces(qc)
-      navigate('/places', { replace: true })
+      goBack(navigate, '/places')
     } catch (e) {
       setError(e)
       setAskDelete(false)
@@ -305,9 +422,11 @@ function PlaceForm({ existing, all }: { existing: SavedPlace | null; all: SavedP
   const taken = takenBy(form.kind)
 
   return (
-    <Page back="/places" title={existing ? `Change ${placeLabel(existing)}` : 'Add an address'}>
+    <Page back={screensBehind() > 0 ? true : '/places'} title={existing ? `Change ${placeLabel(existing)}` : 'Add an address'}>
       <Card className="flex flex-col gap-3">
-        <p className="font-medium" id="kind-label">Save as</p>
+        <p className="font-medium outline-none" id="kind-label" tabIndex={-1}>
+          Save as
+        </p>
         <div className="flex flex-wrap gap-2" role="group" aria-labelledby="kind-label">
           {KINDS.map(({ kind, label }) => (
             <Chip key={kind} selected={form.kind === kind} onClick={() => { setForm((f) => ({ ...f, kind })); setError(null) }}>
@@ -316,7 +435,7 @@ function PlaceForm({ existing, all }: { existing: SavedPlace | null; all: SavedP
           ))}
         </div>
         {taken && (
-          <p className="text-sm text-warn">
+          <p className="text-sm text-warn" role="status">
             You already have a {form.kind === 'HOME' ? 'Home' : 'Work'} address ({taken.addressLine}). Change that one, or
             save this as Other.
           </p>
@@ -337,7 +456,9 @@ function PlaceForm({ existing, all }: { existing: SavedPlace | null; all: SavedP
 
       <Card className="flex flex-col gap-3">
         <div>
-          <p className="font-semibold">On the map</p>
+          <p id="place-map" tabIndex={-1} className="font-semibold outline-none">
+            On the map
+          </p>
           <p className="text-sm text-muted">
             {searchHidden
               ? 'Tap Use current location when you are there, then drag the pin onto your building.'
@@ -364,19 +485,21 @@ function PlaceForm({ existing, all }: { existing: SavedPlace | null; all: SavedP
               Fill in the address, area, city and pincode above to find it on the map.
             </p>
           )}
-          {filled && <Banner tone="info">{FILLED_TEXT}</Banner>}
-          {searchError && <Banner tone="warn">{searchError}</Banner>}
-          {found && <Banner tone={found === 'EXACT' ? 'info' : 'warn'}>{precisionHint(found)}</Banner>}
-          {addressChanged && <Banner tone="info">You changed the address. Tap Find on map again, or drag the pin.</Banner>}
-          {locError === 'timeout' && <Banner tone="warn">That took too long. Turn on GPS and move near a window, then try again.</Banner>}
-          {locError === 'unavailable' && <Banner tone="warn">Your phone couldn't find its location. Check that location is on.</Banner>}
-          {locError === 'unsupported' && <Banner tone="warn">This browser can't share a location. Find the address on the map instead.</Banner>}
+          {filled && <Banner tone="info" live={false}>{FILLED_TEXT}</Banner>}
+          {searchError && <Banner tone="warn" live={false}>{searchError}</Banner>}
+          {found && <Banner tone={found === 'EXACT' ? 'info' : 'warn'} live={false}>{precisionHint(found)}</Banner>}
+          {addressChanged && <Banner tone="info" live={false}>You changed the address. Tap Find on map again, or drag the pin.</Banner>}
+          {locError === 'timeout' && <Banner tone="warn" live={false}>That took too long. Turn on GPS and move near a window, then try again.</Banner>}
+          {locError === 'unavailable' && <Banner tone="warn" live={false}>Your phone couldn't find its location. Check that location is on.</Banner>}
+          {locError === 'unsupported' && <Banner tone="warn" live={false}>This browser can't share a location. Find the address on the map instead.</Banner>}
         </div>
         {pin && (
           <>
-            <Suspense fallback={<Loading label="Loading the map…" />}>
-              <PinMap lat={pin.lat} lng={pin.lng} zoom={pin.zoom} placement={pin.placement} onMove={moveByHand} />
-            </Suspense>
+            <MapBoundary>
+              <Suspense fallback={<Loading label="Loading the map…" />}>
+                <PinMap lat={pin.lat} lng={pin.lng} zoom={pin.zoom} placement={pin.placement} onMove={moveByHand} />
+              </Suspense>
+            </MapBoundary>
             <p className="text-sm text-muted">
               Drag the pin, or tap the map, if it's off.
               {pin.gps && ` GPS was accurate to about ${pin.gps.accuracy} m.`}
@@ -406,8 +529,17 @@ function PlaceForm({ existing, all }: { existing: SavedPlace | null; all: SavedP
         {touched && !pin && <p className="text-sm text-bad">Put the pin on the map: use your current location or find the address.</p>}
       </Card>
 
-      {generalError && <Banner tone="bad">{generalError}</Banner>}
-      <Button busy={busy} disabled={askDelete} onClick={save}>
+      {gone ? (
+        <Banner tone="bad">
+          This place was deleted on another phone.{' '}
+          <button type="button" className="underline" disabled={busy} onClick={() => save(true)}>
+            Save it as a new place
+          </button>
+        </Banner>
+      ) : (
+        generalError && <Banner tone="bad">{generalError}</Banner>
+      )}
+      <Button busy={busy} disabled={askDelete} onClick={() => save()}>
         {existing ? 'Save changes' : 'Save address'}
       </Button>
       {existing &&

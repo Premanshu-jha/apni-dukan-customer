@@ -3,6 +3,16 @@ import { storage } from '../lib/storage'
 
 const KEY = 'ad.location'
 const CHOSEN_KEY = 'ad.chosenPlace'
+/** A new place's form as typed, kept in this tab only (sessionStorage). */
+export const PLACE_DRAFT_KEY = 'ad.placeDraft'
+
+export function forgetPlaceDraft(): void {
+  try {
+    window.sessionStorage.removeItem(PLACE_DRAFT_KEY)
+  } catch {
+    /* nothing to do */
+  }
+}
 
 export interface Place {
   lat: number
@@ -93,9 +103,17 @@ export const useLocation = create<LocationState>((set) => ({
   clear: () => {
     storage.remove(KEY)
     storage.remove(CHOSEN_KEY)
+    forgetPlaceDraft()
     set({ place: null, chosen: null, error: null })
   },
 }))
+
+// Another tab picked a place (or went back to the current location, or signed out): this one follows
+if (typeof window !== 'undefined') {
+  window.addEventListener('storage', (e) => {
+    if (e.key === CHOSEN_KEY || e.key === null) useLocation.setState({ chosen: storage.getJson<ChosenPlace>(CHOSEN_KEY) })
+  })
+}
 
 /** 'denied' when the browser already says no, so the guide can show without asking again. */
 export async function permissionState(): Promise<PermissionState | 'unknown'> {
