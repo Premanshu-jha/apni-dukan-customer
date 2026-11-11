@@ -1,6 +1,6 @@
 import { expect, signedIn, test } from './helpers'
 
-test('changing the mobile number: a taken or same number is refused; the codes move the same account; this phone stays signed in', async ({ page, context, api }) => {
+test('changing the mobile number: a taken or same number is refused; both codes move the same account; this phone stays signed in', async ({ page, context, api }) => {
   await signedIn(context, api)
   api.takenPhones.add('9700000005')
   await page.goto('/profile')
@@ -15,11 +15,11 @@ test('changing the mobile number: a taken or same number is refused; the codes m
 
   await number.fill('+91 97000 00003')
   await page.getByRole('button', { name: 'Send codes' }).click()
-  await expect(page.getByText('We sent a code to +91 97000 00003 and one to riya@example.com.')).toBeVisible()
-  await page.getByLabel('Code sent to your email').fill('654321')
+  await expect(page.getByText('We sent a code to +91 97000 00003 and one to r***@example.com.')).toBeVisible()
+  await page.getByLabel('Code sent to your email (r***@example.com)').fill('654321')
   await page.getByLabel('Code sent to the new number').fill('111111')
   await page.getByRole('button', { name: 'Change number' }).click()
-  await expect(page.getByText('That code is not right. 4 tries left.')).toBeVisible()
+  await expect(page.locator('div[tabindex="-1"]').filter({ hasText: "One of the codes isn't right. 4 tries left." })).toBeFocused()
   await page.getByLabel('Code sent to the new number').fill('123456')
   await page.getByRole('button', { name: 'Change number' }).click()
 
@@ -27,15 +27,21 @@ test('changing the mobile number: a taken or same number is refused; the codes m
   await expect(page.getByText(/Your mobile number is now \+91 97000 00003\. Other devices were signed out/)).toBeVisible()
   await expect(page.getByText('+91 97000 00003', { exact: true })).toBeVisible()
   const sent = api.calls.filter((c) => c.path === '/api/v1/auth/me/phone').at(-1)!
-  expect(sent.body).toMatchObject({ newPhone: '9700000003', phoneCode: '123456', emailCode: '654321' })
-  // Still signed in with the new tokens: other screens load
-  await page.getByRole('link', { name: 'Bookings' }).first().click()
-  await expect(page).toHaveURL(/\/bookings$/)
+  expect(sent.body).toMatchObject({ newPhone: '9700000003', phoneCode: '123456', secondCode: '654321' })
+  // Still signed in with the new tokens; the notice shows once (not again on reload)
   await page.reload()
-  await expect(page).toHaveURL(/\/bookings$/)
+  await expect(page).toHaveURL(/\/profile$/)
+  await expect(page.getByText('+91 97000 00003', { exact: true })).toBeVisible()
+  await expect(page.getByText(/Your mobile number is now/)).toHaveCount(0)
+  // Back from Profile doesn't land on the change screen again
+  await page.goto('/')
+  await page.goto('/profile')
+  await page.getByRole('link', { name: 'Change mobile number' }).click()
+  await page.getByRole('button', { name: 'Back' }).click()
+  await expect(page).toHaveURL(/\/profile$/)
 })
 
-test('both codes are asked for (the email is verified); the other tab carries on with the new number', async ({ page, context, api }) => {
+test('both codes are asked for; the other tab carries on with the new number', async ({ page, context, api }) => {
   await signedIn(context, api)
   const other = await context.newPage()
   await other.goto('/profile')
@@ -44,28 +50,62 @@ test('both codes are asked for (the email is verified); the other tab carries on
   await page.goto('/profile/phone')
   await page.getByLabel('New mobile number').fill('9700000004')
   await page.getByRole('button', { name: 'Send codes' }).click()
-  await expect(page.getByText(/and one to riya@example\.com/)).toBeVisible()
   await page.getByLabel('Code sent to the new number').fill('123456')
   await expect(page.getByRole('button', { name: 'Change number' })).toBeDisabled()
-  await page.getByLabel('Code sent to your email').fill('654321')
+  await page.getByLabel(/Code sent to your email/).fill('654321')
   await page.getByRole('button', { name: 'Change number' }).click()
   await expect(page.getByText(/Your mobile number is now \+91 97000 00004/)).toBeVisible()
 
-  // The other tab's old tokens are ended; it picks up the new pair and isn't signed out
-  await other.reload()
-  await expect(other).toHaveURL(/\/profile$/)
+  // The other tab's old tokens are ended: its next call is refused, its refresh too, and it takes the saved new pair
+  await other.getByRole('link', { name: 'Bookings' }).first().click()
+  await expect(other).toHaveURL(/\/bookings$/)
+  await other.goto('/profile')
   await expect(other.getByText('+91 97000 00004', { exact: true })).toBeVisible()
+  expect(api.reused).toBe(0)
 })
 
-test('the number taken between the code and the change goes back to the number step', async ({ page, context, api }) => {
+test('the number taken between the codes and the change goes back to the number step', async ({ page, context, api }) => {
   await signedIn(context, api)
   await page.goto('/profile/phone')
   await page.getByLabel('New mobile number').fill('9700000006')
   await page.getByRole('button', { name: 'Send codes' }).click()
   await page.getByLabel('Code sent to the new number').fill('123456')
-  await page.getByLabel('Code sent to your email').fill('654321')
+  await page.getByLabel(/Code sent to your email/).fill('654321')
   api.takenPhones.add('9700000006')
   await page.getByRole('button', { name: 'Change number' }).click()
   await expect(page.getByText('This number got its own Clozest account meanwhile. Use another number.')).toBeVisible()
   await expect(page.getByLabel('New mobile number')).toBeVisible()
+})
+
+test('a lost answer after the change went through: sign-in says the number moved and fills it in', async ({ page, context, api }) => {
+  await signedIn(context, api)
+  await page.goto('/profile/phone')
+  await page.getByLabel('New mobile number').fill('9700000007')
+  await page.getByRole('button', { name: 'Send codes' }).click()
+  await page.getByLabel('Code sent to the new number').fill('123456')
+  await page.getByLabel(/Code sent to your email/).fill('654321')
+  api.loseNextPhoneChange = true
+  await page.getByRole('button', { name: 'Change number' }).click()
+  await expect(page).toHaveURL(/\/signin/)
+  await expect(page.getByText('Your number was probably changed to +91 97000 00007. Sign in with that number to keep your account.')).toBeVisible()
+  await expect(page.getByLabel('Mobile number')).toHaveValue('9700000007')
+})
+
+test('too many wrong codes: send the codes again, then it works', async ({ page, context, api }) => {
+  await signedIn(context, api)
+  await page.goto('/profile/phone')
+  await page.getByLabel('New mobile number').fill('9700000008')
+  await page.getByRole('button', { name: 'Send codes' }).click()
+  await page.getByLabel('Code sent to the new number').fill('123456')
+  for (let i = 0; i < 5; i++) {
+    await page.getByLabel(/Code sent to your email/).fill(`00000${i}`)
+    await page.getByRole('button', { name: 'Change number' }).click()
+    await expect(page.getByRole('alert')).toBeVisible()
+  }
+  await expect(page.getByText(/Too many wrong codes\. Ask for a new one\. Tap "Send the codes again"\./)).toBeVisible()
+  await page.getByRole('button', { name: 'Send the codes again' }).click()
+  await page.getByLabel('Code sent to the new number').fill('123456')
+  await page.getByLabel(/Code sent to your email/).fill('654321')
+  await page.getByRole('button', { name: 'Change number' }).click()
+  await expect(page.getByText(/Your mobile number is now \+91 97000 00008/)).toBeVisible()
 })
