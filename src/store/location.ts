@@ -3,6 +3,9 @@ import { storage } from '../lib/storage'
 
 const KEY = 'ad.location'
 const CHOSEN_KEY = 'ad.chosenPlace'
+/** The address near the last GPS point, as shown on Home ("Lake View Apartments, Kondapur"), kept on the phone. */
+export const NEAR_ADDRESS_KEY = 'ad.locationAddress'
+
 /** A new place's form as typed, kept in this tab only (sessionStorage). */
 export const PLACE_DRAFT_KEY = 'ad.placeDraft'
 
@@ -103,6 +106,7 @@ export const useLocation = create<LocationState>((set) => ({
   clear: () => {
     storage.remove(KEY)
     storage.remove(CHOSEN_KEY)
+    storage.remove(NEAR_ADDRESS_KEY)
     forgetPlaceDraft()
     set({ place: null, chosen: null, error: null })
   },

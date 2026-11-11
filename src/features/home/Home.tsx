@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router'
-import { chosenOf, usePlaces } from '../../api/places'
+import { chosenOf, useAddressNear, usePlaces } from '../../api/places'
 import { useLocation as useLocationStore, ROUGH_METRES, type ChosenPlace } from '../../store/location'
 import { Banner, Page } from '../../components/ui'
 import { useSession } from '../../store/session'
@@ -124,6 +124,8 @@ function PlaceBar({ chosen }: { chosen: ChosenPlace }) {
 function LocationBar() {
   const { place, finding, error, locate } = useLocationStore()
   const [now] = useState(() => Date.now())
+  // Where that is, in words (only for a point close enough to mean something: a laptop's guess isn't)
+  const near = useAddressNear(place?.lat ?? 0, place?.lng ?? 0, place !== null && place.accuracy <= ROUGH_METRES)
   if (!place) return null
   const minutes = Math.round((now - place.at) / 60_000)
   return (
@@ -136,13 +138,18 @@ function LocationBar() {
       </Banner>
     )}
     <div className="flex items-center justify-between rounded-xl border border-line bg-surface px-4 py-2">
-      <span className="text-sm">
+      <span className="min-w-0 text-sm">
         <span aria-hidden>⌖ </span>Near your current location
         <span className="text-muted">
           {' '}
           · ±{place.accuracy < 1000 ? `${place.accuracy} m` : `${Math.round(place.accuracy / 1000)} km`}
           {minutes >= 30 && ` · ${minutes < 120 ? `${minutes} min` : `${Math.round(minutes / 60)} h`} ago`}
         </span>
+        {near.data && (
+          <span className="block truncate text-muted" title={near.data}>
+            {near.data}
+          </span>
+        )}
       </span>
       <span className="flex items-center gap-4">
         <button type="button" onClick={locate} disabled={finding} className="text-sm font-semibold text-link disabled:opacity-50">

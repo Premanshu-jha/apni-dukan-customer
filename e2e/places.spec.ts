@@ -298,3 +298,56 @@ test("back goes where the customer came from: Profile's addresses back to Profil
   await page.goBack()
   await expect(page).not.toHaveURL(/\/places/)
 })
+
+test('the current location shows its address, asked for once and kept; not for a rough guess, nor when search is off', async ({ page, context, api }) => {
+  await signedIn(context, api)
+  await page.goto('/')
+  await expect(page.getByText('Near your current location')).toBeVisible()
+  await expect(page.getByText('Lake View Apartments, Kondapur')).toBeVisible()
+  const asked = () => api.calls.filter((c) => c.path === '/api/v1/me/places/reverse-geocode')
+  expect(asked()).toHaveLength(1)
+  // Rounded to about 110 m: the backend's cache and the phone's copy serve nearby points
+  expect(asked()[0].body).toEqual({ latitude: 28.627, longitude: 77.372 })
+  await page.reload()
+  await expect(page.getByText('Lake View Apartments, Kondapur')).toBeVisible()
+  expect(asked()).toHaveLength(1)
+  // Moved a little (under 300 m): the same words, nothing asked
+  const at = (lat: number, lng: number) =>
+    page.evaluate(([la, ln]) => localStorage.setItem('ad.location', JSON.stringify({ lat: la, lng: ln, accuracy: 20, at: Date.now() })), [lat, lng])
+  await at(28.628, 77.373)
+  await page.reload()
+  await expect(page.getByText('Lake View Apartments, Kondapur')).toBeVisible()
+  expect(asked()).toHaveLength(1)
+  // Further away: asked again; at most 3 a day from Home (the person's own lookups stay for their places)
+  await at(28.64, 77.39)
+  await page.reload()
+  await expect.poll(() => asked().length).toBe(2)
+  await at(28.66, 77.41)
+  await page.reload()
+  await expect.poll(() => asked().length).toBe(3)
+  await at(28.68, 77.43)
+  await page.reload()
+  await expect(page.getByText('Near your current location')).toBeVisible()
+  await expect(page.getByText('Lake View Apartments')).toHaveCount(0)
+  expect(asked()).toHaveLength(3)
+
+  // A laptop's guess (worse than 1 km): no address, nothing asked
+  await page.evaluate(() => {
+    localStorage.setItem('ad.location', JSON.stringify({ lat: 28.7, lng: 77.1, accuracy: 3000, at: Date.now() }))
+    localStorage.removeItem('ad.locationAddress')
+  })
+  await page.reload()
+  await expect(page.getByText('Near your current location')).toBeVisible()
+  expect(asked()).toHaveLength(3)
+
+  // Search turned off on the backend: the bar shows without it, no error
+  api.geocodeError = { status: 503, code: 'GEOCODING_OFF' }
+  await page.evaluate(() => {
+    localStorage.setItem('ad.location', JSON.stringify({ lat: 28.6, lng: 77.2, accuracy: 20, at: Date.now() }))
+    localStorage.removeItem('ad.locationAddress')   // a new day's lookups
+  })
+  await page.reload()
+  await expect(page.getByText('Near your current location')).toBeVisible()
+  await expect(page.getByText('Lake View Apartments')).toHaveCount(0)
+  await expect(page.getByRole('alert')).toHaveCount(0)
+})
