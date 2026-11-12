@@ -1,6 +1,7 @@
-import { Link, Route, Routes } from 'react-router'
+import { Link, Navigate, Route, Routes } from 'react-router'
 import { CodeStep } from '../features/auth/CodeStep'
 import { EmailStep } from '../features/auth/EmailStep'
+import { NeedHelp } from '../features/help/NeedHelp'
 import { NameStep } from '../features/auth/NameStep'
 import { PhoneStep } from '../features/auth/PhoneStep'
 import { RecoverStep } from '../features/auth/RecoverStep'
@@ -19,7 +20,7 @@ import { BookTime } from '../features/salon/BookTime'
 import { ConfirmBooking } from '../features/salon/ConfirmBooking'
 import { SalonPage } from '../features/salon/SalonPage'
 import { EmptyState, Page } from '../components/ui'
-import { FinishingProfile, SignedIn, SignedOutOnly } from './guards'
+import { EmailVerifiedOnly, FinishingProfile, SignedIn, SignedOutOnly } from './guards'
 import { Bare, Shell } from './Shell'
 
 export function App() {
@@ -32,9 +33,10 @@ export function App() {
           <Route path="/signin/recover" element={<RecoverStep />} />
         </Route>
         <Route element={<FinishingProfile />}>
-          <Route path="/welcome/email" element={<EmailStep />} />
           <Route path="/welcome/name" element={<NameStep />} />
         </Route>
+        {/* The email used to be a sign-up step: an old link or tab goes to its new place */}
+        <Route path="/welcome/email" element={<Navigate to="/verify-email" replace />} />
       </Route>
 
       <Route element={<SignedIn />}>
@@ -44,18 +46,23 @@ export function App() {
           <Route path="/profile" element={<Profile />} />
         </Route>
         <Route element={<Bare />}>
+          <Route path="/verify-email" element={<EmailStep />} />
+          {/* Deleting the account never asks for an email first: nobody should have to give one to leave */}
+          <Route path="/profile/delete" element={<DeleteAccount />} />
           <Route path="/salons/:id" element={<SalonPage />} />
-          <Route path="/salons/:id/book" element={<BookTime />} />
-          <Route path="/salons/:id/confirm" element={<ConfirmBooking />} />
+          <Route element={<EmailVerifiedOnly />}>
+            <Route path="/salons/:id/book" element={<BookTime />} />
+            <Route path="/salons/:id/confirm" element={<ConfirmBooking />} />
+            <Route path="/profile/phone" element={<ChangePhone />} />
+            <Route path="/places/new" element={<EditPlace />} />
+            <Route path="/places/:id" element={<EditPlace />} />
+            <Route path="/help" element={<NeedHelp />} />
+          </Route>
           <Route path="/bookings/:id" element={<BookingDetail />} />
           <Route path="/bookings/:id/move" element={<MoveBooking />} />
           <Route path="/notifications" element={<Inbox />} />
           <Route path="/profile/email" element={<ChangeEmail />} />
-          <Route path="/profile/phone" element={<ChangePhone />} />
-          <Route path="/profile/delete" element={<DeleteAccount />} />
           <Route path="/places" element={<ChoosePlace />} />
-          <Route path="/places/new" element={<EditPlace />} />
-          <Route path="/places/:id" element={<EditPlace />} />
         </Route>
       </Route>
 
