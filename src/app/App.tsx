@@ -2,6 +2,7 @@ import { Link, Navigate, Route, Routes } from 'react-router'
 import { CodeStep } from '../features/auth/CodeStep'
 import { EmailStep } from '../features/auth/EmailStep'
 import { NeedHelp } from '../features/help/NeedHelp'
+import { MyRequests, RequestDetail } from '../features/help/MyRequests'
 import { NameStep } from '../features/auth/NameStep'
 import { PhoneStep } from '../features/auth/PhoneStep'
 import { RecoverStep } from '../features/auth/RecoverStep'
@@ -53,6 +54,9 @@ export function App() {
           {/* Changing the number never waits for an email: it can come before one is verified (the second code then
               goes to the number they have now) */}
           <Route path="/profile/phone" element={<ChangePhone />} />
+          {/* Reading and adding to my requests: only someone who verified an email ever has one */}
+          <Route path="/help/requests" element={<MyRequests />} />
+          <Route path="/help/requests/:id" element={<RequestDetail />} />
           <Route element={<EmailVerifiedOnly />}>
             <Route path="/salons/:id/book" element={<BookTime />} />
             <Route path="/salons/:id/confirm" element={<ConfirmBooking />} />
