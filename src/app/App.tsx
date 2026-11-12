@@ -50,10 +50,12 @@ export function App() {
           {/* Deleting the account never asks for an email first: nobody should have to give one to leave */}
           <Route path="/profile/delete" element={<DeleteAccount />} />
           <Route path="/salons/:id" element={<SalonPage />} />
+          {/* Changing the number never waits for an email: it can come before one is verified (the second code then
+              goes to the number they have now) */}
+          <Route path="/profile/phone" element={<ChangePhone />} />
           <Route element={<EmailVerifiedOnly />}>
             <Route path="/salons/:id/book" element={<BookTime />} />
             <Route path="/salons/:id/confirm" element={<ConfirmBooking />} />
-            <Route path="/profile/phone" element={<ChangePhone />} />
             <Route path="/places/new" element={<EditPlace />} />
             <Route path="/places/:id" element={<EditPlace />} />
             <Route path="/help" element={<NeedHelp />} />
