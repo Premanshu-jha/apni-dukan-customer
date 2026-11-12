@@ -54,7 +54,14 @@ test('no salons nearby: the empty state with a way to tell us', async ({ page, c
   api.salons = []
   await page.goto('/')
   await expect(page.getByText('No salons near you yet')).toBeVisible()
-  await expect(page.getByRole('link', { name: 'Let us know' })).toHaveAttribute('href', /^mailto:support@example\.com/)
+  await page.getByRole('link', { name: 'Let us know' }).click()
+  await expect(page.getByRole('heading', { name: 'Need help' })).toBeVisible()
+  await expect(page.getByLabel("What's it about? (optional)")).toHaveValue('Please add salons near me')
+  await expect(page.getByLabel('Your message')).toHaveValue(/^My area: \nLocation: 28\.\d{4}, 77\.\d{4}$/)
+  await page.getByLabel('Your message').fill('My area: Sector 62, Noida\nLocation: 28.627, 77.372')
+  await page.getByRole('button', { name: 'Send to support' }).click()
+  await expect(page.getByRole('heading', { name: 'Sent: ticket CLZ-1001' })).toBeVisible()
+  expect(api.tickets).toEqual([{ app: 'CUSTOMER', subject: 'Please add salons near me', message: 'My area: Sector 62, Noida\nLocation: 28.627, 77.372' }])
 })
 
 test('outside India: a clear message instead of "fields not valid"', async ({ page, context, api }) => {

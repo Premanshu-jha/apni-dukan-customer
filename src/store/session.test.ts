@@ -1,4 +1,4 @@
-import { nextAfterSignIn, rememberAfterEmail, rememberReturn, takeAfterEmail } from '../features/auth/flow'
+import { forgetAfterEmail, nextAfterSignIn, rememberAfterEmail, rememberReturn, takeAfterEmail } from '../features/auth/flow'
 import { missingSteps, needsEmail, signUpSteps } from './session'
 
 const base = { id: 'u', phone: '9848012345', admin: false }
@@ -16,7 +16,10 @@ describe('missingSteps', () => {
 })
 
 describe('the email after sign-up', () => {
-  beforeEach(() => localStorage.clear())
+  beforeEach(() => {
+    localStorage.clear()
+    sessionStorage.clear()
+  })
   it('sign-up asks only for the name; the email waits', () => {
     expect(signUpSteps({ ...base, name: null, email: null, emailVerified: false })).toEqual(['name'])
     expect(signUpSteps({ ...base, name: 'Riya', email: null, emailVerified: false })).toEqual([])
@@ -29,12 +32,18 @@ describe('the email after sign-up', () => {
     rememberReturn('/bookings')
     expect(nextAfterSignIn({ ...base, name: 'Riya', email: null, emailVerified: false })).toBe('/bookings')
   })
-  it('after verifying: where they were going, once; else Home; never a sign-in address', () => {
-    rememberAfterEmail('/salons/s1/book')
-    expect(takeAfterEmail()).toBe('/salons/s1/book')
-    expect(takeAfterEmail()).toBe('/')
-    rememberAfterEmail('/verify-email')
-    rememberAfterEmail('//evil.example')
-    expect(takeAfterEmail()).toBe('/')
+  it('after verifying: where they were going, once, only for the same person; else Home', () => {
+    rememberAfterEmail('/salons/s1/book', 'u1')
+    expect(takeAfterEmail('u1')).toBe('/salons/s1/book')
+    expect(takeAfterEmail('u1')).toBe('/')
+    rememberAfterEmail('/help', 'u1')
+    expect(takeAfterEmail('u2')).toBe('/')   // someone else signed in on this phone
+    rememberAfterEmail('/verify-email', 'u1')
+    expect(takeAfterEmail('u1')).toBe('/')
+    rememberAfterEmail('//evil.example', 'u1')
+    expect(takeAfterEmail('u1')).toBe('/')
+    rememberAfterEmail('/places/new', 'u1')
+    forgetAfterEmail()   // Back on the email screen, or Verify now from Home
+    expect(takeAfterEmail('u1')).toBe('/')
   })
 })
