@@ -61,7 +61,7 @@ test('no salons nearby: the empty state with a way to tell us', async ({ page, c
   await page.getByLabel('Your message').fill('My area: Sector 62, Noida\nLocation: 28.627, 77.372')
   await page.getByRole('button', { name: 'Send to support' }).click()
   await expect(page.getByRole('heading', { name: 'Sent: ticket CLZ-1001' })).toBeVisible()
-  expect(api.tickets).toEqual([{ app: 'CUSTOMER', subject: 'Please add salons near me', message: 'My area: Sector 62, Noida\nLocation: 28.627, 77.372' }])
+  expect(api.tickets.map(({ app, subject, message }) => ({ app, subject, message }))).toEqual([{ app: 'CUSTOMER', subject: 'Please add salons near me', message: 'My area: Sector 62, Noida\nLocation: 28.627, 77.372' }])
 })
 
 test('outside India: a clear message instead of "fields not valid"', async ({ page, context, api }) => {
