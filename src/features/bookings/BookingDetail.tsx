@@ -265,6 +265,12 @@ export function BookingDetail() {
           </Button>
         </div>
       </Sheet>
+      <Link
+        to={`/help?${new URLSearchParams({ about: `Booking ${b.bookingNo}`, text: `About my booking ${b.bookingNo}: ` })}`}
+        className="py-2 text-center text-sm text-link underline"
+      >
+        Need help with this booking?
+      </Link>
     </Page>
   )
 }

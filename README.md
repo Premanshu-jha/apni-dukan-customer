@@ -3,8 +3,10 @@
 The app customers use to find a salon near them and book a time. It is a mobile-first web app (it can be
 added to the phone's home screen) and talks only to [apni-dukan-backend](https://github.com/Premanshu-jha/apni-dukan-backend).
 
-Home has category tabs like Swiggy's Food and Instamart: **Salon** works today; **Kirana** and **Services** show
-"Coming soon". Shop owners and the field team use separate apps (partner and admin), not this one.
+Home lists the salons near the customer. Categories (like Swiggy's Food and Instamart) show only once open
+(`CATEGORIES` in `src/features/home/categories.ts`, `live`): today only **Salon** is, so there are no tabs; **Kirana** and
+**Services** are hidden until they open. Shop owners and the field team use separate apps (partner and admin), not
+this one.
 
 ## Run it on your laptop
 
@@ -20,7 +22,7 @@ npm run dev                    # http://localhost:5173
 | --- | --- | --- |
 | `VITE_API_URL` | The backend's address, no trailing slash | `http://localhost:8080` or `https://apni-dukan-backend-production.up.railway.app` |
 | `VITE_TURNSTILE_SITE_KEY` | Cloudflare Turnstile **site** key (public). Leave empty when the backend has no `TURNSTILE_SECRET_KEY` | `0x4AAAAAAA…` |
-| `VITE_SUPPORT_EMAIL` | Where customers write for help (Profile, and "No salons near you yet"). Default `support@apnidukan.in` | `support@apnidukan.in` |
+| `VITE_SUPPORT_EMAIL` | The support address shown under "Need help" (Profile and the form). Default `support@clozest.in` | `support@clozest.in` |
 | `VITE_MAP_TILES` | Map tiles for a saved place's pin. Default OpenStreetMap's, fine for low traffic (see its tile policy) | empty |
 
 All are public values baked into the page at build time. No secret ever goes in this app.
@@ -237,8 +239,8 @@ public/         sw.js (push notifications), manifest, icon
 - Accuracy worse than 1 km (usual on laptops) shows a warning that results may be off.
 - The backend returns approved salons within 2 km, nearest first, 30 at a time (found by a map index, so a dense
   city is as fast as a quiet one). "Show more salons" asks for the next 30 after the last one's distance and id,
-  until a shorter page comes back. None → "No salons near you yet" with a "Let us know" email link (to
-  `VITE_SUPPORT_EMAIL`).
+  until a shorter page comes back. None → "No salons near you yet" with "Let us know", which opens Need help with
+  the subject and the location filled in.
 
 ### Booking
 
@@ -340,6 +342,27 @@ version of `sw.js` waits after installing; the app shows "New version available 
 switches over. Change `OFFLINE_CACHE` in `sw.js` when the offline page changes.
 
 ## Changelog
+
+### 0.15.0 — 2026-11-12
+
+- **The email after sign-up, not during it.** Sign-up is the phone code, then the name, then Home. While the email
+  isn't verified, Home (and Profile) show "🔒 Verify your email to secure your account" with **Verify now**, and
+  anything that does something asks for it first: booking (Pick a time), Need help, adding or editing a saved place,
+  changing the name or phone, deleting the account (`EmailVerifiedOnly` in `src/app/guards.tsx`, typed addresses
+  too). Once verified the app goes straight on to where the person was going, with what they picked still there (a
+  booking's salon, services and time). Browsing (salons, bookings, messages) never asks. The email screen is now
+  `/verify-email` (an old `/welcome/email` link goes there); Back leaves it for later.
+- **Need help** (`/help`, needs backend V46): the customer writes to support in the app; it becomes a ticket (CLZ-1001)
+  and the reply comes by email. What is typed is kept until it's sent. Profile's help card opens it ("Write to
+  support", the address still shown), and "Let us know" (no salons near you) opens it with the subject and location
+  filled in.
+- The support address is **support@clozest.in** (it was a domain we don't use).
+- Home shows only the categories that are open: no tabs while only Salon is (`src/features/home/categories.ts`).
+- After review: deleting the account never asks for an email; Back on the email screen forgets the detour; where to
+  go after verifying is kept per tab and per person; "Email verified" shows on whatever screen it leads to; the code
+  step links to the support address; Need help keeps its draft per person, counts like the backend, names the field
+  it refuses, and a booking has "Need help with this booking?".
+- Scenarios 1, 26, 32, 43, 293, 302, 303 updated; 289–312 added in `docs/scenarios.md`.
 
 ### 0.14.0 — 2026-11-11
 
@@ -574,7 +597,7 @@ Scenario audit (146 customer scenarios, `docs/scenarios.md`) and its fixes:
 
 - In-app messages: bell with the unread count on Home, Messages screen, mark one or all read, older pages.
 - A push that arrives while the app is open refreshes the bell and the bookings.
-- Profile: a help card with the support email (`VITE_SUPPORT_EMAIL`).
+- Profile: a help card with the support email (`VITE_SUPPORT_EMAIL`). (0.15.0: "Write to support" opens Need help.)
 - The booking screen stops refreshing once the booking is finished or cancelled.
 - Wording: the email step no longer promises receipts (none are sent); "No free times" covers closed days too.
 - Review fixes: several tabs no longer sign the person out everywhere; signing out during a refresh stays signed

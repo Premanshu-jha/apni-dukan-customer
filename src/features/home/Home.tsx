@@ -7,20 +7,17 @@ import { useSession } from '../../store/session'
 import { LocationGate } from '../location/LocationGate'
 import { Bell } from '../notifications/Bell'
 import { SalonList } from '../salon/SalonList'
+import { VerifyEmailBanner } from '../auth/VerifyEmailBanner'
+import { type CategoryId, shownCategories } from './categories'
 
-const categories = [
-  { id: 'salon', label: 'Salon', icon: '✂', live: true },
-  { id: 'kirana', label: 'Kirana', icon: '🛒', live: false },
-  { id: 'services', label: 'Services', icon: '🔧', live: false },
-] as const
-
-type CategoryId = (typeof categories)[number]['id']
-
-/** Home: category tabs, like Swiggy's Food and Instamart. Only Salon is open for now. */
+/**
+ * Home: the verify-your-email banner while the email is pending, the live categories (no tabs while only Salon is
+ * open), then the salons near the customer.
+ */
 export function Home() {
   const name = useSession((s) => s.user?.name)
-  const [tab, setTab] = useState<CategoryId>('salon')
-  const active = categories.find((c) => c.id === tab)!
+  const shown = shownCategories()
+  const [tab, setTab] = useState<CategoryId>(shown[0].id)
   const chosen = useChosenPlace()
 
   return (
@@ -32,8 +29,11 @@ export function Home() {
         </div>
         <Bell />
       </div>
+      <VerifyEmailBanner />
+      {/* Tabs only once a second category is open */}
+      {shown.length > 1 && (
       <div role="tablist" aria-label="Categories" className="grid grid-cols-3 gap-2">
-        {categories.map((c) => (
+        {shown.map((c) => (
           <button
             key={c.id}
             role="tab"
@@ -46,18 +46,17 @@ export function Home() {
               {c.icon}
             </span>
             {c.label}
-            {!c.live && (
-              <span className="absolute top-1.5 right-1.5 rounded-full bg-raised px-1.5 text-[10px] text-muted">Soon</span>
-            )}
           </button>
         ))}
       </div>
-      {active.live && chosen ? (
+      )}
+      {/* Only Salon has screens yet; another category opened later brings its own here */}
+      {tab === 'salon' && chosen ? (
         <>
           <PlaceBar chosen={chosen} />
           <SalonList lat={chosen.lat} lng={chosen.lng} />
         </>
-      ) : active.live ? (
+      ) : tab === 'salon' ? (
         <LocationGate>
           {(place) => (
             <>
@@ -72,12 +71,7 @@ export function Home() {
             </>
           )}
         </LocationGate>
-      ) : (
-        <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-line py-12 text-center">
-          <p className="text-lg font-semibold">{active.label} is coming soon</p>
-          <p className="max-w-xs text-muted">We're starting with salons. {active.label} near you will be here next.</p>
-        </div>
-      )}
+      ) : null}
     </Page>
   )
 }

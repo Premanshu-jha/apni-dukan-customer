@@ -108,11 +108,24 @@ export function followOtherTabs() {
   })
 }
 
-/** What the person still has to give before they can use the app. Email first, name last. */
+/** What the backend still needs before booking or asking for help (403 PROFILE_INCOMPLETE): a verified email and a name. */
 export function missingSteps(user: User | null): Array<'email' | 'name'> {
   if (!user) return []
   const missing: Array<'email' | 'name'> = []
-  if (!user.email || !user.emailVerified) missing.push('email')
+  if (needsEmail(user)) missing.push('email')
   if (!user.name || user.name.trim().length < 2) missing.push('name')
   return missing
+}
+
+/**
+ * The sign-up steps after the phone code: only the name. The email is asked later, from Home's banner or the first
+ * time the person does something (book, save a place, change their profile, ask for help): see EmailVerifiedOnly.
+ */
+export function signUpSteps(user: User | null): Array<'name'> {
+  return missingSteps(user).filter((s): s is 'name' => s === 'name')
+}
+
+/** True while the person's email isn't verified yet. */
+export function needsEmail(user: User | null): boolean {
+  return user !== null && (!user.email || !user.emailVerified)
 }

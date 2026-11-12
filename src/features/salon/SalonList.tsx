@@ -3,7 +3,6 @@ import { Link } from 'react-router'
 import { isApiError, messageOf } from '../../api/errors'
 import { SALONS_RADIUS_KM, useNearbySalons } from '../../api/salons'
 import { Button, EmptyState, ErrorState, Loading } from '../../components/ui'
-import { SUPPORT_EMAIL } from '../../lib/config'
 import { offerBadgeText, openText, ratingText, servicesText } from '../../lib/salonCard'
 import { todayIst } from '../../lib/ist'
 
@@ -54,12 +53,12 @@ export function SalonList({ lat, lng }: { lat: number; lng: number }) {
         title="No salons near you yet"
         body="We're adding salons area by area. Tell us where you are and we'll come to you sooner."
         action={
-          <a
+          <Link
             className="text-link underline"
-            href={`mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent('Please add salons near me')}&body=${encodeURIComponent(`My area: \nLocation: ${lat.toFixed(4)}, ${lng.toFixed(4)}`)}`}
+            to={`/help?${new URLSearchParams({ about: 'Please add salons near me', text: `My area: \nLocation: ${lat.toFixed(4)}, ${lng.toFixed(4)}` })}`}
           >
             Let us know
-          </a>
+          </Link>
         }
       />
     )

@@ -49,9 +49,16 @@ export function Bare() {
 
 /** The screen of the route, inside its own error boundary: a new address starts it afresh. */
 function Screen() {
-  const { pathname } = useLocation()
+  const { pathname, state } = useLocation()
+  // Just verified the email on the way here (a booking, Need help, Home): say it worked, on whatever screen this is
+  const verified = (state as { emailVerified?: boolean } | null)?.emailVerified === true
   return (
     <ErrorBoundary key={pathname}>
+      {verified && (
+        <p role="status" className="mx-4 mt-3 rounded-xl border border-good/40 bg-good/10 px-3 py-2 text-sm text-good">
+          Email verified. Your account is secured.
+        </p>
+      )}
       <Outlet />
     </ErrorBoundary>
   )

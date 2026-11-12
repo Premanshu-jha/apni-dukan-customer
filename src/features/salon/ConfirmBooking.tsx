@@ -10,7 +10,7 @@ import { duration, rupees } from '../../lib/money'
 import { useDraft } from '../../store/bookingDraft'
 import { useSession } from '../../store/session'
 import { authApi } from '../../api/auth'
-import { rememberReturn } from '../auth/flow'
+import { rememberAfterEmail, rememberReturn } from '../auth/flow'
 import { lateCancelSoon, termsFor } from '../bookings/lateCancel'
 
 /** A booking can't be moved within this many minutes of its start (the backend's LATE_CANCEL). */
@@ -132,10 +132,11 @@ export function ConfirmBooking() {
           if (isApiError(e, 'PROFILE_INCOMPLETE')) {
             // The saved profile was out of date: refresh it, finish the missing step, then come back here
             const missing = (e.details.missing as string[] | undefined) ?? []
-            rememberReturn(`/salons/${id}/confirm`)
+            if (missing.includes('email')) rememberAfterEmail(`/salons/${id}/confirm`, useSession.getState().user?.id)
+            else rememberReturn(`/salons/${id}/confirm`)
             void authApi.me().then(setUser).catch(() => {})
             setLeaving(true)
-            navigate(missing.includes('email') ? '/welcome/email' : '/welcome/name')
+            navigate(missing.includes('email') ? '/verify-email' : '/welcome/name')
             return
           }
           if (isApiError(e, 'IDEMPOTENCY_KEY_REUSED')) {

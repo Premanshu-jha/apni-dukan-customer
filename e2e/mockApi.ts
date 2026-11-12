@@ -144,6 +144,8 @@ function sizeErrors(b: Record<string, any>): Record<string, string> {
 
 export class MockApi {
   user: MockUser = { id: 'u1', phone: '9848012345', name: null, email: null, emailVerified: false, admin: false }
+  /** "Need help" tickets sent, in order. */
+  tickets: Array<{ app: string; subject: string | null; message: string }> = []
   /** Paths (with the query) answered 304 Not Modified, in order. */
   notModified: string[] = []
   /**
@@ -411,6 +413,19 @@ export class MockApi {
       if (body.code !== '654321') return fail(400, 'WRONG_CODE', 'That code is not right.')
       this.user = { ...this.user, email: body.email, emailVerified: true }
       return ok(200, this.user)
+    }
+    // "Need help" (TicketService.ask): needs a verified email and a name; a message of 10 to 5,000 characters
+    if (p === '/helpdesk/tickets' && method === 'POST') {
+      if (!this.user.emailVerified || !this.user.name) {
+        return fail(403, 'PROFILE_INCOMPLETE', 'Verify your email and tell us your name first.', {
+          missing: [...(this.user.emailVerified ? [] : ['email']), ...(this.user.name ? [] : ['name'])],
+        })
+      }
+      const text = String(body.message ?? '').trim()
+      if (text.length < 10 || text.length > 5000) return fail(400, 'VALIDATION_FAILED', 'Some fields are not valid', { message: 'write 10 to 5000 characters' })
+      const n = 1001 + this.tickets.length
+      this.tickets.push({ app: body.app, subject: body.subject ?? null, message: text })
+      return ok(201, { id: `t${n}`, number: `CLZ-${n}`, sentTo: this.user.email })
     }
     if (p === '/auth/logout-all') return this.failLogoutAll ? fail(503, 'SERVICE_BUSY', "We're having a short problem. Try again in a few seconds.") : ok(204)
     if (p === '/push/public-key') return ok(200, { publicKey: null })

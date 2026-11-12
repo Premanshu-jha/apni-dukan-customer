@@ -125,15 +125,17 @@ export function EmptyState({ title, body, action }: { title: string; body?: stri
   )
 }
 
-/** A screen with a title bar; `back` shows a back arrow. */
+/** A screen with a title bar; `back` shows a back arrow (`onBack` runs first, e.g. to forget something). */
 export function Page({
   title,
   back,
+  onBack,
   children,
   footer,
 }: {
   title?: string
   back?: boolean | string
+  onBack?: () => void
   children: ReactNode
   footer?: ReactNode
 }) {
@@ -146,7 +148,11 @@ export function Page({
             <button
               type="button"
               aria-label="Back"
-              onClick={() => (typeof back === 'string' ? navigate(back) : navigate(-1))}
+              onClick={() => {
+                onBack?.()
+                if (typeof back === 'string') navigate(back)
+                else navigate(-1)
+              }}
               className="flex h-11 w-11 items-center justify-center rounded-full text-xl hover:bg-raised"
             >
               ←

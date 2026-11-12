@@ -7,7 +7,9 @@ import { Banner, Button, Card, Field, Page, Sheet } from '../../components/ui'
 import { formatPhone } from '../../lib/phone'
 import { takePhoneChanged } from '../../lib/phoneMoved'
 import { SUPPORT_EMAIL } from '../../lib/config'
-import { useSession } from '../../store/session'
+import { needsEmail, useSession } from '../../store/session'
+import { forgetAfterEmail, rememberAfterEmail } from '../auth/flow'
+import { VerifyEmailBanner } from '../auth/VerifyEmailBanner'
 import { NotificationsRow } from './Notifications'
 import { SalonMessageSwitches } from './SalonMessageSwitches'
 import { signOutHere } from './signOut'
@@ -18,11 +20,23 @@ export function Profile() {
   const [phoneChanged] = useState(takePhoneChanged)
   const user = useSession((s) => s.user)!
   const setUser = useSession((s) => s.setUser)
-  const [editing, setEditing] = useState(false)
+  // ?edit=name: back from verifying the email, carry on with what they tapped
+  const [editing, setEditing] = useState(() => new URLSearchParams(window.location.search).get('edit') === 'name' && !needsEmail(user))
   const [name, setName] = useState(user.name ?? '')
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [confirmAll, setConfirmAll] = useState(false)
+  const emailPending = needsEmail(user)
+
+  /** Changing the name needs a verified email first (as every other change): verify, then back here. */
+  function startEditing() {
+    if (emailPending) {
+      rememberAfterEmail('/profile?edit=name', user.id)
+      navigate('/verify-email')
+      return
+    }
+    setEditing(true)
+  }
 
   async function saveName() {
     setBusy(true)
@@ -54,6 +68,7 @@ export function Profile() {
 
   return (
     <Page title="Profile">
+      <VerifyEmailBanner />
       {phoneChanged && (
         <Banner tone="good">
           Your mobile number is now +91 {formatPhone(phoneChanged)}. Other devices were signed out; sign in there with
@@ -82,7 +97,7 @@ export function Profile() {
             </div>
           </div>
         ) : (
-          <Row label="Name" value={user.name ?? ''} action={<button type="button" className="text-link" onClick={() => setEditing(true)}>Edit</button>} />
+          <Row label="Name" value={user.name ?? ''} action={<button type="button" className="text-link" onClick={startEditing}>Edit</button>} />
         )}
         <Row
           label="Mobile"
@@ -95,11 +110,17 @@ export function Profile() {
         />
         <Row
           label="Email"
-          value={user.email ?? ''}
+          value={emailPending ? (user.email ? `${user.email} · not verified` : 'Not verified yet') : (user.email ?? '')}
           action={
-            <Link to="/profile/email" className="text-link">
-              Change
-            </Link>
+            emailPending ? (
+              <Link to="/verify-email" className="text-link" onClick={forgetAfterEmail}>
+                Verify
+              </Link>
+            ) : (
+              <Link to="/profile/email" className="text-link">
+                Change
+              </Link>
+            )
           }
         />
       </Card>
@@ -112,11 +133,18 @@ export function Profile() {
       <Card className="flex flex-col gap-1">
         <p className="font-medium">Need help?</p>
         <p className="text-sm text-muted">
-          A problem with a booking, or a missed booking you think is wrong? Write to us with your booking number.
+          A problem with a booking, or a missed booking you think is wrong? Write to us with your booking number; we
+          reply by email.
         </p>
-        <a href={`mailto:${SUPPORT_EMAIL}`} className="text-sm text-link underline">
-          {SUPPORT_EMAIL}
-        </a>
+        <Link to="/help" className="text-sm text-link underline">
+          Write to support
+        </Link>
+        <p className="text-sm text-muted">
+          Or email{' '}
+          <a href={`mailto:${SUPPORT_EMAIL}`} className="text-link underline [overflow-wrap:anywhere]">
+            {SUPPORT_EMAIL}
+          </a>
+        </p>
       </Card>
 
       <Card className="flex flex-col gap-1">
@@ -160,7 +188,7 @@ function Row({ label, value, action }: { label: string; value: string; action?: 
     <div className="flex items-center justify-between gap-3">
       <div className="min-w-0">
         <p className="text-sm text-muted">{label}</p>
-        <p className="truncate">{value}</p>
+        <p className="[overflow-wrap:anywhere]">{value}</p>
       </div>
       {action}
     </div>

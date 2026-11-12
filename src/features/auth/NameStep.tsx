@@ -34,7 +34,7 @@ export function NameStep() {
 
   return (
     <Page title="What should we call you?">
-      <p className="text-muted">Step 3 of 3. The salon sees this name on your booking.</p>
+      <p className="text-muted">Step 2 of 2. The salon sees this name on your booking.</p>
       <form onSubmit={submit} className="flex flex-col gap-4" noValidate>
         <Field
           id="name"
