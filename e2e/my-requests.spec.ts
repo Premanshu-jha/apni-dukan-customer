@@ -135,21 +135,23 @@ test('a photo and a video go with a message; Send waits for them; the request sh
   expect(t.messages[t.messages.length - 1].files).toHaveLength(2)
 })
 
-test('a file that fails can be tried again or removed; a kind we do not take is refused at once', async ({ page, context, api }) => {
+test('a file that fails can be tried again or removed; any kind of file goes, to download', async ({ page, context, api }) => {
   await signedIn(context, api)
   const t = api.newTicket('CUSTOMER', 'Bill', 'Here is the bill for my booking.')
   await page.goto(`/help/requests/${t.id}`)
   await page.locator('#request-files').setInputFiles({ name: 'notes.txt', mimeType: 'text/plain', buffer: Buffer.from('hi') })
-  await expect(page.getByText('notes.txt: send a photo, a video or a PDF.')).toBeVisible()
-  api.ticketFiles.failNext = { status: 413, code: 'FILE_TOO_LARGE', message: 'A photo or PDF can be at most 10 MB.' }
+  await expect(page.getByRole('list', { name: 'Files to send' }).getByText(/Attached/)).toBeVisible()
+  api.ticketFiles.failNext = { status: 413, code: 'FILE_TOO_LARGE', message: 'A file can be at most 10 MB (a video 100 MB). Send a smaller one, or a screenshot of it.' }
   await page.locator('#request-files').setInputFiles({ name: 'bill.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4 x') })
-  await expect(page.getByText('A photo or PDF can be at most 10 MB.', { exact: true })).toBeVisible()
+  await expect(page.getByText('A file can be at most 10 MB (a video 100 MB). Send a smaller one, or a screenshot of it.', { exact: true })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Send' })).toBeDisabled()
   await page.getByRole('button', { name: 'Try again' }).click()
-  await expect(page.getByText(/Attached/)).toBeVisible()
+  await expect(page.getByRole('list', { name: 'Files to send' }).getByText(/Attached/)).toHaveCount(2)
   await page.getByLabel('Add to your request').fill('The bill')
   await page.getByRole('button', { name: 'Send' }).click()
-  await expect(page.getByRole('link', { name: /bill\.pdf/ })).toBeVisible()
+  await expect(page.getByRole('link', { name: /bill\.pdf/ }).first()).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Download bill.pdf' })).toBeVisible()
+  await expect(page.getByRole('link', { name: /^Download notes\.txt, TXT file/ })).toHaveAttribute('href', /download=1/)
 })
 
 test('a new question goes with a photo; signing out forgets what was typed', async ({ page, context, api }) => {
@@ -171,15 +173,15 @@ test('a new question goes with a photo; signing out forgets what was typed', asy
   await expect.poll(() => page.evaluate(() => Object.keys(localStorage).filter((k) => k.includes('Draft.')).length)).toBe(0)
 })
 
-test("an iPhone's HEIC photo this browser can't read is refused at once, and a 6th file is named, not added", async ({ page, context, api }) => {
+test("an iPhone's HEIC photo this browser can't read goes as a file, and a 6th file is named, not added", async ({ page, context, api }) => {
   await signedIn(context, api)
   const t = api.newTicket('CUSTOMER', 'Photo', 'About the photo of my haircut.')
   await page.goto(`/help/requests/${t.id}`)
   await page.locator('#request-files').setInputFiles({ name: 'IMG_0001.HEIC', mimeType: 'image/heic', buffer: Buffer.from('not a real heic') })
-  await expect(page.getByText(/^This photo's format \(HEIC or WebP\) can't be sent from here/)).toBeVisible()
-  await expect(page.getByRole('button', { name: 'Try again' })).toHaveCount(0)
+  await expect(page.getByRole('list', { name: 'Files to send' }).getByText(/^Attached as a file \(it can't be shown here, only downloaded\)/)).toBeVisible()
+  await expect(page.getByRole('list', { name: 'Files to send' }).locator('img')).toHaveCount(0)   // no broken picture
   await page.getByRole('button', { name: 'Remove IMG_0001.HEIC' }).click()
-  await expect(page.getByRole('button', { name: '📎 Add photo, video or PDF' })).toBeFocused()
+  await expect(page.getByRole('button', { name: '📎 Add photo, video or file' })).toBeFocused()
 
   const pdf = (n: number) => ({ name: `bill${n}.pdf`, mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4 x') })
   await page.locator('#request-files').setInputFiles([1, 2, 3, 4, 5, 6].map(pdf))
@@ -195,4 +197,31 @@ test('a request written by email shows the files we brought in, and says how man
   await page.goto(`/help/requests/${t.id}`)
   await expect(page.getByRole('link', { name: /bill\.pdf/ })).toBeVisible()
   await expect(page.getByText('📎 1 more file sent by email (only in that email: we see it there)')).toBeVisible()
+})
+
+test('an open request is read again every 30 s; a resolved one is not (thousands of open pages)', async ({ page, context, api }) => {
+  await page.clock.install()
+  await signedIn(context, api)
+  const open = api.newTicket('CUSTOMER', 'Open one', 'Still waiting on this one.')
+  const done = api.newTicket('CUSTOMER', 'Done one', 'This one was sorted out.')
+  done.status = 'RESOLVED'
+  let reads = 0
+  page.on('request', (r) => {
+    if (r.method() === 'GET' && r.url().endsWith(`/helpdesk/tickets/${done.id}`)) reads++
+  })
+  await page.goto(`/help/requests/${done.id}`)
+  await expect(page.getByText('This one was sorted out.')).toBeVisible()
+  const first = reads
+  await page.clock.fastForward('02:00')
+  expect(reads).toBe(first)
+
+  let openReads = 0
+  page.on('request', (r) => {
+    if (r.method() === 'GET' && r.url().endsWith(`/helpdesk/tickets/${open.id}`)) openReads++
+  })
+  await page.goto(`/help/requests/${open.id}`)
+  await expect(page.getByText('Still waiting on this one.')).toBeVisible()
+  const before = openReads
+  await page.clock.fastForward('00:35')
+  await expect.poll(() => openReads).toBeGreaterThan(before)
 })
