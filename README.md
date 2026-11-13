@@ -343,6 +343,18 @@ switches over. Change `OFFLINE_CACHE` in `sw.js` when the offline page changes.
 
 ## Changelog
 
+### 0.20.0 — 2026-11-13
+
+- **Any kind of file with a support request** (needs the backend's round-5 helpdesk, V54): "📎 Add photo, video or
+  file" takes Word, Excel, zip and other files (at most 10 MB; videos 100 MB) besides photos and PDFs; an iPhone HEIC
+  photo the browser can't read goes as a file instead of being refused. Such files show as a download; a PDF has a
+  "Download" link too.
+- **Fewer requests for thousands of users**: a resolved request (and a tab in the background) is no longer re-read
+  every 30 seconds.
+- A playing video keeps its place when its link is renewed on the hour (and a paused one picks up its new link).
+- A file that can't be shown says so when attached ("Attached as a file…"); its row on the message names its kind
+  ("DOCX file", "iPhone photo (HEIC)"); a video in a format we can't play goes as a file under 10 MB.
+
 ### 0.19.0 — 2026-11-13
 
 - **Files sent by email show in My requests** (needs the backend's round-4b helpdesk, V52–V53): photos, PDFs and
