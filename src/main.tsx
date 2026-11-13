@@ -7,6 +7,7 @@ import { ApiError, retryDelay } from './api/errors'
 import { claimSubscription, closeShownNotifications, dropBrowserSubscription, registerWorker } from './api/push'
 import { isSlotsKey } from './api/salons'
 import { App } from './app/App'
+import { forgetHelpDrafts } from './features/help/drafts'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { UpdatePrompt } from './components/UpdatePrompt'
 import { forgetReturn } from './features/auth/flow'
@@ -34,6 +35,7 @@ whenSessionEnds(() => {
   void dropBrowserSubscription()
   void closeShownNotifications()
   forgetReturn()
+  forgetHelpDrafts()
   useDraft.getState().clear()
   // A shared phone: the next person mustn't see this one's saved address or last GPS point
   useLocation.getState().clear()
