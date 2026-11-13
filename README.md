@@ -343,6 +343,12 @@ switches over. Change `OFFLINE_CACHE` in `sw.js` when the offline page changes.
 
 ## Changelog
 
+### 0.19.0 — 2026-11-13
+
+- **Files sent by email show in My requests** (needs the backend's round-4b helpdesk, V52–V53): photos, PDFs and
+  videos in their email to support@clozest.in show on that message, as the app's do; any other file is counted
+  ("📎 1 more file sent by email (only in that email: we see it there)").
+
 ### 0.18.0 — 2026-11-13
 
 - **Photos, videos and PDFs with a support request** (needs the backend's round-4a helpdesk, V49–V51): "📎 Add photo,
