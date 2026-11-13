@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router'
 import { authApi } from '../../api/auth'
 import { useSession } from '../../store/session'
+import { AttachmentPicker, useAttachments } from './Attach'
 import { cleanedLength, sendError } from './text'
 import { helpApi, helpKeys } from '../../api/help'
 import { useQueryClient } from '@tanstack/react-query'
@@ -24,6 +25,9 @@ const draftKey = (userId: string) => `ad.helpDraft.${userId}`
  * Opened from Profile and from "Let us know" when no salon is near (`?about=` fills the subject, `?text=` the
  * message). Behind EmailVerifiedOnly: the reply needs a verified email.
  */
+/** Set when leaving for the email check with files picked (they can't come along). */
+const FILES_DROPPED = 'ad.helpFilesDropped'
+
 export function NeedHelp() {
   const navigate = useNavigate()
   const qc = useQueryClient()
@@ -32,6 +36,7 @@ export function NeedHelp() {
   const user = useSession((s) => s.user)!
   const setUser = useSession((s) => s.setUser)
   const DRAFT_KEY = draftKey(user.id)
+  const files = useAttachments()
   // A link that says what it's about ("Let us know", a booking) wins over an older, different draft (the same one,
   // back from a detour, stays)
   const draft = storage.getJson<{ subject: string; message: string }>(DRAFT_KEY)
@@ -40,7 +45,18 @@ export function NeedHelp() {
   const [message, setMessage] = useState(saved?.message || params.get('text') || '')
   const heading = useRef<HTMLHeadingElement | null>(null)
   const [busy, setBusy] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  // Back from verifying the email: the words were kept, the files couldn't be (they go with the page)
+  const [error, setError] = useState<string | null>(() => {
+    try {
+      if (sessionStorage.getItem(FILES_DROPPED) !== null) {
+        sessionStorage.removeItem(FILES_DROPPED)
+        return 'Your files couldn\'t be kept while you verified your email: add them again.'
+      }
+    } catch {
+      /* storage blocked: nothing to say */
+    }
+    return null
+  })
   const [done, setDone] = useState<HelpTicket | null>(null)
   const sending = useRef(false)
 
@@ -64,13 +80,14 @@ export function NeedHelp() {
 
   async function send(e: React.FormEvent) {
     e.preventDefault()
-    if (sending.current || length < MESSAGE_MIN || length > MESSAGE_MAX) return
+    if (sending.current || length < MESSAGE_MIN || length > MESSAGE_MAX || files.sending || files.failed) return
     sending.current = true
     setBusy(true)
     setError(null)
     try {
-      const ticket = await helpApi.ask(message.trim(), subject)
+      const ticket = await helpApi.ask(message.trim(), subject, files.fileIds)
       storage.remove(DRAFT_KEY)
+      files.clear()
       void qc.invalidateQueries({ queryKey: helpKeys.mine })   // My requests shows it at once
       setDone(ticket)
     } catch (err) {
@@ -81,6 +98,13 @@ export function NeedHelp() {
         const missing = (err.details.missing as string[] | undefined) ?? []
         if (missing.includes('email')) {
           rememberAfterEmail(location.pathname + location.search, user.id)
+          if (files.items.length > 0) {
+            try {
+              sessionStorage.setItem(FILES_DROPPED, '1')
+            } catch {
+              /* storage blocked */
+            }
+          }
           navigate('/verify-email')
           return
         }
@@ -153,11 +177,14 @@ export function NeedHelp() {
             className={`rounded-xl border bg-surface px-4 py-3 text-base text-ink placeholder:text-muted/60 focus:border-brand focus:outline-none ${problem ? 'border-bad' : 'border-line'}`}
           />
           <p id="help-message-hint" className={`text-sm ${problem ? 'text-bad' : 'text-muted'}`}>
-            {problem ?? (length === 0 ? `At least ${MESSAGE_MIN} characters` : `${length} / ${MESSAGE_MAX}`)}
+            {problem ?? (length === 0 ? `At least ${MESSAGE_MIN} characters${files.items.length > 0 ? ', even with a file' : ''}` : `${length} / ${MESSAGE_MAX}`)}
           </p>
         </div>
+        <AttachmentPicker a={files} id="help-files" disabled={busy} />
+        {files.sending && <p className="text-sm text-muted">Send works once your files have finished uploading.</p>}
+        {files.failed && <p className="text-sm text-bad">A file didn't go up: try it again or remove it.</p>}
         {error && <Banner tone="bad">{error} What you wrote is kept here.</Banner>}
-        <Button type="submit" busy={busy} disabled={length < MESSAGE_MIN || length > MESSAGE_MAX}>
+        <Button type="submit" busy={busy} disabled={length < MESSAGE_MIN || length > MESSAGE_MAX || files.sending || files.failed}>
           Send to support
         </Button>
       </form>
