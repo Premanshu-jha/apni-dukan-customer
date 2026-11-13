@@ -8,6 +8,8 @@
  * - the backend (VITE_API_URL): every API call;
  * - Cloudflare Turnstile (only when VITE_TURNSTILE_SITE_KEY is set): its script and its frame;
  * - salon photos: signed links to Cloudflare R2 (PHOTO_ORIGIN, default any *.r2.cloudflarestorage.com address);
+ * - support files: a video sent straight to R2 with a one-time link (connect-src) and played from a signed link
+ *   (media-src), photos shown from signed links (img-src);
  * - map tiles for a saved place's pin (VITE_MAP_TILES, default OpenStreetMap's).
  * Styles allow 'unsafe-inline': the map's pin and the Turnstile widget set inline styles. Scripts never run inline.
  */
@@ -41,8 +43,9 @@ export function securityHeaders(env: HeaderSettings): Record<string, string> {
     "default-src 'self'",
     `script-src 'self'${turnstile}`,
     `frame-src ${turnstile ? TURNSTILE : "'none'"}`,
-    `connect-src 'self' ${api}`,
+    `connect-src 'self' ${api} ${photos}`,
     `img-src 'self' data: blob: ${photos} ${tiles}`,
+    `media-src 'self' blob: ${photos}`,
     "style-src 'self' 'unsafe-inline'",
     "font-src 'self'",
     "manifest-src 'self'",

@@ -3,6 +3,7 @@ import { authApi } from '../../api/auth'
 import { refreshSettled } from '../../api/client'
 import { closeShownNotifications, turnOffPush } from '../../api/push'
 import { forgetAfterEmail, forgetReturn } from '../auth/flow'
+import { forgetHelpDrafts } from '../help/drafts'
 import { useDraft } from '../../store/bookingDraft'
 import { useLocation } from '../../store/location'
 import { useSession } from '../../store/session'
@@ -29,6 +30,7 @@ export async function signOutHere(qc: QueryClient, opts: { everywhere?: boolean;
   void closeShownNotifications()
   forgetReturn()
   forgetAfterEmail()
+  forgetHelpDrafts()
   useLocation.getState().clear()
   useDraft.getState().clear()
   qc.clear()

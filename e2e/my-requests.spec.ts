@@ -110,3 +110,79 @@ test('"Support replied" is in the notifications and opens the request', async ({
   await expect(page).toHaveURL(new RegExp(`/help/requests/${t.id}$`))
   await expect(page.getByText('Sorry, we have noted it.')).toBeVisible()
 })
+
+test('a photo and a video go with a message; Send waits for them; the request shows both', async ({ page, context, api }) => {
+  await signedIn(context, api)
+  const t = api.newTicket('CUSTOMER', 'Bad haircut', 'The barber cut it too short.')
+  await page.goto(`/help/requests/${t.id}`)
+  api.ticketFiles.putDelayMs = 800
+  await page.locator('#request-files').setInputFiles([
+    { name: 'IMG_2041.jpg', mimeType: 'image/jpeg', buffer: Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0, 0x10]) },
+    { name: 'cut.mp4', mimeType: 'video/mp4', buffer: Buffer.alloc(2048) },
+  ])
+  const files = page.getByRole('list', { name: 'Files to send' })
+  await expect(files.getByText('IMG_2041.jpg', { exact: true })).toBeVisible()
+  await expect(page.getByText('Send works once your files have finished uploading.')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Send' })).toBeDisabled()
+  await expect(files.getByText(/Attached/)).toHaveCount(2)
+  // Words are optional with a file
+  await page.getByRole('button', { name: 'Send' }).click()
+  await expect(page.getByText('Sent. Our support team will read it and reply.')).toBeVisible()
+  await expect(page.getByRole('list', { name: 'Files to send' })).toBeHidden()
+  const sent = page.getByRole('list', { name: 'Conversation' }).getByRole('list', { name: 'Files' })
+  await expect(sent.getByRole('img', { name: 'IMG_2041.jpg' })).toBeVisible()
+  await expect(sent.locator('video')).toHaveCount(1)
+  expect(t.messages[t.messages.length - 1].files).toHaveLength(2)
+})
+
+test('a file that fails can be tried again or removed; a kind we do not take is refused at once', async ({ page, context, api }) => {
+  await signedIn(context, api)
+  const t = api.newTicket('CUSTOMER', 'Bill', 'Here is the bill for my booking.')
+  await page.goto(`/help/requests/${t.id}`)
+  await page.locator('#request-files').setInputFiles({ name: 'notes.txt', mimeType: 'text/plain', buffer: Buffer.from('hi') })
+  await expect(page.getByText('notes.txt: send a photo, a video or a PDF.')).toBeVisible()
+  api.ticketFiles.failNext = { status: 413, code: 'FILE_TOO_LARGE', message: 'A photo or PDF can be at most 10 MB.' }
+  await page.locator('#request-files').setInputFiles({ name: 'bill.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4 x') })
+  await expect(page.getByText('A photo or PDF can be at most 10 MB.', { exact: true })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Send' })).toBeDisabled()
+  await page.getByRole('button', { name: 'Try again' }).click()
+  await expect(page.getByText(/Attached/)).toBeVisible()
+  await page.getByLabel('Add to your request').fill('The bill')
+  await page.getByRole('button', { name: 'Send' }).click()
+  await expect(page.getByRole('link', { name: /bill\.pdf/ })).toBeVisible()
+})
+
+test('a new question goes with a photo; signing out forgets what was typed', async ({ page, context, api }) => {
+  await signedIn(context, api)
+  await page.goto('/help')
+  await page.getByLabel('Your message').fill('The salon was closed when I arrived.')
+  await page.locator('#help-files').setInputFiles({ name: 'door.jpg', mimeType: 'image/jpeg', buffer: Buffer.from([0xff, 0xd8, 0xff, 0xe0]) })
+  await expect(page.getByText(/Attached/)).toBeVisible()
+  await page.getByRole('button', { name: 'Send to support' }).click()
+  await page.getByRole('button', { name: 'See it in My requests' }).click()
+  await expect(page.getByRole('img', { name: 'door.jpg' })).toBeVisible()
+
+  await page.getByLabel('Add to your request').fill('Half-written thought')
+  const keys = await page.evaluate(() => Object.keys(localStorage).filter((k) => k.startsWith('ad.requestDraft.')))
+  expect(keys.length).toBe(1)
+  await page.evaluate(() => localStorage.setItem('ad.helpDraft.u1', JSON.stringify({ subject: '', message: 'x' })))
+  await page.goto('/profile')
+  await page.getByRole('button', { name: 'Sign out', exact: true }).click()
+  await expect.poll(() => page.evaluate(() => Object.keys(localStorage).filter((k) => k.includes('Draft.')).length)).toBe(0)
+})
+
+test("an iPhone's HEIC photo this browser can't read is refused at once, and a 6th file is named, not added", async ({ page, context, api }) => {
+  await signedIn(context, api)
+  const t = api.newTicket('CUSTOMER', 'Photo', 'About the photo of my haircut.')
+  await page.goto(`/help/requests/${t.id}`)
+  await page.locator('#request-files').setInputFiles({ name: 'IMG_0001.HEIC', mimeType: 'image/heic', buffer: Buffer.from('not a real heic') })
+  await expect(page.getByText(/^This photo's format \(HEIC or WebP\) can't be sent from here/)).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Try again' })).toHaveCount(0)
+  await page.getByRole('button', { name: 'Remove IMG_0001.HEIC' }).click()
+  await expect(page.getByRole('button', { name: '📎 Add photo, video or PDF' })).toBeFocused()
+
+  const pdf = (n: number) => ({ name: `bill${n}.pdf`, mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4 x') })
+  await page.locator('#request-files').setInputFiles([1, 2, 3, 4, 5, 6].map(pdf))
+  await expect(page.getByText("At most 5 files in one message, so bill6.pdf wasn't added: send it in the next one.")).toBeVisible()
+  await expect(page.getByRole('list', { name: 'Files to send' }).getByRole('listitem')).toHaveCount(5)
+})

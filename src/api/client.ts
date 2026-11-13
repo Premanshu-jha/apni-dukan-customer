@@ -175,7 +175,9 @@ useSession.subscribe((now, before) => {
 /** @param fresh ask for the whole answer: no If-None-Match, and past any cache on the way */
 async function send<T>(method: string, path: string, opts: Options, fresh = false): Promise<T> {
   const headers: Record<string, string> = { Accept: 'application/json', ...opts.headers }
-  if (opts.body !== undefined) headers['Content-Type'] = 'application/json'
+  const form = typeof FormData !== 'undefined' && opts.body instanceof FormData
+  // A file upload: the browser sets the multipart Content-Type (with its boundary) itself.
+  if (opts.body !== undefined && !form) headers['Content-Type'] = 'application/json'
   if (opts.auth !== false) {
     const token = useSession.getState().accessToken
     if (token) headers.Authorization = `Bearer ${token}`
@@ -190,7 +192,7 @@ async function send<T>(method: string, path: string, opts: Options, fresh = fals
     res = await fetch(API_URL + path, {
       method,
       headers,
-      body: opts.body === undefined ? undefined : JSON.stringify(opts.body),
+      body: opts.body === undefined ? undefined : form ? (opts.body as FormData) : JSON.stringify(opts.body),
       signal: opts.signal,
       ...(fresh ? { cache: 'no-store' as const } : {}),
     })

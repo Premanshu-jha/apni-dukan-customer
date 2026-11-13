@@ -343,6 +343,17 @@ switches over. Change `OFFLINE_CACHE` in `sw.js` when the offline page changes.
 
 ## Changelog
 
+### 0.18.0 — 2026-11-13
+
+- **Photos, videos and PDFs with a support request** (needs the backend's round-4a helpdesk, V49–V51): "📎 Add photo,
+  video or PDF" on Need help and in My requests. Up to 5 per message; photos are shrunk on the phone first, videos (up
+  to 100 MB) go straight to storage with their progress shown, and Send waits for them. With a file the words are
+  optional. Support's files show in the request too: photos (tap for full size), videos to play, PDFs to open.
+  Files are deleted 6 months after a request is resolved. An iPhone HEIC photo the browser can't read, a 6th file
+  and a video over 100 MB are refused at once with what to do; a send whose answer was lost is kept once.
+- **Signing out forgets what was typed** in Need help and My requests (a shared phone).
+- The Content-Security-Policy allows the R2 address for the video's upload (`connect-src`) and playback (`media-src`).
+
 ### 0.17.0 — 2026-11-13
 
 - **"Support replied"** (needs the backend's round-3 helpdesk): when support replies to a question, it shows in
