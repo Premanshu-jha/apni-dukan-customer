@@ -186,3 +186,13 @@ test("an iPhone's HEIC photo this browser can't read is refused at once, and a 6
   await expect(page.getByText("At most 5 files in one message, so bill6.pdf wasn't added: send it in the next one.")).toBeVisible()
   await expect(page.getByRole('list', { name: 'Files to send' }).getByRole('listitem')).toHaveCount(5)
 })
+
+test('a request written by email shows the files we brought in, and says how many stay only in that email', async ({ page, context, api }) => {
+  await signedIn(context, api)
+  const t = api.newTicket('EMAIL', 'Bill', 'Here is the bill, and a Word file.')
+  t.messages[0].files = [{ id: 'e1', contentType: 'application/pdf', sizeBytes: 50000, name: 'bill.pdf', url: 'https://api.test/ticket-media/e1.pdf', removed: false }]
+  t.messages[0].attachments = 1
+  await page.goto(`/help/requests/${t.id}`)
+  await expect(page.getByRole('link', { name: /bill\.pdf/ })).toBeVisible()
+  await expect(page.getByText('📎 1 more file sent by email (only in that email: we see it there)')).toBeVisible()
+})
