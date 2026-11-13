@@ -20,6 +20,7 @@ const icons: Record<string, string> = {
   BOOKING_CANCELLED: '✕',
   BOOKING_CANCELLED_BY_SALON: '!',
   BOOKING_NO_SHOW: '!',
+  CUSTOMERHELP_REPLIED: '✉',
 }
 
 /** Only this app's own pages are opened from a message. */

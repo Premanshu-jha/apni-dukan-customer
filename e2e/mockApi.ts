@@ -171,6 +171,8 @@ export class MockApi {
     ticket.messages.push({ seq: ticket.messages.length + 1, fromSupport: true, supportName: name, body, attachments: 0, at: new Date().toISOString() })
     ticket.status = 'WAITING'
     ticket.lastMessageAt = new Date().toISOString()
+    // TicketService.notifyReplied: "Support replied" in this app's list (never the reply's words)
+    this.inbox.unshift({ id: `n${this.inbox.length + 1}`, type: 'CUSTOMERHELP_REPLIED', title: `Support replied on ${ticket.number}`, body: 'We replied to your question. Tap to read it.', url: `/help/requests/${ticket.id}`, sentAt: new Date().toISOString(), read: false })
   }
   /** Someone else's ticket (to check it is never shown). */
   addOthersTicket(): MockTicket {

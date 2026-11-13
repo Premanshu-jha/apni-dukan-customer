@@ -343,6 +343,12 @@ switches over. Change `OFFLINE_CACHE` in `sw.js` when the offline page changes.
 
 ## Changelog
 
+### 0.17.0 — 2026-11-13
+
+- **"Support replied"** (needs the backend's round-3 helpdesk): when support replies to a question, it shows in
+  Notifications ("✉ Support replied on CLZ-1042") and as a push; tapping it opens the request in My requests. The
+  email still comes too. Only the ticket number shows, never the reply or the subject (a push can show on a locked phone).
+
 ### 0.16.0 — 2026-11-12
 
 - **My requests** (needs the backend's round-2 helpdesk): Profile → "My requests" lists what you asked support,
