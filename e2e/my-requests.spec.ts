@@ -100,3 +100,13 @@ test('a send whose answer was lost and is sent again is kept once', async ({ pag
   await expect(page.getByLabel('Add to your request')).toHaveValue('')
   expect(t.messages.filter((m) => m.body === 'Any news?')).toHaveLength(2)
 })
+
+test('"Support replied" is in the notifications and opens the request', async ({ page, context, api }) => {
+  await signedIn(context, api)
+  const t = api.newTicket('CUSTOMER', 'Booking refund', 'My booking SB12 was cancelled by the salon.')
+  api.supportReplies(t, 'Sorry, we have noted it.')
+  await page.goto('/notifications')
+  await page.getByText('Support replied on CLZ-1001').click()
+  await expect(page).toHaveURL(new RegExp(`/help/requests/${t.id}$`))
+  await expect(page.getByText('Sorry, we have noted it.')).toBeVisible()
+})
