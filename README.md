@@ -343,6 +343,18 @@ switches over. Change `OFFLINE_CACHE` in `sw.js` when the offline page changes.
 
 ## Changelog
 
+### 0.16.0 — 2026-11-12
+
+- **My requests** (needs the backend's round-2 helpdesk): Profile → "My requests" lists what you asked support,
+  with its status (with our support team, we replied, resolved). Open one to read the whole conversation, support's
+  replies included (also sent by email), and add to it in the app. Writing on a resolved request opens it again.
+  What you type is kept until it's sent. After sending a question, "See it in My requests" opens it; Need help
+  links to it at the top ("Asked before?").
+  The arrows never go round in a loop; a send repeated after a lost answer is kept once; the box keeps the focus
+  after Send; the character count matches the backend's (invisible characters don't count).
+- **Changing the mobile number no longer asks for an email first**: with no verified email the second code goes to
+  the number you have now; the screen says so before you start, with what to do if that SIM is gone.
+
 ### 0.15.0 — 2026-11-12
 
 - **The email after sign-up, not during it.** Sign-up is the phone code, then the name, then Home. While the email

@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { useNavigate } from 'react-router'
+import { Link, useNavigate } from 'react-router'
 import { authApi, type PhoneChangeSent } from '../../api/auth'
 import { refreshSession, replacingSession } from '../../api/client'
 import { isApiError, messageOf } from '../../api/errors'
@@ -9,7 +9,9 @@ import { Banner, Button, Field, Page } from '../../components/ui'
 import { goBack } from '../../lib/nav'
 import { formatPhone, normalizePhone } from '../../lib/phone'
 import { flashPhoneChanged, rememberPhoneMove, takePhoneMove } from '../../lib/phoneMoved'
+import { SUPPORT_EMAIL } from '../../lib/config'
 import { useSession } from '../../store/session'
+import { rememberAfterEmail } from '../auth/flow'
 
 /**
  * Changing the mobile number while signed in: 1) the new number, 2) the code sent to it, and a second code (to the
@@ -119,6 +121,20 @@ export function ChangePhone() {
             error={same ? 'This is already your number.' : undefined}
             hint="Your bookings and history stay with your account. Other devices will be signed out."
           />
+          {!user.emailVerified && (
+            // Said before they start: someone whose old SIM is gone learns now, not after "Send codes"
+            <p className="text-sm text-muted">
+              We'll also send a code to your current number, +91 {formatPhone(user.phone)}. No longer have it?{' '}
+              <Link to="/verify-email" onClick={() => rememberAfterEmail('/profile/phone', user.id)} className="text-link underline">
+                Verify an email
+              </Link>{' '}
+              first (the code then goes there), or write to us at{' '}
+              <a href={`mailto:${SUPPORT_EMAIL}`} className="text-link underline [overflow-wrap:anywhere]">
+                {SUPPORT_EMAIL}
+              </a>
+              .
+            </p>
+          )}
           {error && (
             <div ref={errorRef} tabIndex={-1} className="outline-none">
               <Banner tone="bad">{error}</Banner>

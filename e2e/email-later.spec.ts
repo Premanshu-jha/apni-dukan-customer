@@ -32,7 +32,7 @@ test('the banner opens the email screen; Back leaves it for later; verifying say
   await page.getByRole('button', { name: 'Back' }).click()
   await expect(page.getByRole('link', { name: 'Verify now' })).toBeVisible()
   await page.getByRole('link', { name: 'Verify now' }).click()
-  await page.getByLabel('Email').fill('riya@example.com')
+  await page.getByLabel('Email', { exact: true }).fill('riya@example.com')
   await page.getByRole('button', { name: 'Send code' }).click()
   await page.getByLabel('Code').fill('654321')
   await expect(page.getByText('Email verified. Your account is secured.')).toBeVisible()
@@ -45,7 +45,7 @@ test('Need help with the email pending: verify first, then the form, and what wa
   await expect(page.getByText('Not verified yet')).toBeVisible()
   await page.getByRole('link', { name: 'Write to support' }).click()
   await expect(page).toHaveURL(/\/verify-email$/)
-  await page.getByLabel('Email').fill('riya@example.com')
+  await page.getByLabel('Email', { exact: true }).fill('riya@example.com')
   await page.getByRole('button', { name: 'Send code' }).click()
   await page.getByLabel('Code').fill('654321')
   await expect(page).toHaveURL(/\/help$/)
@@ -66,7 +66,7 @@ test('changing the name, adding a place or deleting the account wait for the ema
   await page.goto('/profile')
   await page.getByRole('button', { name: 'Edit' }).click()
   await expect(page).toHaveURL(/\/verify-email$/)
-  for (const path of ['/places/new', '/profile/phone', '/salons/s1/confirm']) {
+  for (const path of ['/places/new', '/salons/s1/confirm', '/help']) {
     await page.goto(path)
     await expect(page).toHaveURL(/\/verify-email$/)
   }
@@ -97,7 +97,7 @@ test('Back on the email screen forgets the detour: verifying later from Home goe
   await page.getByRole('button', { name: 'Back' }).click()
   await page.goto('/')
   await page.getByRole('link', { name: 'Verify now' }).click()
-  await page.getByLabel('Email').fill('riya@example.com')
+  await page.getByLabel('Email', { exact: true }).fill('riya@example.com')
   await page.getByRole('button', { name: 'Send code' }).click()
   await page.getByLabel('Code').fill('654321')
   await expect(page).toHaveURL(/\/$/)
@@ -112,4 +112,22 @@ test('a booking has a help link with its number filled in', async ({ page, conte
   const no = String(api.bookings[0].bookingNo)
   await expect(page.getByLabel("What's it about? (optional)")).toHaveValue(`Booking ${no}`)
   await expect(page.getByLabel('Your message')).toHaveValue(`About my booking ${no}: `)
+})
+
+test('changing the mobile number never waits for the email: the second code goes to the number they have now', async ({ page, context, api }) => {
+  await emailPending(context, api)
+  await page.goto('/profile')
+  await page.getByRole('link', { name: 'Change mobile number' }).click()
+  await expect(page).toHaveURL(/\/profile\/phone$/)
+  // Said before they start: the second code goes to the number they have now
+  await expect(page.getByText(/We'll also send a code to your current number, \+91 98480 12345/)).toBeVisible()
+  await page.getByLabel('New mobile number').fill('9700000004')
+  await page.getByRole('button', { name: 'Send codes' }).click()
+  await page.getByLabel('Code sent to the new number').fill('123456')
+  await page.getByLabel(/Code sent to your current number/).fill('111222')
+  await page.getByRole('button', { name: 'Change number' }).click()
+  await expect(page.getByText(/Your mobile number is now \+91 97000 00004/)).toBeVisible()
+  // Still no email: the banner stays
+  await page.goto('/')
+  await expect(page.getByRole('region', { name: 'Email not verified' })).toBeVisible()
 })

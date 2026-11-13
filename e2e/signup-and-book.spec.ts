@@ -36,7 +36,7 @@ test('a new customer signs up (phone, then name), browses, and is asked for the 
 
   // Booking does: the email screen first, then straight on to the time, the two services still picked
   await expect(page).toHaveURL(/\/verify-email$/)
-  await page.getByLabel('Email').fill('riya@example.com')
+  await page.getByLabel('Email', { exact: true }).fill('riya@example.com')
   await page.getByRole('button', { name: 'Send code' }).click()
   await page.getByLabel('Code').fill('654321')
   await expect(page).toHaveURL(/\/salons\/s1\/book$/)
