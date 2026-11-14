@@ -9,9 +9,12 @@ import { Bell } from '../notifications/Bell'
 import { SalonList } from '../salon/SalonList'
 import { VerifyEmailBanner } from '../auth/VerifyEmailBanner'
 import { type CategoryId, shownCategories } from './categories'
+import { greeting } from '../../lib/ist'
+import { YourBooking } from './YourBooking'
 
 /**
- * Home: the verify-your-email banner while the email is pending, the live categories (no tabs while only Salon is
+ * Home: a greeting by the time of day in India, the verify-your-email banner while the email is pending, the
+ * customer's next booking with "Book again" (see YourBooking), the live categories (no tabs while only Salon is
  * open), then the salons near the customer.
  */
 export function Home() {
@@ -19,17 +22,20 @@ export function Home() {
   const shown = shownCategories()
   const [tab, setTab] = useState<CategoryId>(shown[0].id)
   const chosen = useChosenPlace()
+  const hello = useGreeting()
+  const first = name?.trim().split(/\s+/)[0]
 
   return (
     <Page>
       <div className="flex items-start justify-between gap-3">
         <div className="flex flex-col gap-1">
-          <p className="text-sm text-muted">Hi {name?.split(' ')[0]},</p>
-          <p className="font-display text-2xl font-bold">What do you need today?</p>
+          <h1 className="font-display text-2xl font-bold">{first ? `${hello}, ${first}` : hello}</h1>
+          <p className="text-muted">What do you need today?</p>
         </div>
         <Bell />
       </div>
       <VerifyEmailBanner />
+      <YourBooking />
       {/* Tabs only once a second category is open */}
       {shown.length > 1 && (
       <div role="tablist" aria-label="Categories" className="grid grid-cols-3 gap-2">
@@ -74,6 +80,26 @@ export function Home() {
       ) : null}
     </Page>
   )
+}
+
+/**
+ * "Good morning" and so on, by the clock in India: worked out when Home opens and again whenever the app comes back
+ * to the front (an app left open since the morning says "Good evening" when picked up at 6 PM).
+ */
+function useGreeting(): string {
+  const [hello, setHello] = useState(() => greeting())
+  useEffect(() => {
+    const again = () => {
+      if (document.visibilityState === 'visible') setHello(greeting())
+    }
+    document.addEventListener('visibilitychange', again)
+    window.addEventListener('focus', again)
+    return () => {
+      document.removeEventListener('visibilitychange', again)
+      window.removeEventListener('focus', again)
+    }
+  }, [])
+  return hello
 }
 
 /**
