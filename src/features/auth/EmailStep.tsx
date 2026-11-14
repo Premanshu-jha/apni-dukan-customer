@@ -7,7 +7,7 @@ import { Banner, Button, Field, Page } from '../../components/ui'
 import { looksLikeEmail } from '../../lib/phone'
 import { useSession } from '../../store/session'
 import { SUPPORT_EMAIL } from '../../lib/config'
-import { forgetAfterEmail, takeAfterEmail } from './flow'
+import { cameFromBooking, forgetAfterEmail, takeAfterEmail } from './flow'
 
 /**
  * /verify-email: an email we can reach, for support replies and for getting the account back if the phone is lost.
@@ -28,6 +28,8 @@ export function EmailStep() {
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [wait, setWait] = useState(0)
+  // Sent here by Pick a time / Confirm: say why the booking stopped, and that it carries on after
+  const [forBooking] = useState(() => cameFromBooking(userId))
 
   useEffect(() => {
     if (wait <= 0) return
@@ -75,10 +77,18 @@ export function EmailStep() {
 
   return (
     <Page title="Verify your email" back={first ? '/' : true} onBack={forgetAfterEmail}>
-      <p className="text-muted">
-        Verify your email to secure your account. You need it to book and to get help from us, and if you ever lose
-        your phone number, it's how you get your account back.
-      </p>
+      {forBooking ? (
+        <Banner tone="info">
+          <span className="font-semibold">One step before you book.</span> Verify your email once: if you ever lose
+          your phone number, it's how you get your account back. Then you come straight back to your booking, with
+          what you picked still there. You won't be asked again.
+        </Banner>
+      ) : (
+        <p className="text-muted">
+          Verify your email to secure your account. You need it to book and to get help from us, and if you ever lose
+          your phone number, it's how you get your account back.
+        </p>
+      )}
       {!sentTo ? (
         <form onSubmit={send} className="flex flex-col gap-4" noValidate>
           <Field

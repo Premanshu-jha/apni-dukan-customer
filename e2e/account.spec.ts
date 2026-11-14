@@ -12,7 +12,8 @@ test('messages: the bell shows unread, opening one marks it read and opens its b
   await page.getByLabel('Messages, 1 unread').click()
   await page.getByText('Your booking is in 1 hour').click()
   await expect(page).toHaveURL(/\/bookings\/b1$/)
-  expect(api.calls.find((c) => c.path.includes('/me/notifications/read'))?.body).toEqual({ ids: ['n2'] })
+  // Sent as it opens (the request may reach the fake backend just after the page has changed: wait for it)
+  await expect.poll(() => api.calls.find((c) => c.path.includes('/me/notifications/read'))?.body).toEqual({ ids: ['n2'] })
 
   // A message whose link points to another site opens nothing
   await page.goto('/notifications')
@@ -52,8 +53,10 @@ test('a second tab never sends an already-swapped refresh token', async ({ conte
   await expect(b.getByText('Riya Sharma')).toBeVisible()
   await a.reload()
   await expect(a.getByText('No upcoming bookings')).toBeVisible()
-  // Each tab refreshed with the newest token: the backend never saw a swapped one come back
+  // Each tab refreshed with the newest token: the backend never saw a swapped one come back (not even once in the
+  // grace for a reloaded tab, which would hide a tab sending an old token)
   expect(api.reused).toBe(0)
+  expect(api.graceUsed).toBe(0)
   await expect(a).toHaveURL(/\/bookings$/)
   await expect(b).toHaveURL(/\/profile$/)
 })

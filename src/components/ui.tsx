@@ -289,11 +289,14 @@ export function Chip({
   children,
   onClick,
   disabled,
+  compact = false,
 }: {
   selected: boolean
   children: ReactNode
   onClick: () => void
   disabled?: boolean
+  /** Less side padding, for a grid of chips on a narrow phone (the free times) */
+  compact?: boolean
 }) {
   return (
     <button
@@ -301,7 +304,7 @@ export function Chip({
       aria-pressed={selected}
       disabled={disabled}
       onClick={onClick}
-      className={`min-h-11 shrink-0 rounded-xl border px-4 text-sm transition disabled:opacity-40 ${selected ? 'border-brand bg-brand text-brand-ink font-semibold' : 'border-line bg-surface text-ink hover:bg-raised'}`}
+      className={`min-h-11 shrink-0 rounded-xl border ${compact ? 'px-1.5' : 'px-4'} text-sm transition disabled:opacity-40 ${selected ? 'border-brand bg-brand text-brand-ink font-semibold' : 'border-line bg-surface text-ink hover:bg-raised'}`}
     >
       {children}
     </button>

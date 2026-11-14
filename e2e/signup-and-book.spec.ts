@@ -42,7 +42,7 @@ test('a new customer signs up (phone, then name), browses, and is asked for the 
   await expect(page).toHaveURL(/\/salons\/s1\/book$/)
 
   await page.getByRole('button', { name: 'Tomorrow' }).click()
-  await page.getByRole('button', { name: '3:45 PM' }).click()
+  await page.getByRole('button', { name: /^3:45 PM to / }).click()
   await page.getByRole('button', { name: 'Continue with 3:45 PM' }).click()
   await page.getByRole('button', { name: 'Book now' }).click()
 
