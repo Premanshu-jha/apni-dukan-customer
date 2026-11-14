@@ -60,6 +60,9 @@ test('both codes are asked for; the other tab carries on with the new number', a
   await other.goto('/profile')
   await expect(other.getByText('+91 97000 00004', { exact: true })).toBeVisible()
   expect(api.reused).toBe(0)
+  // At most the one grace answer the reload above can need (its refresh was on the way); any more would be a tab
+  // sending an old token
+  expect(api.graceUsed).toBeLessThanOrEqual(1)
 })
 
 test('the number taken between the codes and the change goes back to the number step', async ({ page, context, api }) => {

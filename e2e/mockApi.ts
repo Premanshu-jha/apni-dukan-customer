@@ -20,6 +20,9 @@ function matches(ifNoneMatch: string | undefined, etag: string): boolean {
 }
 const IST = 5.5 * 3600_000
 
+/** AuthService refresh grace (app.auth.refresh-grace-seconds, 30), and its retry time (RETRY_GRACE, 60 s). */
+const REFRESH_GRACE_MS = 30_000
+const RETRY_GRACE_MS = 60_000
 /** Past bookings per page (BookingService.PAST_PAGE); messages per page (InboxService). */
 const PAST_PAGE = 30
 const INBOX_PAGE = 30
@@ -253,6 +256,23 @@ export class MockApi {
   private refreshCount = 0
   private accessValid = new Set<string>()
   refreshTokens = new Map<string, 'live' | 'rotated' | 'revoked'>()
+  /** Each swapped refresh token: when, and the one it was swapped for (for the refresh grace). */
+  swaps = new Map<string, { at: number; successor: string }>()
+
+  /** Refresh tokens the grace replaced (never reached their app), with when they were revoked. */
+  graceReplaced = new Map<string, number>()
+  /** How many refreshes the grace answered (a tab reloaded, or its answer lost, while its refresh was on the way). */
+  graceUsed = 0
+
+  /**
+   * A new pair for a refresh token being swapped, remembering what it was swapped for. A grace swap keeps the first
+   * swap's time: the grace counts from it (AuthService), it doesn't start again.
+   */
+  private rotate(old: string, at: number = Date.now()) {
+    const pair = this.tokens()
+    this.swaps.set(old, { at, successor: pair.refreshToken as string })
+    return pair
+  }
   /** Numbers with an account of their own (PHONE_IN_USE). */
   takenPhones = new Set<string>()
   /** Phone-change codes sent: new number → where the second went, wrong tries. Codes: 123456 (new number), 654321 (email), 111222 (current number). */
@@ -378,15 +398,34 @@ export class MockApi {
     if (p === '/auth/refresh') {
       const state = this.refreshTokens.get(body.refreshToken)
       if (state === 'rotated') {
+        // AuthService.refresh's grace: swapped under 30 s ago and the token it was swapped for never used, it is the
+        // app that reloaded (or lost the answer) while its refresh was on the way: a new pair, the unused one ends
+        const swap = this.swaps.get(body.refreshToken)
+        const since = swap ? Date.now() - swap.at : Infinity
+        if (swap && since <= REFRESH_GRACE_MS && this.refreshTokens.get(swap.successor) === 'live') {
+          this.graceUsed++
+          this.refreshTokens.set(swap.successor, 'revoked')
+          this.graceReplaced.set(swap.successor, Date.now())   // revoked now: its own grace counts from here
+          return ok(200, this.rotate(body.refreshToken, swap.at))
+        }
+        // Within the retry time (60 s) it is the app retrying: "sign in again" on that device; later, a copy
+        if (since <= RETRY_GRACE_MS) return fail(401, 'INVALID_REFRESH_TOKEN', 'Sign in again.')
+        this.reused++
+        return fail(401, 'REFRESH_TOKEN_REUSED', 'For your safety you were signed out everywhere. Sign in again.')
+      }
+      // GRACE_REPLACED: the pair the grace replaced, back after the grace: someone else had the token
+      const replacedAt = this.graceReplaced.get(body.refreshToken)
+      if (state === 'revoked' && replacedAt !== undefined && Date.now() - replacedAt > REFRESH_GRACE_MS) {
         this.reused++
         return fail(401, 'REFRESH_TOKEN_REUSED', 'For your safety you were signed out everywhere. Sign in again.')
       }
       if (state !== 'live') return fail(401, 'INVALID_REFRESH_TOKEN', 'Sign in again.')
       this.refreshTokens.set(body.refreshToken, 'rotated')
-      return ok(200, this.tokens())
+      return ok(200, this.rotate(body.refreshToken))
     }
     if (p === '/auth/logout') {
-      this.refreshTokens.set(body.refreshToken, 'rotated')
+      // Signed out: the token ends ("sign in again" if it comes back), not a swap
+      this.refreshTokens.set(body.refreshToken, 'revoked')
       return ok(204)
     }
 
@@ -561,7 +600,17 @@ export class MockApi {
       }
       const date = url.searchParams.get('date')!
       const ids = url.searchParams.getAll('services')
-      const minutes = SERVICES.filter((s) => ids.includes(s.id)).reduce((t, s) => t + s.durationMinutes, 0)
+      // BookingService.availability with moving: the customer's own booking at this salon (else 404), still able to
+      // move (else 409 WRONG_STATUS), and the times are for its own booked length
+      const movingId = url.searchParams.get('moving')
+      const moving = movingId === null ? null : this.booking(movingId)
+      if (movingId !== null && !moving) return fail(404, 'NOT_FOUND', 'No such booking.')
+      if (moving && (moving.status !== 'CONFIRMED' || Date.parse(moving.startsAt as string) <= Date.now())) {
+        return fail(409, 'WRONG_STATUS', "This booking can't be changed any more.")
+      }
+      const minutes = moving
+        ? Math.round((Date.parse(moving.endsAt as string) - Date.parse(moving.startsAt as string)) / 60_000)
+        : SERVICES.filter((s) => ids.includes(s.id)).reduce((t, s) => t + s.durationMinutes, 0)
       // BookingResponses.Slots: freeCancelMinutes (10) and each start's lateCancelFrom (1 hour before it)
       // Each start once, as the backend lists them (an extra time may also be a usual one, depending on the time of day)
       const times = [...new Set([...TIMES, ...this.extraTimes.filter((x) => x.date === date).map((x) => x.time)])].sort()
@@ -588,6 +637,9 @@ export class MockApi {
         this.user = { ...this.user, name: null }
         return fail(403, 'PROFILE_INCOMPLETE', 'Add your name first.', { missing: ['name'] })
       }
+      // BookingService.book: at most 2 bookings not started yet (CONFIRMED and not over; one in the chair doesn't count)
+      const active = this.bookings.filter((b) => b.status === 'CONFIRMED' && Date.parse(b.endsAt as string) > Date.now()).length
+      if (active >= 2) return fail(409, 'TOO_MANY_BOOKINGS', 'You already have 2 upcoming bookings. Cancel one to book another.')
       if (this.takenOnce.has(body.startAt)) {
         this.takenOnce.delete(body.startAt)
         this.gone.add(body.startAt)

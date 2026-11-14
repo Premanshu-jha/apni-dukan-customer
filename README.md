@@ -70,9 +70,9 @@ Everything needs sign-in, because the backend's salon endpoints need a signed-in
 | `/signin/recover` | Lost phone: email + new number, a code to each | `POST auth/recover/start`, `auth/recover/complete` |
 | `/welcome/email` | Step 2 of 3: email and its code | `POST auth/email/send-code`, `auth/email/verify` |
 | `/welcome/name` | Step 3 of 3, last: "What should we call you?" | `PATCH auth/me` |
-| `/` | Home: category tabs; Salon tab = location, then salons within 2 km, 30 at a time ("Show more salons") | `GET salons?lat&lng[&afterDistance&afterId]` |
+| `/` | Home: "Good morning/afternoon/evening, {first name}" (India time); the next booking ("Your booking") and "Want to book again?" → Book now; then location and salons within 2 km, 30 at a time ("Show more salons") | `GET salons?lat&lng[&afterDistance&afterId]`, `me/bookings?when=upcoming` (and `when=past`, first page, only when nothing is coming up) |
 | `/salons/:id` | Salon: photo, address, offers (and its offer-messages switch once visited), services to tick (with offer prices), opening hours; `?offer=` picks the offer's services | `GET salons/{id}`, `salons/{id}/services`, `PUT salons/{id}/offer-messages` |
-| `/salons/:id/book` | Day chips (7 days) and free times | `GET salons/{id}/availability?services&date` |
+| `/salons/:id/book` | Day chips (7 days) and free times, each with when the visit would end ("10:00 AM to 10:30 AM") | `GET salons/{id}/availability?services&date` |
 | `/salons/:id/confirm` | Summary and Book now | `POST bookings` (with `Idempotency-Key`) |
 | `/bookings` | Upcoming / Past | `GET me/bookings?when=` |
 | `/bookings/:id` | Start code, arrive-by time, services, Move, Cancel, notifications offer | `GET bookings/{id}`, `POST bookings/{id}/cancel` |
@@ -253,6 +253,21 @@ public/         sw.js (push notifications), manifest, icon
 - `SLOT_TAKEN` (booking or moving) refreshes that salon's free times, then → back to the time screen with "Someone just booked that time". `TOO_MANY_BOOKINGS` (2 upcoming) links
   to My bookings. Other errors show the backend's own message.
 - All times are shown in India time (`lib/ist.ts`), whatever zone the phone is set to.
+- **Each free time shows when the visit ends:** the start, and under it "to 10:30 AM" (the start plus the minutes of
+  the services picked, `durationMinutes` in the availability answer), on Pick a time; on Move, the booking's own
+  length (what the move keeps).
+- **Coming back after booking (Home):** the heading "Good morning / afternoon / evening, Riya" by the clock in India
+  (before noon, until 5 PM, after; worked out again when the app comes back to the front), "What do you need today?"
+  under it, then "Your booking": the soonest booking still to come or under way ("Tomorrow, 11:30 AM to 12:15 PM",
+  services and price, status, start code), opening the booking; "See all N bookings" when there is more than one.
+  Then "Want to book again?" with Book now, which opens the same salon with the same services ticked (`?services=`,
+  as the come-back message does). Not offered at 2 upcoming bookings (a third is refused). With nothing coming up,
+  Book now repeats the latest past booking (`['bookings','past-latest']`, one page, read only then), if its salon can
+  still be opened. A first-time customer, a slow or failed bookings read: Home stays as before. Home reads the
+  upcoming list at most every 30 s.
+- **Email first, from a booking:** a customer whose email is still pending who taps Pick a time is sent to verify it
+  (as before); the email screen then says "One step before you book" and that they come straight back with what
+  they picked still there (one note in place of the usual text). Opened from Home's banner, it doesn't.
 - Move is hidden within 1 hour of the start (`canMove` from the backend). Cancelling within 1 hour warns that it
   counts as a late cancel.
 - **Free times stay current:** while a list of free times is on screen it is asked for again every 30 s, and at once
@@ -342,6 +357,24 @@ version of `sw.js` waits after installing; the app shows "New version available 
 switches over. Change `OFFLINE_CACHE` in `sw.js` when the offline page changes.
 
 ## Changelog
+
+### 0.21.0 — 2026-11-14
+
+Fixes from a salon customer trying the app:
+
+- **Home greets by the time of day** ("Good morning, Riya", India time) and, for someone who has booked, shows
+  **"Your booking"** (the next one: day, time from–to, services, start code) and **"Want to book again?" → Book now**
+  (the same salon, the same services ticked; with nothing coming up, the latest past booking; not at 2 upcoming).
+- **Pick a time shows how long the visit is:** each free time says when it would end ("10:00 AM to 10:30 AM"). On
+  Move the end is the booking's own length; backend PR #59 makes Move's free times use it too.
+- **No more times that clash with my own booking:** they were offered, then refused at Book now; the app leaves
+  them out from the bookings it already holds. A booking cancelled while Move is open goes back to the booking.
+- **The email step explains itself when a booking leads there:** "One step before you book", and that the booking
+  carries on after.
+- **Change number:** a wrong-code (or other) message now always gets the focus, so screen readers read it (it was
+  sometimes lost).
+- Tests: the fake backend refreshes like the real one (a tab reloaded mid-refresh stays signed in), which ends the
+  change-phone and email tests that failed now and then.
 
 ### 0.20.0 — 2026-11-13
 

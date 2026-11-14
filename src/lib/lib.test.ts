@@ -1,5 +1,6 @@
 import { addDays, clock12, dateOfIst, dayLabel, endTimeIst, greeting, nextDates, timeIst, todayIst, weekdayName } from './ist'
 import { bookAgainLink } from '../features/home/bookAgain'
+import { clashesWithMine } from '../features/salon/clash'
 import { duration, rupees } from './money'
 import { formatPhone, looksLikeEmail, normalizePhone } from './phone'
 
@@ -103,5 +104,22 @@ describe('when a visit ends, and the greeting', () => {
     const services = [{ serviceId: 'v1' }, { serviceId: 'v2' }] as never
     expect(bookAgainLink({ salonId: 's1', services })).toBe('/salons/s1?services=v1%2Cv2')
     expect(bookAgainLink({ salonId: 's1', services: [] })).toBe('/salons/s1')
+  })
+})
+
+describe('free times that clash with my own bookings', () => {
+  const b = (id: string, status: string, start: string, end: string) =>
+    ({ id, status, startsAt: start, endsAt: end }) as never
+  const mine = [b('b1', 'CONFIRMED', '2026-11-15T06:30:00Z', '2026-11-15T07:00:00Z')]   // 12:00–12:30 IST
+  it('leaves out a visit overlapping mine, keeps one only touching it', () => {
+    expect(clashesWithMine('2026-11-15T06:15:00Z', 30, mine)).toBe(true)    // 11:45–12:15
+    expect(clashesWithMine('2026-11-15T06:45:00Z', 30, mine)).toBe(true)    // 12:15–12:45
+    expect(clashesWithMine('2026-11-15T06:00:00Z', 30, mine)).toBe(false)   // 11:30–12:00 touches
+    expect(clashesWithMine('2026-11-15T07:00:00Z', 30, mine)).toBe(false)   // 12:30 touches
+  })
+  it('ignores the booking being moved, and cancelled or finished ones', () => {
+    expect(clashesWithMine('2026-11-15T06:30:00Z', 30, mine, 'b1')).toBe(false)
+    expect(clashesWithMine('2026-11-15T06:30:00Z', 30, [b('b2', 'CANCELLED_BY_SALON', '2026-11-15T06:30:00Z', '2026-11-15T07:00:00Z')])).toBe(false)
+    expect(clashesWithMine('2026-11-15T06:30:00Z', 30, [b('b3', 'IN_SERVICE', '2026-11-15T06:30:00Z', '2026-11-15T07:00:00Z')])).toBe(true)
   })
 })
