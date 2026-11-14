@@ -104,13 +104,15 @@ export function SalonList({ lat, lng }: { lat: number; lng: number }) {
                   <p className="line-clamp-2 text-sm">{servicesText(s.topServices, s.serviceCount)}</p>
                 )}
                 <p className="text-sm">
-                  <span
-                    className={`mr-2 inline-block rounded-full border px-2 text-xs font-medium ${
-                      s.registered ? 'border-good text-good' : 'border-line text-muted'
-                    }`}
-                  >
-                    {s.registered ? 'Registered' : 'Unregistered'}
-                  </span>
+                  {/* Only a salon whose trade licence passed our check (and is still valid): no badge otherwise */}
+                  {s.registered && (
+                    <span
+                      className="mr-2 inline-block rounded-full border border-good px-2 text-xs font-medium text-good"
+                      title="Its trade licence was checked by Clozest"
+                    >
+                      Licensed
+                    </span>
+                  )}
                   <span className="text-link">{s.distanceKm.toFixed(1)} km away</span>
                   {openText(s, hhmmIst(s.readAt ?? fallbackNow)) && (
                     <span className={s.openNow ? ' text-good' : ' text-muted'}> · {openText(s, hhmmIst(s.readAt ?? fallbackNow))}</span>

@@ -4,7 +4,7 @@ import { messageOf, salonReadMessage } from '../../api/errors'
 import { useSalon, useSalonServices, useSetOfferMessages } from '../../api/salons'
 import { Banner, Button, ErrorState, Loading, Page, Switch } from '../../components/ui'
 import { clock12, dateTimeIst, dayLabel, weekdayName } from '../../lib/ist'
-import { offerWhat, offerWhen, ratingText } from '../../lib/salonCard'
+import { licenceDay, offerWhat, offerWhen, ratingText } from '../../lib/salonCard'
 import { duration, rupees } from '../../lib/money'
 import { MAX_SERVICES, useDraft } from '../../store/bookingDraft'
 import { SalonPhoto } from './SalonList'
@@ -126,6 +126,12 @@ export function SalonPage() {
         <p className="text-muted">
           {s.addressLine}, {s.area}, {s.city} {s.pincode}
         </p>
+        {s.licensedUntil && (
+          <p className="text-sm">
+            <span className="mr-2 inline-block rounded-full border border-good px-2 text-xs font-medium text-good">Licensed</span>
+            <span className="text-muted">Its trade licence was checked by Clozest (valid until {licenceDay(s.licensedUntil)}).</span>
+          </p>
+        )}
         {s.mapLink && (
           <a href={s.mapLink} target="_blank" rel="noreferrer" className="text-sm text-link underline">
             Open in Maps
