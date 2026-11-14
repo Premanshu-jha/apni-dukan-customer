@@ -62,6 +62,19 @@ export function takeAfterEmail(userId: string | undefined): string {
   return back && back.startsWith('/') && !back.startsWith('//') ? back : '/'
 }
 
+/**
+ * Whether this person was sent to the email screen from a booking (a salon's time or confirm screen), without
+ * forgetting where they were going: the email screen then says why booking stopped and that it comes back.
+ */
+export function cameFromBooking(userId: string | undefined): boolean {
+  try {
+    const saved = JSON.parse(tabStorage()?.getItem(EMAIL_RETURN_KEY) ?? 'null') as { userId?: string; path?: string } | null
+    return Boolean(saved && userId && saved.userId === userId && /^\/salons\/[^/]+\/(book|confirm)(\?|$)/.test(saved.path ?? ''))
+  } catch {
+    return false
+  }
+}
+
 /** Where to go after a sign-in step: the name if it's missing, else back to where they started (or Home). */
 export function nextAfterSignIn(user: User): string {
   const missing = signUpSteps(user)

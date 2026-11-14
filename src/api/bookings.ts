@@ -10,10 +10,29 @@ export const bookingKeys = {
 }
 
 /** Upcoming bookings: all of them in one answer (a customer holds at most 2 waiting; the backend has no pages here). */
-export function useUpcomingBookings() {
+export function useUpcomingBookings({ staleTime }: { staleTime?: number } = {}) {
   return useQuery({
     queryKey: bookingKeys.mine('upcoming'),
     queryFn: () => api<Booking[]>('GET', '/api/v1/me/bookings?when=upcoming'),
+    staleTime,
+  })
+}
+
+/** At most this many bookings not started yet at once (BookingService.MAX_ACTIVE_BOOKINGS): a third is refused. */
+export const MAX_UPCOMING = 2
+
+/**
+ * The latest past booking (any status), for Home's "Book again": the first page only, under its own key so it never
+ * picks up My bookings' loaded pages (a refresh of those asks every page again). Under ['bookings'], so any booking
+ * change refreshes it too.
+ */
+export function useLastVisit({ enabled }: { enabled: boolean }) {
+  return useQuery({
+    queryKey: ['bookings', 'past-latest'] as const,
+    queryFn: () => api<Booking[]>('GET', '/api/v1/me/bookings?when=past'),
+    select: (page: Booking[]) => page[0] ?? null,
+    enabled,
+    staleTime: 60_000,
   })
 }
 

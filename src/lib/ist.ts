@@ -35,6 +35,11 @@ export function timeIst(instant: string): string {
   return formatInTimeZone(new Date(instant), IST, 'h:mm a')
 }
 
+/** "4:30 PM" for the moment `minutes` after an instant, in India time: when a booking starting then ends. */
+export function endTimeIst(startAt: string, minutes: number): string {
+  return timeIst(new Date(Date.parse(startAt) + minutes * 60_000).toISOString())
+}
+
 /** "Fri 7 Nov, 4:30 PM" for an instant, in India time. */
 export function dateTimeIst(instant: string): string {
   return formatInTimeZone(new Date(instant), IST, 'EEE d MMM, h:mm a')
@@ -69,4 +74,12 @@ export function clock12(hhmm: string): string {
   const suffix = h >= 12 && h < 24 ? 'PM' : 'AM'
   const h12 = h % 12 === 0 ? 12 : h % 12
   return `${h12}:${String(m).padStart(2, '0')} ${suffix}`
+}
+
+/** "Good morning" before noon, "Good afternoon" until 5 PM, else "Good evening": by the clock in India. */
+export function greeting(now: Date = new Date()): string {
+  const hour = Number(formatInTimeZone(now, IST, 'H'))
+  if (hour >= 5 && hour < 12) return 'Good morning'
+  if (hour >= 12 && hour < 17) return 'Good afternoon'
+  return 'Good evening'
 }

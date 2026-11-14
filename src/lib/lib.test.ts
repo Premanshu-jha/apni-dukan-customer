@@ -1,4 +1,5 @@
-import { addDays, clock12, dateOfIst, dayLabel, nextDates, timeIst, todayIst, weekdayName } from './ist'
+import { addDays, clock12, dateOfIst, dayLabel, endTimeIst, greeting, nextDates, timeIst, todayIst, weekdayName } from './ist'
+import { bookAgainLink } from '../features/home/bookAgain'
 import { duration, rupees } from './money'
 import { formatPhone, looksLikeEmail, normalizePhone } from './phone'
 
@@ -77,5 +78,30 @@ describe('day chips for a salon', () => {
     expect(daysShown(undefined)).toBe(8)
     expect(daysShown(0)).toBe(8)
     expect(daysShown(2.5)).toBe(8)
+  })
+})
+
+describe('when a visit ends, and the greeting', () => {
+  it('adds the services\' minutes to the start, in India time, across noon and midnight', () => {
+    expect(endTimeIst('2026-11-14T04:30:00Z', 30)).toBe('10:30 AM')    // 10:00 IST
+    expect(endTimeIst('2026-11-14T06:15:00Z', 45)).toBe('12:30 PM')    // 11:45 IST
+    expect(endTimeIst('2026-11-14T18:00:00Z', 60)).toBe('12:30 AM')    // 11:30 PM IST
+  })
+
+  it('says morning, afternoon or evening by the clock in India, whatever the phone\'s zone', () => {
+    const at = (ist: string) => new Date(`2026-11-14T${ist}:00+05:30`)
+    expect(greeting(at('05:00'))).toBe('Good morning')
+    expect(greeting(at('11:59'))).toBe('Good morning')
+    expect(greeting(at('12:00'))).toBe('Good afternoon')
+    expect(greeting(at('16:59'))).toBe('Good afternoon')
+    expect(greeting(at('17:00'))).toBe('Good evening')
+    expect(greeting(at('23:30'))).toBe('Good evening')
+    expect(greeting(at('02:00'))).toBe('Good evening')
+  })
+
+  it('book again opens the same salon with the same services', () => {
+    const services = [{ serviceId: 'v1' }, { serviceId: 'v2' }] as never
+    expect(bookAgainLink({ salonId: 's1', services })).toBe('/salons/s1?services=v1%2Cv2')
+    expect(bookAgainLink({ salonId: 's1', services: [] })).toBe('/salons/s1')
   })
 })
