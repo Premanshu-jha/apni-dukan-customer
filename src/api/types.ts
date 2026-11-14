@@ -140,6 +140,8 @@ export interface SalonService {
   priceIsFrom: boolean
   /** Its price in the salon's best offer for it (only at that offer's days and hours); null if none. */
   offerPricePaise?: number | null
+  /** Its picture (lib/serviceIcons); null for one saved before pictures (the one its name fits is drawn). */
+  icon?: string | null
 }
 
 export interface Slot {

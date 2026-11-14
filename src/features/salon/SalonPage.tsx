@@ -7,6 +7,7 @@ import { clock12, dateTimeIst, dayLabel, weekdayName } from '../../lib/ist'
 import { licenceDay, offerWhat, offerWhen, ratingText } from '../../lib/salonCard'
 import { duration, rupees } from '../../lib/money'
 import { MAX_SERVICES, useDraft } from '../../store/bookingDraft'
+import { ServiceIcon } from '../../components/ServiceIcon'
 import { SalonPhoto } from './SalonList'
 
 export function SalonPage() {
@@ -190,6 +191,7 @@ export function SalonPage() {
                       onChange={() => toggleService(x.id)}
                       className="h-5 w-5 accent-[var(--color-brand)]"
                     />
+                    <ServiceIcon service={x} size={22} className="text-link" />
                     <span className="flex-1">
                       <span className="block font-medium">{x.name}</span>
                       <span className="text-sm text-muted">{duration(x.durationMinutes)}</span>

@@ -358,6 +358,17 @@ switches over. Change `OFFLINE_CACHE` in `sw.js` when the offline page changes.
 
 ## Changelog
 
+### 0.23.0 — 2026-11-14
+
+Needs the backend with V61–V62 (service pictures). Deploy the backend first; an older one simply sends no pictures.
+
+- **A picture for every service** on the salon page and the confirm screen: thin-line SVG (scissors, moustache,
+  razor, colour, hair dryer, face, hand, feet, lipstick, crown…), the salon's choice, or the one the service's name
+  fits. The same drawings as the partner app (`lib/serviceIcons.ts`); most are from Lucide (ISC licence), the
+  salon-only ones drawn for Clozest in the same style. Names written in Devanagari are read too.
+- **Confirm screen during an offer:** "Usual prices above; the offer price is in the total." under the services, so
+  the lines (usual prices) and the total (offer price) don't look like they don't add up.
+
 ### 0.22.0 — 2026-11-14
 
 Needs the backend with V55–V58 (the trade licence checked automatically). Deploy the backend first.

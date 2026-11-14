@@ -116,9 +116,9 @@ function card(over: Record<string, unknown>) {
 }
 
 export const SERVICES = [
-  { id: 'v1', name: 'Haircut', durationMinutes: 30, pricePaise: 20000, priceIsFrom: false },
+  { id: 'v1', name: 'Haircut', durationMinutes: 30, pricePaise: 20000, priceIsFrom: false, icon: 'HAIRCUT' },
   { id: 'v2', name: 'Beard trim', durationMinutes: 15, pricePaise: 10000, priceIsFrom: false },
-  { id: 'v3', name: 'Hair colour', durationMinutes: 60, pricePaise: 80000, priceIsFrom: true },
+  { id: 'v3', name: 'Hair colour', durationMinutes: 60, pricePaise: 80000, priceIsFrom: true, icon: 'OTHER' },
 ]
 
 export const TIMES = ['10:00', '11:30', '13:00', '15:45', '17:15', '18:30']
