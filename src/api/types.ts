@@ -64,7 +64,10 @@ export interface SalonSummary {
   openNow: boolean | null
   /** Its weekly off or a holiday. */
   closedToday: boolean
-  /** It has a registration document (optional) that our field team checked: "Registered", else "Unregistered". */
+  /**
+   * Its trade licence (optional) passed our automatic check and is still valid today: the card says "Licensed"; no
+   * badge otherwise. (The backend keeps the name "registered".)
+   */
   registered: boolean
   /** Its offer running now or coming next (the card's badge); null if none. Missing from older backends. */
   offer?: OfferBadge | null
@@ -122,6 +125,11 @@ export interface SalonDetails {
   offers?: Offer[]
   /** Whether I get its offer messages: null if I never completed a visit there; false once I stopped them. */
   offerMessages?: boolean | null
+  /**
+   * Its trade licence's last valid day (yyyy-MM-dd) when it passed our automatic check and is valid today: the page
+   * says "Licensed". Null otherwise, or missing from an older backend.
+   */
+  licensedUntil?: string | null
 }
 
 export interface SalonService {

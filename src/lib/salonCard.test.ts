@@ -53,3 +53,10 @@ describe('offers', () => {
     expect(offerWhat({ allServices: false, serviceIds: ['a', 'gone'] }, names)).toBe('on Haircut')
   })
 })
+
+describe('the licence day', () => {
+  it('reads as a date', async () => {
+    const { licenceDay } = await import('./salonCard')
+    expect(licenceDay('2027-03-31')).toBe('31 Mar 2027')
+  })
+})

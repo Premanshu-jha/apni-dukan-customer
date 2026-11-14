@@ -53,3 +53,9 @@ export function offerWhat(o: Pick<Offer, 'allServices' | 'serviceIds'>, names: M
   const known = o.serviceIds.map((id) => names.get(id)).filter((n): n is string => !!n)
   return known.length ? `on ${known.join(', ')}` : 'on some services'
 }
+
+/** "31 Mar 2027" from "2027-03-31". */
+export function licenceDay(iso: string): string {
+  const [y, m, d] = iso.split('-').map(Number)
+  return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' })
+}

@@ -208,6 +208,8 @@ export class MockApi {
 
   /** The salon's booking window (its owner's setting, 1–30; GET /salons/{id} `maxDaysAhead`); undefined: not sent. */
   maxDaysAhead: number | undefined = 7
+  /** GET /salons/{id} `licensedUntil`: its trade licence passed and is valid today (null: no badge). */
+  licensedUntil: string | null = '2027-03-31'
   calls: Call[] = []
   /** Saved places (PlacesController), as the backend keeps them: Home, Work, then others as saved. */
   places: Array<Record<string, any>> = []
@@ -584,7 +586,7 @@ export class MockApi {
       return ok(200, { on: body.on })
     }
     if (p === '/salons/s1') {
-      return ok(200, { ...SALON, maxDaysAhead: this.maxDaysAhead, closedDates: this.closedDates, offers: this.offers, offerMessages: this.visitedS1 ? !this.mutedS1 : null })
+      return ok(200, { ...SALON, maxDaysAhead: this.maxDaysAhead, closedDates: this.closedDates, offers: this.offers, offerMessages: this.visitedS1 ? !this.mutedS1 : null, licensedUntil: this.licensedUntil })
     }
     if (p === '/salons/s1/services') {
       // BookingService.salonServices: each service's price in its best offer (running or to come)
