@@ -358,6 +358,17 @@ switches over. Change `OFFLINE_CACHE` in `sw.js` when the offline page changes.
 
 ## Changelog
 
+### 0.22.0 — 2026-11-14
+
+Needs the backend with V55–V58 (the trade licence checked automatically). Deploy the backend first.
+
+- **"Licensed" instead of "Registered" / "Unregistered"** on the salon cards: shown only when the salon's trade
+  licence passed our automatic check and is still valid today. Any other salon shows no badge (many genuine local
+  salons have no licence; "Unregistered" read as an accusation).
+- **The salon page says it too**: the "Licensed" pill with "Its trade licence was checked by Clozest (valid until
+  31 Mar 2027)", only while the licence is valid in India today.
+- Scenarios in `docs/scenarios.md`; the cards' journey in `e2e/ratings.spec.ts`.
+
 ### 0.21.0 — 2026-11-14
 
 Fixes from a salon customer trying the app:
