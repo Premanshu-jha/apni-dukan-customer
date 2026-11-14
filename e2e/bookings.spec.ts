@@ -10,16 +10,16 @@ test('a time someone else just took sends the customer back, and that time is go
   await page.getByLabel(/Haircut/).check()
   await page.getByRole('button', { name: 'Pick a time' }).click()
   await page.getByRole('button', { name: 'Tomorrow' }).click()
-  await page.getByRole('button', { name: '11:30 AM' }).click()
+  await page.getByRole('button', { name: /^11:30 AM to / }).click()
   await page.getByRole('button', { name: /Continue with/ }).click()
   await page.getByRole('button', { name: 'Book now' }).click()
 
   await expect(page).toHaveURL(/\/salons\/s1\/book$/)
   await expect(page.getByText('Someone just booked that time')).toBeVisible()
-  await expect(page.getByRole('button', { name: '11:30 AM' })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: /^11:30 AM to / })).toHaveCount(0)
 
   // Booking another time works, and uses a new idempotency key
-  await page.getByRole('button', { name: '1:00 PM' }).click()
+  await page.getByRole('button', { name: /^1:00 PM to / }).click()
   await page.getByRole('button', { name: /Continue with/ }).click()
   await page.getByRole('button', { name: 'Book now' }).click()
   await expect(page).toHaveURL(/\/bookings\/b1/)
@@ -35,8 +35,8 @@ test('moving a booking, then cancelling it', async ({ page, context, api }) => {
   await page.goto('/bookings/b1')
   await page.getByRole('button', { name: 'Move to another time' }).click()
   await page.getByRole('button', { name: 'Tomorrow' }).click()
-  await expect(page.getByRole('button', { name: '10:00 AM' })).toHaveCount(0) // its own time isn't offered
-  await page.getByRole('button', { name: '5:15 PM' }).click()
+  await expect(page.getByRole('button', { name: /^10:00 AM to / })).toHaveCount(0) // its own time isn't offered
+  await page.getByRole('button', { name: /^5:15 PM to / }).click()
   await page.getByRole('button', { name: 'Move to 5:15 PM' }).click()
   await expect(page).toHaveURL(/\/bookings\/b1$/)
   await expect(page.getByText(/5:15 PM/).first()).toBeVisible()

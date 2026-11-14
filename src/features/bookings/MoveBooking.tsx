@@ -107,6 +107,8 @@ export function MoveBooking() {
         }}
         exclude={b.startsAt}
         moving={b.id}
+        // A move keeps the booking's own length, whatever the salon's services take now
+        minutes={Math.round((Date.parse(b.endsAt) - Date.parse(b.startsAt)) / 60_000)}
         onSelectedGone={selectedGone}
       />
     </Page>

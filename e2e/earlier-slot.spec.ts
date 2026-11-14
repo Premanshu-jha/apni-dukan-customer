@@ -9,7 +9,7 @@ test('booking with the switch on sends it, and the booking page shows it on and 
   await page.getByLabel(/Haircut/).check()
   await page.getByRole('button', { name: 'Pick a time' }).click()
   await page.getByRole('button', { name: 'Tomorrow' }).click()
-  await page.getByRole('button', { name: '5:15 PM' }).click()
+  await page.getByRole('button', { name: /^5:15 PM to / }).click()
   await page.getByRole('button', { name: /Continue with/ }).click()
   await expect(page.getByText('more than 10 minutes late')).toBeVisible()
   const onConfirm = page.getByRole('switch', { name: 'Tell me if an earlier time opens' })
@@ -34,7 +34,7 @@ test('booking without touching the switch leaves it off', async ({ page, context
   await page.getByLabel(/Haircut/).check()
   await page.getByRole('button', { name: 'Pick a time' }).click()
   await page.getByRole('button', { name: 'Tomorrow' }).click()
-  await page.getByRole('button', { name: '1:00 PM' }).click()
+  await page.getByRole('button', { name: /^1:00 PM to / }).click()
   await page.getByRole('button', { name: /Continue with/ }).click()
   await page.getByRole('button', { name: 'Book now' }).click()
   await expect(page).toHaveURL(/\/bookings\/b1/)
@@ -107,12 +107,12 @@ test('a time someone else takes disappears from the list on its own, without a r
   await page.getByLabel(/Haircut/).check()
   await page.getByRole('button', { name: 'Pick a time' }).click()
   await page.getByRole('button', { name: 'Tomorrow' }).click()
-  await expect(page.getByRole('button', { name: '1:00 PM' })).toBeVisible()
+  await expect(page.getByRole('button', { name: /^1:00 PM to / })).toBeVisible()
 
   api.gone.add(istInstant(tomorrow, '13:00'))
   await page.clock.runFor(31_000)
-  await expect(page.getByRole('button', { name: '1:00 PM' })).toHaveCount(0)
-  await expect(page.getByRole('button', { name: '11:30 AM' })).toBeVisible()
+  await expect(page.getByRole('button', { name: /^1:00 PM to / })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: /^11:30 AM to / })).toBeVisible()
 })
 
 test('a message arriving while the times are open refreshes them at once', async ({ page, context, api }) => {
@@ -122,12 +122,12 @@ test('a message arriving while the times are open refreshes them at once', async
   await page.getByLabel(/Haircut/).check()
   await page.getByRole('button', { name: 'Pick a time' }).click()
   await page.getByRole('button', { name: 'Tomorrow' }).click()
-  await expect(page.getByRole('button', { name: '5:15 PM' })).toBeVisible()
+  await expect(page.getByRole('button', { name: /^5:15 PM to / })).toBeVisible()
 
   api.gone.add(istInstant(tomorrow, '17:15'))
   // What the service worker posts to open windows when a push arrives (public/sw.js)
   await page.evaluate(() => navigator.serviceWorker.dispatchEvent(new MessageEvent('message', { data: { kind: 'push' } })))
-  await expect(page.getByRole('button', { name: '5:15 PM' })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: /^5:15 PM to / })).toHaveCount(0)
 })
 
 test('the switch stays on when the picked time was taken and another is picked', async ({ page, context, api }) => {
@@ -138,13 +138,13 @@ test('the switch stays on when the picked time was taken and another is picked',
   await page.getByLabel(/Haircut/).check()
   await page.getByRole('button', { name: 'Pick a time' }).click()
   await page.getByRole('button', { name: 'Tomorrow' }).click()
-  await page.getByRole('button', { name: '11:30 AM' }).click()
+  await page.getByRole('button', { name: /^11:30 AM to / }).click()
   await page.getByRole('button', { name: /Continue with/ }).click()
   await page.getByRole('switch', { name: 'Tell me if an earlier time opens' }).click()
   await page.getByRole('button', { name: 'Book now' }).click()
   await expect(page.getByText('Someone just booked that time')).toBeVisible()
 
-  await page.getByRole('button', { name: '5:15 PM' }).click()
+  await page.getByRole('button', { name: /^5:15 PM to / }).click()
   await page.getByRole('button', { name: /Continue with/ }).click()
   await expect(page.getByRole('switch', { name: 'Tell me if an earlier time opens' })).toHaveAttribute('aria-checked', 'true')
   await page.getByRole('button', { name: 'Book now' }).click()
@@ -159,7 +159,7 @@ test('a booking within the hour gets no switch on Confirm (it could never move)'
   await page.getByLabel(/Haircut/).check()
   await page.getByRole('button', { name: 'Pick a time' }).click()
   await page.getByRole('button', { name: 'Today' }).click()
-  await page.getByRole('button', { name: '1:00 PM' }).click()
+  await page.getByRole('button', { name: /^1:00 PM to / }).click()
   await page.getByRole('button', { name: /Continue with/ }).click()
   await expect(page.getByRole('button', { name: 'Book now' })).toBeVisible()
   await expect(page.getByRole('switch', { name: 'Tell me if an earlier time opens' })).toHaveCount(0)
@@ -173,7 +173,7 @@ test('the picked time taken by someone else while on screen is cleared, with the
   await page.getByLabel(/Haircut/).check()
   await page.getByRole('button', { name: 'Pick a time' }).click()
   await page.getByRole('button', { name: 'Tomorrow' }).click()
-  await page.getByRole('button', { name: '1:00 PM' }).click()
+  await page.getByRole('button', { name: /^1:00 PM to / }).click()
   await expect(page.getByRole('button', { name: 'Continue with 1:00 PM' })).toBeEnabled()
 
   api.gone.add(istInstant(tomorrow, '13:00'))
@@ -181,7 +181,7 @@ test('the picked time taken by someone else while on screen is cleared, with the
   await expect(page.getByText("That time isn't free any more")).toBeVisible()
   await expect(page.getByRole('button', { name: 'Pick a time' })).toBeDisabled()
   // Picking another time, then another day, doesn't bring the note back
-  await page.getByRole('button', { name: '11:30 AM' }).click()
+  await page.getByRole('button', { name: /^11:30 AM to / }).click()
   await expect(page.getByText("That time isn't free any more")).toHaveCount(0)
   await page.getByRole('button', { name: 'Today' }).click()
   await expect(page.getByText("That time isn't free any more")).toHaveCount(0)
@@ -194,12 +194,12 @@ test('a refresh that fails keeps the times on screen, with a note', async ({ pag
   await page.getByLabel(/Haircut/).check()
   await page.getByRole('button', { name: 'Pick a time' }).click()
   await page.getByRole('button', { name: 'Tomorrow' }).click()
-  await page.getByRole('button', { name: '1:00 PM' }).click()
+  await page.getByRole('button', { name: /^1:00 PM to / }).click()
 
   api.failSlotsOnce = true
   await page.clock.runFor(31_000)
   await expect(page.getByText("Couldn't check the times again just now")).toBeVisible()
-  await expect(page.getByRole('button', { name: '1:00 PM', exact: true })).toBeVisible()
+  await expect(page.getByRole('button', { name: /^1:00 PM to / })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Continue with 1:00 PM' })).toBeEnabled()
 })
 
