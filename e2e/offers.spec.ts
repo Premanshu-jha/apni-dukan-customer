@@ -34,6 +34,7 @@ test("a salon's offer: the badge, the page, the prices at the offer's times, and
   await page.getByRole('button', { name: /^3:45 PM to .*, offer price$/ }).click()
   await page.getByRole('button', { name: 'Continue with 3:45 PM' }).click()
   await expect(page.getByText("The salon's offer price at this time.")).toBeVisible()
+  await expect(page.getByText('Usual prices above; the offer price is in the total.')).toBeVisible()
   await expect(page.locator('s', { hasText: '₹200' })).toBeVisible()
   await page.getByRole('button', { name: 'Book now' }).click()
 
@@ -86,6 +87,7 @@ test('Confirm shows the price as it is now: an offer ended after the time was pi
   api.offers = []   // the owner ends it now
   await page.getByRole('button', { name: 'Continue with 3:45 PM' }).click()
   await expect(page.getByText("The salon's offer price at this time.")).toHaveCount(0)
+  await expect(page.getByText('Usual prices above; the offer price is in the total.')).toHaveCount(0)
   await expect(page.getByText('Total · about 30 min')).toBeVisible()
   await expect(page.locator('s', { hasText: '₹200' })).toHaveCount(0)
 })

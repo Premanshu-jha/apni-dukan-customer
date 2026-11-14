@@ -11,6 +11,7 @@ import { useDraft } from '../../store/bookingDraft'
 import { useSession } from '../../store/session'
 import { authApi } from '../../api/auth'
 import { rememberAfterEmail, rememberReturn } from '../auth/flow'
+import { ServiceIcon } from '../../components/ServiceIcon'
 import { lateCancelSoon, termsFor } from '../bookings/lateCancel'
 
 /** A booking can't be moved within this many minutes of its start (the backend's LATE_CANCEL). */
@@ -189,13 +190,18 @@ export function ConfirmBooking() {
         <ul className="flex flex-col gap-1 border-t border-line pt-3">
           {chosen.map((s) => (
             <li key={s.id} className="flex justify-between gap-3">
-              <span>
-                {s.name} <span className="text-sm text-muted">· {duration(s.durationMinutes)}</span>
+              <span className="flex items-center gap-2">
+                <ServiceIcon service={s} size={18} className="text-link" />
+                <span>
+                  {s.name} <span className="text-sm text-muted">· {duration(s.durationMinutes)}</span>
+                </span>
               </span>
               <span>{rupees(s.pricePaise, s.priceIsFrom)}</span>
             </li>
           ))}
         </ul>
+        {/* The lines are each service's usual price; the offer is worked out on the total (as the salon prices it) */}
+        {offer && <p className="text-xs text-muted">Usual prices above; the offer price is in the total.</p>}
         <div className="flex justify-between border-t border-line pt-3 font-semibold">
           <span>Total · about {duration(minutes)}</span>
           <span>
