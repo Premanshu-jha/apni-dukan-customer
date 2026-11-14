@@ -1,6 +1,6 @@
 import { expect, signedIn, test } from './helpers'
 
-test('the salon cards show the rating, the services with prices, whether it is open and whether it is registered', async ({ page, context, api }) => {
+test('the salon cards show the rating, the services with prices, whether it is open and whether it is licensed', async ({ page, context, api }) => {
   await signedIn(context, api)
   await page.goto('/')
   const first = page.getByRole('link', { name: /Shine Unisex Salon/ })
@@ -9,11 +9,22 @@ test('the salon cards show the rating, the services with prices, whether it is o
   await expect(first).toContainText('Shop 12, Ithum Tower, Sector 62')
   await expect(first).toContainText('Haircut ₹200 · Beard trim ₹100 · Hair colour from ₹800 · +2 more')
   await expect(first).toContainText('Open · till midnight')
-  await expect(first).toContainText('Registered')
+  await expect(first).toContainText('Licensed')
   const second = page.getByRole('link', { name: /Royal Cuts/ })
   await expect(second).toContainText('New · 2 ratings')
   await expect(second).toContainText('Closed today')
-  await expect(second).toContainText('Unregistered')   // no registration document
+  await expect(second).not.toContainText('Licensed')   // no checked trade licence: no badge
+  await expect(second).not.toContainText('Unregistered')
+})
+
+test('the salon page says Licensed, and what that means, only for a checked licence', async ({ page, context, api }) => {
+  await signedIn(context, api)
+  await page.goto('/salons/s1')
+  await expect(page.getByText('Its trade licence was checked by Clozest (valid until 31 Mar 2027).')).toBeVisible()
+  api.licensedUntil = null
+  await page.reload()
+  await expect(page.getByText('★ 4.6 (12)')).toBeVisible()
+  await expect(page.getByText('Licensed', { exact: true })).toHaveCount(0)
 })
 
 test('the salon page shows the rating, what customers liked and the holidays', async ({ page, context, api }) => {
