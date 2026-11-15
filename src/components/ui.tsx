@@ -129,12 +129,15 @@ export function EmptyState({ title, body, action }: { title: string; body?: stri
 export function Page({
   title,
   back,
+  backReplace,
   onBack,
   children,
   footer,
 }: {
   title?: string
   back?: boolean | string
+  /** With a string `back`: go there in place of this screen (no history entry), so Back can't loop */
+  backReplace?: boolean
   onBack?: () => void
   children: ReactNode
   footer?: ReactNode
@@ -150,7 +153,7 @@ export function Page({
               aria-label="Back"
               onClick={() => {
                 onBack?.()
-                if (typeof back === 'string') navigate(back)
+                if (typeof back === 'string') navigate(back, { replace: backReplace })
                 else navigate(-1)
               }}
               className="flex h-11 w-11 items-center justify-center rounded-full text-xl hover:bg-raised"

@@ -7,6 +7,7 @@ import { Banner, Button, Card, Field, Page, Sheet } from '../../components/ui'
 import { formatPhone } from '../../lib/phone'
 import { takePhoneChanged } from '../../lib/phoneMoved'
 import { SUPPORT_EMAIL } from '../../lib/config'
+import { LegalLinks } from '../legal/LegalPage'
 import { needsEmail, useSession } from '../../store/session'
 import { forgetAfterEmail, rememberAfterEmail } from '../auth/flow'
 import { VerifyEmailBanner } from '../auth/VerifyEmailBanner'
@@ -169,6 +170,8 @@ export function Profile() {
           Delete my account
         </Link>
       </div>
+
+      <LegalLinks />
 
       <Sheet open={confirmAll} title="Sign out everywhere?" onClose={() => setConfirmAll(false)}>
         <div className="flex flex-col gap-3">

@@ -60,12 +60,17 @@ reviews walk the list against the code.
 
 ## Screens
 
-Everything needs sign-in, because the backend's salon endpoints need a signed-in session. The guards in
-`src/app/guards.tsx` send people to the right step.
+Everything needs sign-in, because the backend's salon endpoints need a signed-in session, except the public pages
+(About, Contact, Terms, Privacy), which anyone can open. The guards in
+`src/app/guards.tsx` send people to the right step; a first-time visitor opening `/` signed out lands on About, while
+anyone who has signed in on this browser before goes straight to sign-in.
 
 | Route | Screen | Backend calls (`/api/v1/…`) |
 | --- | --- | --- |
-| `/signin` | Mobile number + robot check | `POST auth/otp/send` |
+| `/about` | Public. The customers' front page (a first-time visitor at `/` comes here): what Clozest is, booking is free, **Sign in or sign up**; "Own a salon?" opens partner.clozest.in | — |
+| `/contact` | Public. Email, phone, address, grievance contact | — |
+| `/terms`, `/privacy` | Public. Terms of service and privacy policy (DPDP Act), for customers | — |
+| `/signin` | Mobile number + robot check; links to the public pages at the bottom | `POST auth/otp/send` |
 | `/signin/code` | 6-digit SMS code, resend after 30 s | `POST auth/otp/verify` |
 | `/signin/recover` | Lost phone: email + new number, a code to each | `POST auth/recover/start`, `auth/recover/complete` |
 | `/welcome/email` | Step 2 of 3: email and its code | `POST auth/email/send-code`, `auth/email/verify` |
@@ -91,7 +96,10 @@ Who goes where: the route guards (`src/app/guards.tsx`) and `nextAfterSignIn` (`
 ```mermaid
 flowchart TD
   open([Open the app]) --> saved{Saved session?}
-  saved -- no --> phone["/signin: mobile number + robot check"]
+  saved -- no --> before{Signed in on this browser before?}
+  before -- "no, opened at /" --> about["/about: what Clozest is, Sign in or sign up"]
+  about --> phone
+  before -- yes --> phone["/signin: mobile number + robot check"]
   saved -- yes --> refresh[Refresh the session]
   refresh -- refused --> phone
   refresh -- ok --> done{Email and name done?}
@@ -357,6 +365,20 @@ version of `sw.js` waits after installing; the app shows "New version available 
 switches over. Change `OFFLINE_CACHE` in `sw.js` when the offline page changes.
 
 ## Changelog
+
+### 0.25.0 — 2026-11-15
+
+- **Public pages for customers** (and anyone opening clozest.in): About, Contact, Terms and Privacy, open without
+  signing in. Each says "Clozest is operated by Premanshu Jha, a sole proprietor." Business details live in one
+  place, `src/lib/business.ts`.
+- **Nothing about paying Clozest**: customers pay nothing. The salons' subscription, its price and its refund, delivery
+  and salon policies are on the partner app (partner.clozest.in), the site registered with Razorpay; About's "Own a
+  salon?" links there.
+- **A first-time visitor opening clozest.in sees About first** (logo, what Clozest is, "Booking is free for
+  customers", Sign in or sign up) instead of the sign-in form. Anyone who has signed in on this browser before (signed
+  out, session ended, the installed app) still goes straight to sign-in. Back on a public page opened from a link goes
+  to About (Home when signed in) in its place, so the phone's Back can't loop; `Page` got `backReplace` for that.
+- Links to the pages at the bottom of sign-in, Profile and every public page.
 
 ### 0.24.0 — 2026-11-15
 

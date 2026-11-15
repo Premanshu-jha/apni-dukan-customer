@@ -11,6 +11,10 @@ import { MoveBooking } from '../features/bookings/MoveBooking'
 import { MyBookings } from '../features/bookings/MyBookings'
 import { Home } from '../features/home/Home'
 import { Inbox } from '../features/notifications/Inbox'
+import { About } from '../features/legal/About'
+import { Contact } from '../features/legal/Contact'
+import { Privacy } from '../features/legal/Privacy'
+import { Terms } from '../features/legal/Terms'
 import { ChoosePlace } from '../features/places/ChoosePlace'
 import { EditPlace } from '../features/places/EditPlace'
 import { ChangeEmail } from '../features/profile/ChangeEmail'
@@ -36,6 +40,11 @@ export function App() {
         <Route element={<FinishingProfile />}>
           <Route path="/welcome/name" element={<NameStep />} />
         </Route>
+        {/* Public pages: open to everyone, signed in or not (Razorpay's website check, and anyone opening a link) */}
+        <Route path="/about" element={<About />} />
+        <Route path="/contact" element={<Contact />} />
+        <Route path="/terms" element={<Terms />} />
+        <Route path="/privacy" element={<Privacy />} />
         {/* The email used to be a sign-up step: an old link or tab goes to its new place */}
         <Route path="/welcome/email" element={<Navigate to="/verify-email" replace />} />
       </Route>
