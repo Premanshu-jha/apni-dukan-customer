@@ -2,7 +2,7 @@ import { useEffect } from 'react'
 import { Navigate, Outlet, useLocation } from 'react-router'
 import { Loading } from '../components/ui'
 import { forgetReturn, nextAfterSignIn, rememberAfterEmail, rememberReturn } from '../features/auth/flow'
-import { needsEmail, signUpSteps, useSession } from '../store/session'
+import { needsEmail, signedInHereBefore, signUpSteps, useSession } from '../store/session'
 
 /** Screens for signed-out people only (sign-in); a signed-in person goes on to the app. */
 export function SignedOutOnly() {
@@ -39,6 +39,13 @@ export function SignedIn() {
   }, [ready])
   if (status === 'starting') return <Loading />
   if (status !== 'signedIn' || !user) {
+    // A first-time visitor opening the site's address (clozest.in) sees what Clozest is first, with Sign in on it.
+    // Anyone who has signed in on this browser before (signed out, session ended, the installed app) goes straight to
+    // sign-in, as before. A path saved by an earlier visit is dropped, so sign-in from About ends at Home.
+    if (location.pathname === '/' && !endedHere && !signedInHereBefore()) {
+      forgetReturn()
+      return <Navigate to="/about" replace />
+    }
     // Coming from a link: come back here after sign-in. Just signed out here: the next person starts at Home.
     if (!endedHere) rememberReturn(location.pathname + location.search)
     return <Navigate to="/signin" replace />
