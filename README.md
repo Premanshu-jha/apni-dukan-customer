@@ -358,6 +358,13 @@ switches over. Change `OFFLINE_CACHE` in `sw.js` when the offline page changes.
 
 ## Changelog
 
+### 0.24.0 — 2026-11-15
+
+- **Service pictures, second set** (the same file as the partner app 0.25.0): 28 pictures, each checked with a blind
+  recognition test, so every one reads as its service at phone size. New: trim (a clipper), moustache, head massage
+  (champi), braids; waxing, bridal/groom (wedding rings), shave, hair wash and body spa redrawn; the general picture is
+  a salon chair. A saved picture the app doesn't know yet is drawn from the service's name, as before.
+
 ### 0.23.0 — 2026-11-14
 
 Needs the backend with V61–V62 (service pictures). Deploy the backend first; an older one simply sends no pictures.

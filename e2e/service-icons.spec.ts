@@ -16,3 +16,16 @@ test('every service shows its picture, on the salon page and when confirming', a
   await page.getByRole('button', { name: /Continue with/ }).click()
   await expect(page.locator('li', { hasText: 'Haircut' }).locator('svg[data-icon="HAIRCUT"]')).toBeVisible()
 })
+
+test('the second set: a picture the owner picked from it is drawn (a trim is a clipper, not the beard)', async ({ page, context, api }) => {
+  const { SERVICES } = await import('./mockApi')
+  const trim = SERVICES.find((s) => s.id === 'v2') as { icon?: string | null }
+  trim.icon = 'TRIM'
+  try {
+    await signedIn(context, api)
+    await page.goto('/salons/s1')
+    await expect(page.locator('label', { hasText: 'Beard trim' }).locator('svg[data-icon="TRIM"]')).toBeVisible()
+  } finally {
+    trim.icon = undefined
+  }
+})
