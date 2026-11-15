@@ -441,3 +441,4 @@ How to use it: every new feature or fix adds or updates rows here. A row is done
 | 430 | Public pages | Opened offline | — | The service worker's offline page, as every page (pages aren't cached) | — | — | N/A-v1 |
 | 431 | Public pages | A long support email on a 320 px phone | — | The email wraps (`overflow-wrap:anywhere`) in Contact and Privacy | — | — | OK-untested |
 | 432 | Public pages | About's search radius | — | "Find salons within 2 km" comes from `SALONS_RADIUS_KM`, the radius the app searches | — | unit: legal.test "About says the real search radius" | OK-tested |
+| 433 | Public pages | Contact shows the full business address (Razorpay's website check) | — | "G-10, A Block, G.K. Habitat Royal, Yapral, Secunderabad, Hyderabad, Telangana 500094, India" (the Udyam-registered address), wrapping on a phone | — | unit: legal.test "Contact gives…" (full address, PIN) | OK-tested |

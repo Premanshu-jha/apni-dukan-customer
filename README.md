@@ -366,6 +366,11 @@ switches over. Change `OFFLINE_CACHE` in `sw.js` when the offline page changes.
 
 ## Changelog
 
+### 0.25.1 — 2026-11-15
+
+- **Full business address on the Contact page**: the Udyam-registered
+  address with its PIN code, as Razorpay's website check asks for, in place of just the city.
+
 ### 0.25.0 — 2026-11-15
 
 - **Public pages for customers** (and anyone opening clozest.in): About, Contact, Terms and Privacy, open without
