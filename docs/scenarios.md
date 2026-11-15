@@ -424,3 +424,5 @@ How to use it: every new feature or fix adds or updates rows here. A row is done
 | 413 | Confirm | The chosen services | — | Each with its picture, time and price | — | e2e:service-icons | OK-tested |
 | 414 | Salon page | An old backend (no `icon`), an icon this app doesn't know, or a name in Devanagari | — | The picture its name fits (Devanagari read too: बाल कटिंग → haircut) | — | unit: iconOf | OK-tested |
 | 415 | Confirm | INCONVENIENCE (fixed): during an offer each line showed its usual price and the total the offer price, which didn't add up | — | "Usual prices above; the offer price is in the total." under the lines while an offer applies | — | e2e:offers | OK-tested |
+| 416 | Salon page | A service with a picture from the second set (TRIM, HEAD_MASSAGE, MOUSTACHE, BRAIDS) | `icon` as saved | That picture | — | e2e:service-icons "the second set…" | OK-tested |
+| 417 | Salon page | A service whose name no picture shows (saree draping, tattoo) | `icon` OTHER or null | The salon chair | — | unit: iconOf | OK-tested |
