@@ -2,7 +2,10 @@ import { addDays, istInstant, todayIst } from './mockApi'
 import { expect, test } from './helpers'
 
 test('a new customer signs up (phone, then name), browses, and is asked for the email only when booking, then carries on', async ({ page, api }) => {
+  // A new visitor first sees what Clozest is (the About page), then signs up from there
   await page.goto('/')
+  await expect(page).toHaveURL(/\/about$/)
+  await page.getByRole('link', { name: 'Sign in or sign up' }).click()
   await expect(page).toHaveURL(/\/signin$/)
 
   await page.getByLabel('Mobile number').fill('+91 98480 12345')
