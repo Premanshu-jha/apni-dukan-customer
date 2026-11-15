@@ -13,7 +13,7 @@ export const BUSINESS = {
   email: SUPPORT_EMAIL,
   phone: '+91 93812 51613',
   /** Shown on the Contact page and in the policies */
-  address: 'Hyderabad, Telangana, India',
+  address: 'G-10, A Block, G.K. Habitat Royal, Yapral, Secunderabad, Hyderabad, Telangana 500094, India',
   website: 'https://clozest.in',
   /** The partner app, for salon owners (their sign-up, the subscription and its policies) */
   partnerSite: 'https://partner.clozest.in',
