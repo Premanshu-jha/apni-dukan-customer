@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate, useParams, useSearchParams } from 'react-router'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router'
 import { messageOf, salonReadMessage } from '../../api/errors'
 import { useSalon, useSalonServices, useSetOfferMessages } from '../../api/salons'
 import { Banner, Button, ErrorState, Loading, Page, Switch } from '../../components/ui'
@@ -85,6 +85,7 @@ export function SalonPage() {
   const paise = chosen.reduce((t, x) => t + x.pricePaise, 0)
   const isFrom = chosen.some((x) => x.priceIsFrom)
   const paused = s.pausedUntil !== null && Date.parse(s.pausedUntil) > now
+  const off = s.notTakingBookings === true
   const names = new Map(services.data.map((x) => [x.id, x.name]))
 
   return (
@@ -94,7 +95,9 @@ export function SalonPage() {
       footer={
         <div className="flex items-center gap-3">
           <div className="flex-1">
-            {chosen.length ? (
+            {off && !paused ? (
+              <p className="text-sm text-muted">Not taking online bookings right now</p>
+            ) : chosen.length ? (
               <>
                 <p className="font-semibold">
                   {chosen.length} {chosen.length === 1 ? 'service' : 'services'} · {rupees(paise, isFrom)}
@@ -105,7 +108,7 @@ export function SalonPage() {
               <p className="text-sm text-muted">Pick one or more services</p>
             )}
           </div>
-          <Button disabled={!chosen.length || Boolean(paused)} onClick={() => navigate(`/salons/${id}/book`)}>
+          <Button disabled={!chosen.length || Boolean(paused) || off} onClick={() => navigate(`/salons/${id}/book`)}>
             Pick a time
           </Button>
         </div>
@@ -139,6 +142,15 @@ export function SalonPage() {
           </a>
         )}
       </div>
+      {off && !paused && (
+        <Banner tone="warn">
+          This salon isn't taking online bookings right now. You can still visit it, or{' '}
+          <Link to="/" className="underline">
+            pick another salon nearby
+          </Link>
+          . A booking you already have here stays.
+        </Banner>
+      )}
       {paused && (
         <Banner tone="warn">This salon isn't taking bookings until {dateTimeIst(s.pausedUntil!)}.</Banner>
       )}

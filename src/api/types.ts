@@ -115,6 +115,11 @@ export interface SalonDetails {
   mapLink: string | null
   hours: DayHours[]
   pausedUntil: string | null
+  /**
+   * The salon isn't taking new online bookings for now (its Clozest subscription isn't paid); bookings already made
+   * stay. Missing from older backends.
+   */
+  notTakingBookings?: boolean
   photoUrl: string | null
   /** How many days after today it takes online bookings (1–30, the owner's setting); missing from older backends. */
   maxDaysAhead?: number
