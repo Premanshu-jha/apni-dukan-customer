@@ -245,6 +245,8 @@ export class MockApi {
   ]
   /** s1's closed days (holidays) in its booking window, yyyy-MM-dd */
   closedDates: string[] = []
+  /** BookingService.salon: its subscription lapsed (no new online bookings; POST /bookings answers SALON_NOT_BOOKABLE). */
+  notTakingBookings = false
   /** The salon this customer works in (owner, helper or barber), if any: its visits can't be rated (OWN_SALON). */
   worksAt: string | null = null
   /** GET /me/salon-preferences */
@@ -586,7 +588,7 @@ export class MockApi {
       return ok(200, { on: body.on })
     }
     if (p === '/salons/s1') {
-      return ok(200, { ...SALON, maxDaysAhead: this.maxDaysAhead, closedDates: this.closedDates, offers: this.offers, offerMessages: this.visitedS1 ? !this.mutedS1 : null, licensedUntil: this.licensedUntil })
+      return ok(200, { ...SALON, maxDaysAhead: this.maxDaysAhead, closedDates: this.closedDates, offers: this.offers, offerMessages: this.visitedS1 ? !this.mutedS1 : null, licensedUntil: this.licensedUntil, notTakingBookings: this.notTakingBookings })
     }
     if (p === '/salons/s1/services') {
       // BookingService.salonServices: each service's price in its best offer (running or to come)
@@ -639,6 +641,8 @@ export class MockApi {
         this.user = { ...this.user, name: null }
         return fail(403, 'PROFILE_INCOMPLETE', 'Add your name first.', { missing: ['name'] })
       }
+      // BookingService.book: a salon whose subscription lapsed takes no new bookings (moves stay allowed)
+      if (this.notTakingBookings) return fail(409, 'SALON_NOT_BOOKABLE', "This salon isn't taking online bookings right now. Try again later.")
       // BookingService.book: at most 2 bookings not started yet (CONFIRMED and not over; one in the chair doesn't count)
       const active = this.bookings.filter((b) => b.status === 'CONFIRMED' && Date.parse(b.endsAt as string) > Date.now()).length
       if (active >= 2) return fail(409, 'TOO_MANY_BOOKINGS', 'You already have 2 upcoming bookings. Cancel one to book another.')

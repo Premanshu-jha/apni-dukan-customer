@@ -366,6 +366,13 @@ switches over. Change `OFFLINE_CACHE` in `sw.js` when the offline page changes.
 
 ## Changelog
 
+### 0.25.2 — 2026-11-16
+
+- **A salon not taking online bookings for now** (its Clozest subscription unpaid; the salon's page reads
+  `notTakingBookings`) says "This salon isn't taking online bookings right now. You can still visit it, or pick
+  another salon nearby", with the reason next to the disabled Pick a time. A booking already made there stays and can
+  still be moved. Nothing about payments is shown to customers.
+
 ### 0.25.1 — 2026-11-15
 
 - **Full business address on the Contact page**: the Udyam-registered

@@ -121,3 +121,34 @@ test('a time picked before my bookings arrived, that clashes with one: cleared, 
   await expect(page.getByText("That time isn't free any more. Pick another one.")).toBeVisible()
   await expect(page.getByRole('button', { name: 'Continue with 11:30 AM' })).toHaveCount(0)
 })
+
+test('a salon not taking online bookings (its subscription unpaid) says so and offers no times', async ({ page, context, api }) => {
+  await signedIn(context, api)
+  api.notTakingBookings = true
+  await page.goto('/salons/s1')
+  await expect(page.getByText(/This salon isn't taking online bookings right now\. You can still visit it, or pick another salon nearby/)).toBeVisible()
+  await page.getByLabel(/Haircut/).check()
+  // The reason sits next to the button it disables
+  await expect(page.getByText('Not taking online bookings right now')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Pick a time' })).toBeDisabled()
+  await page.getByRole('link', { name: 'pick another salon nearby' }).click()
+  await expect(page).toHaveURL(/\/$/)
+  // Nothing about payments: customers pay Clozest nothing
+  await expect(page.getByText(/subscription|₹500|pay Clozest/i)).toHaveCount(0)
+})
+
+test('a salon that stops taking bookings while the customer is picking a time: Book now says so', async ({ page, context, api }) => {
+  await signedIn(context, api)
+  const tomorrow = addDays(todayIst(), 1)
+  await page.goto('/salons/s1')
+  await page.getByLabel(/Haircut/).check()
+  await page.getByRole('button', { name: 'Pick a time' }).click()
+  await page.getByRole('button', { name: 'Tomorrow' }).click()
+  await page.getByRole('button', { name: /^11:30 AM to / }).click()
+  await page.getByRole('button', { name: /Continue with/ }).click()
+  api.notTakingBookings = true
+  await page.getByRole('button', { name: 'Book now' }).click()
+  await expect(page.getByText(/isn't taking online bookings right now/).first()).toBeVisible()
+  expect(api.bookings.some((b) => b.startAt === istInstant(tomorrow, '11:30'))).toBe(false)
+})
+
