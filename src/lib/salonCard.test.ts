@@ -60,3 +60,20 @@ describe('the licence day', () => {
     expect(licenceDay('2027-03-31')).toBe('31 Mar 2027')
   })
 })
+
+describe('salon cards in Hindi', () => {
+  afterEach(async () => {
+    const { setLanguage } = await import('../i18n')
+    await setLanguage('en')
+  })
+
+  it('spells service list names in Hindi; a name the salon typed stays as typed', async () => {
+    const { setLanguage } = await import('../i18n')
+    await setLanguage('hi')
+    const top = [
+      { name: 'Haircut', pricePaise: 15000, priceIsFrom: false },
+      { name: 'Fade cut', pricePaise: 20000, priceIsFrom: false },
+    ]
+    expect(servicesText(top, 2)).toMatch(/^हेयरकट ₹150 · Fade cut /)
+  })
+})

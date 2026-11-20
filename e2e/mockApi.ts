@@ -48,7 +48,12 @@ export interface MockUser {
   email: string | null
   emailVerified: boolean
   admin: boolean
+  /** users.language (V83): the language the account reads; null until chosen */
+  language?: string | null
 }
+
+/** The six languages the backend takes (users.language CHECK). */
+const LANGUAGE_CODES = ['en', 'hi', 'te', 'mr', 'ta', 'kn']
 
 export interface Call {
   method: string
@@ -165,7 +170,7 @@ function myTicket(t: MockTicket) {
 }
 
 export class MockApi {
-  user: MockUser = { id: 'u1', phone: '9848012345', name: null, email: null, emailVerified: false, admin: false }
+  user: MockUser = { id: 'u1', phone: '9848012345', name: null, email: null, emailVerified: false, admin: false, language: null }
   /** "Need help" tickets sent, in order. */
   tickets: MockTicket[] = []
   /** Support files (TicketFileService): photos and PDFs, videos to the fake R2. */
@@ -496,8 +501,24 @@ export class MockApi {
       return ok(200, tokens)
     }
     if (p === '/auth/me' && method === 'GET') return ok(200, this.user)
+    // AuthController.updateMe: name and language both optional, at least one sent ({} → 400 on `name`). The name's
+    // size is checked first (@Valid: a bad name and a bad language report only the name); then a language outside the
+    // six is VALIDATION_FAILED on `language`; "language": null clears it. All or nothing: nothing saved on a 400.
     if (p === '/auth/me' && method === 'PATCH') {
-      this.user = { ...this.user, name: body.name }
+      const nameSent = body?.name !== undefined && body?.name !== null
+      const languageSent = body != null && typeof body === 'object' && 'language' in body
+      if (nameSent && (typeof body.name !== 'string' || body.name.trim().length < 2 || body.name.length > 60)) {
+        return fail(400, 'VALIDATION_FAILED', 'Some fields are not valid', { name: 'size must be between 2 and 60' })
+      }
+      if (!nameSent && !languageSent) return fail(400, 'VALIDATION_FAILED', 'Some fields are not valid', { name: 'send a name or a language' })
+      if (languageSent && body.language !== null && !LANGUAGE_CODES.includes(body.language)) {
+        return fail(400, 'VALIDATION_FAILED', 'Some fields are not valid', { language: 'must be one of en, hi, te, mr, ta, kn' })
+      }
+      this.user = {
+        ...this.user,
+        ...(nameSent ? { name: String(body.name).trim() } : {}),
+        ...(languageSent ? { language: body.language ?? null } : {}),
+      }
       return ok(200, this.user)
     }
     if (p === '/auth/email/send-code') return ok(202)

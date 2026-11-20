@@ -1,4 +1,5 @@
-import { addDays, clock12, dateOfIst, dayLabel, endTimeIst, greeting, nextDates, timeIst, todayIst, weekdayName } from './ist'
+import { addDays, clock12, dateOfIst, dateTimeIst, dayLabel, endTimeIst, greeting, nextDates, timeIst, todayIst, weekdayName } from './ist'
+import { resetLanguageForTests, setLanguage } from '../i18n'
 import { bookAgainLink } from '../features/home/bookAgain'
 import { clashesWithMine } from '../features/salon/clash'
 import { duration, rupees } from './money'
@@ -121,5 +122,21 @@ describe('free times that clash with my own bookings', () => {
     expect(clashesWithMine('2026-11-15T06:30:00Z', 30, mine, 'b1')).toBe(false)
     expect(clashesWithMine('2026-11-15T06:30:00Z', 30, [b('b2', 'CANCELLED_BY_SALON', '2026-11-15T06:30:00Z', '2026-11-15T07:00:00Z')])).toBe(false)
     expect(clashesWithMine('2026-11-15T06:30:00Z', 30, [b('b3', 'IN_SERVICE', '2026-11-15T06:30:00Z', '2026-11-15T07:00:00Z')])).toBe(true)
+  })
+})
+
+describe('dates and times in the app\'s language', () => {
+  afterEach(() => resetLanguageForTests())
+
+  it('English exactly as always; another language with its own day and month names and the app\'s time words', async () => {
+    const lateUtc = new Date('2026-11-05T12:00:00Z')
+    expect(dayLabel('2026-11-09', lateUtc)).toBe('Mon 9 Nov')
+    expect(timeIst('2026-11-05T11:00:00Z')).toBe('4:30 PM')
+    expect(dateTimeIst('2026-11-05T11:00:00Z')).toBe('Thu 5 Nov, 4:30 PM')
+    await setLanguage('hi')
+    expect(timeIst('2026-11-05T11:00:00Z')).toBe(clock12('16:30'))
+    expect(dayLabel('2026-11-09', lateUtc)).not.toBe('Mon 9 Nov')
+    expect(dayLabel('2026-11-09', lateUtc)).toMatch(/9/)
+    expect(dateTimeIst('2026-11-05T11:00:00Z')).toBe(`${dayLabel('2026-11-05', new Date('2026-01-01T00:00:00Z'))}, ${clock12('16:30')}`)
   })
 })

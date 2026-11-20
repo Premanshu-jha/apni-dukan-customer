@@ -1,6 +1,13 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { ApiError } from '../api/errors'
-import { waitEndsText, addressProblems, addressSearchOff, canSearchAddress, fillEmpty, insideIndia, metresBetween, precisionHint, resetAddressSearch, round6, searchFailure, zoomFor } from './addressPin'
+import { resetLanguageForTests, setLanguage, t } from '../i18n'
+import { waitEndsText, addressProblems, addressSearchOff, canSearchAddress, fillEmpty, insideIndia, metresBetween, precisionHint, resetAddressSearch, round6, searchFailure, searchMessageText, zoomFor } from './addressPin'
+
+/** A failure as the screen shows it: hidden, or its words. */
+function shown(e: unknown) {
+  const f = searchFailure(e)
+  return f.hide ? f : { hide: false, text: searchMessageText(f.message) }
+}
 
 const address = { addressLine: 'Shop 12, Ithum Tower', area: 'Sector 62', city: 'Noida', pincode: '201309' }
 
@@ -31,32 +38,32 @@ describe('Find on map (a saved place)', () => {
   })
 
   it('says what went wrong in plain words', () => {
-    expect(searchFailure(new ApiError(404, { code: 'ADDRESS_NOT_FOUND', message: 'x' }))).toEqual({
+    expect(shown(new ApiError(404, { code: 'ADDRESS_NOT_FOUND', message: 'x' }))).toEqual({
       hide: false,
       text: "Couldn't find that address. Check the pincode and area, or use your current location.",
     })
-    expect(searchFailure(new ApiError(429, { code: 'TRY_LATER', message: 'x' }, 61))).toEqual({
+    expect(shown(new ApiError(429, { code: 'TRY_LATER', message: 'x' }, 61))).toEqual({
       hide: false,
       text: 'Many address searches in a short time. Try again in 2 minutes, or use your current location.',
     })
-    expect(searchFailure(new ApiError(429, { code: 'TRY_LATER', message: 'x' }, 30))).toEqual({
+    expect(shown(new ApiError(429, { code: 'TRY_LATER', message: 'x' }, 30))).toEqual({
       hide: false,
       text: 'Many address searches in a short time. Try again in 1 minute, or use your current location.',
     })
     expect(searchFailure(new ApiError(429, { code: 'TRY_LATER', message: 'x' }, 80_000)).hide).toBe(false)
-    expect((searchFailure(new ApiError(429, { code: 'TRY_LATER', message: 'x' }, 80_000)) as { text: string }).text).toMatch(
+    expect((shown(new ApiError(429, { code: 'TRY_LATER', message: 'x' }, 80_000)) as { text: string }).text).toMatch(
       /^You've used your searches for new addresses for now\. Try again after (tomorrow, )?\d{1,2}:\d{2} [AP]M, or use your current location\.$/,
     )
     const down = "Address search isn't working right now. Use your current location, or try again later."
-    expect(searchFailure(new ApiError(503, { code: 'GEOCODING_UNAVAILABLE', message: 'x' }))).toEqual({ hide: false, text: down })
-    expect(searchFailure(ApiError.network())).toEqual({ hide: false, text: down })
-    expect(searchFailure(new Error('boom'))).toEqual({ hide: false, text: down })
+    expect(shown(new ApiError(503, { code: 'GEOCODING_UNAVAILABLE', message: 'x' }))).toEqual({ hide: false, text: down })
+    expect(shown(ApiError.network())).toEqual({ hide: false, text: down })
+    expect(shown(new Error('boom'))).toEqual({ hide: false, text: down })
     expect(addressSearchOff()).toBe(false)
   })
 
   it('asks to check the fields when the backend still refuses them', () => {
     const refused = new ApiError(400, { code: 'VALIDATION_FAILED', message: 'x', details: { pincode: 'must be a 6-digit pincode' } })
-    expect(searchFailure(refused)).toEqual({
+    expect(shown(refused)).toEqual({
       hide: false,
       text: 'Check the address, area, city and pincode above, then try again.',
     })
@@ -119,5 +126,20 @@ describe('when the day\'s address searches come back', () => {
     expect(waitEndsText(2 * 3600, now)).toBe('tomorrow, 12:30 AM')
     expect(waitEndsText(45 * 60, now)).toBe('11:15 PM')
     expect(waitEndsText(11 * 3600, now)).toBe('tomorrow, 9:30 AM')
+  })
+
+  it('in another language: the app\'s own time words; a message already shown is worded again', async () => {
+    const failure = searchFailure(new ApiError(429, { code: 'TRY_LATER', message: 'x' }, 45 * 60 + 3600), now)
+    if (failure.hide) throw new Error('shown')
+    expect(searchMessageText(failure.message, now)).toMatch(/12:15 AM/)
+    await setLanguage('te')
+    try {
+      expect(waitEndsText(45 * 60, now)).toBe(t('misc.clockPm', { time: '11:15' }))
+      const text = searchMessageText(failure.message, now)
+      expect(text).toContain(t('misc.clockAm', { time: '12:15' }))
+      expect(text).not.toMatch(/searches/)
+    } finally {
+      resetLanguageForTests()
+    }
   })
 })

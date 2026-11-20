@@ -57,3 +57,17 @@ test('opened without a connection: the offline page, and "Try again" opens the a
   await page.getByRole('link', { name: 'Try again' }).click()
   await expect(page.getByText('No upcoming bookings')).toBeVisible()
 })
+
+test('the offline page speaks the language chosen in the app, and works from the copy kept offline', async ({ page, context, api }) => {
+  await signedIn(context, api)
+  await context.addInitScript(() => localStorage.setItem('language', 'hi'))
+  await page.goto('/bookings')
+  await expect(page.locator('html')).toHaveAttribute('lang', 'hi')
+  await controlled(page)
+
+  await context.setOffline(true)
+  await page.reload()
+  await expect(page.getByRole('heading', { name: 'आप ऑफ़लाइन हैं' })).toBeVisible()
+  await expect(page.getByRole('link', { name: 'फिर कोशिश करें' })).toBeVisible()
+  await context.setOffline(false)
+})
