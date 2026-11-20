@@ -4,8 +4,9 @@ The app customers use to find a salon near them and book a time. It is a mobile-
 added to the phone's home screen) and talks only to [apni-dukan-backend](https://github.com/Premanshu-jha/apni-dukan-backend).
 
 Home lists the salons near the customer. Categories (like Swiggy's Food and Instamart) show only once open
-(`CATEGORIES` in `src/features/home/categories.ts`, `live`): today only **Salon** is, so there are no tabs; **Kirana** and
-**Services** are hidden until they open. Shop owners and the field team use separate apps (partner and admin), not
+(`CATEGORIES` in `src/features/home/categories.ts`, `live`): today only **Salon** is, so there are no tabs;
+**Services** is hidden until it opens. Kirana isn't on `main` at all (not even hidden): it stays on the kirana branches
+until it launches. Shop owners and the field team use separate apps (partner and admin), not
 this one.
 
 ## Run it on your laptop
@@ -83,7 +84,7 @@ anyone who has signed in on this browser before goes straight to sign-in.
 | `/bookings/:id` | Start code, arrive-by time, services, Move, Cancel, notifications offer | `GET bookings/{id}`, `POST bookings/{id}/cancel` |
 | `/bookings/:id/move` | New day and time | `POST bookings/{id}/reschedule` |
 | `/notifications` | Messages: newest first, unread marked, tap to open the booking, Mark all read, Show older | `GET me/notifications?app=customer`, `POST me/notifications/read` |
-| `/profile` | Name, mobile, email, notifications switch, come-back reminders and offers switches, help email, sign out, sign out everywhere | `PATCH auth/me`, `PUT me/salon-preferences`, `POST auth/logout`, `auth/logout-all` |
+| `/profile` | "Language: <name>" button at the top; name, mobile, email, notifications switch, come-back reminders and offers switches, Language, help email, sign out, sign out everywhere | `PATCH auth/me` (name; `language`), `PUT me/salon-preferences`, `POST auth/logout`, `auth/logout-all` |
 | `/profile/email` | Change email (SMS code first when the old email is verified) | `POST auth/email/change-phone-code`, `auth/email/send-code`, `auth/email/verify` |
 | `/profile/delete` | Delete account with an SMS code | `POST auth/me/delete-code`, `auth/me/delete` |
 
@@ -199,8 +200,10 @@ src/
   features/     auth, home, location, salon, bookings, profile — one folder per part of the app
   components/   Button, Field, Card, Banner, Sheet, Chip, CodeInput, Turnstile
   store/        session, location, booking draft (Zustand)
-  lib/          India time, money, phone, storage, device name, config
-public/         sw.js (push notifications), manifest, icon
+  lib/          India time, money, phone, storage, device name, config, serviceName, accountLanguage
+  i18n/         the app's languages: index.ts (t, useT, setLanguage, setAccount), sync.ts, LanguagePicker,
+                LanguageToast, and one folder of JSON files per language (en, hi, te, mr, ta, kn)
+public/         sw.js (push notifications), manifest, icon, offline.html and offline.js
 ```
 
 ### Sign-in and the session
@@ -359,12 +362,93 @@ Railway) and checks every header on the app, a deep link, `sw.js`, the manifest 
 
 `public/manifest.webmanifest` lists the SVG icon and PNGs (192, 512, maskable 512) plus `apple-touch-icon.png` for
 iPhone, all made from `public/icon.svg` by `npm run icons` (sharp); commit the PNGs after changing the SVG.
-`public/sw.js` keeps a small offline page (`offline.html`, its CSS and the icon): opening the app without a
-connection shows "You're offline" with "Try again" instead of the browser's error. Nothing else is cached. A new
+`public/sw.js` keeps a small offline page (`offline.html`, its CSS, `offline.js` and the icon; store `offline-v3`):
+opening the app without a connection shows "You're offline" with "Try again" instead of the browser's error, in the
+language saved in the app (`offline.js` reads `localStorage.language`; English with none). Nothing else is cached. A new
 version of `sw.js` waits after installing; the app shows "New version available — Reload" and only that button
 switches over. Change `OFFLINE_CACHE` in `sw.js` when the offline page changes.
 
+## Languages
+
+The app is in English, Hindi, Telugu, Marathi, Tamil and Kannada (about 960 texts per language, 253 of them the
+backend's fixed messages). The language is chosen on the sign-in screen (each shown in its own script) and changed
+any time under Profile → Language (also from the "Language: <name>" button with a globe at the top of Profile); it
+applies at once and keeps whatever was typed. The language code is the partner app's (`src/i18n/index.ts`, `sync.ts`,
+`src/lib/accountLanguage.ts` are the same files); a fix in one goes to the other.
+
+- **Per account, saved on the account.** Signed in, the choice is the account's: kept on the phone as
+  `language:<userId>` (two people sharing a phone each get theirs back when they sign in) and saved on the account with
+  `PATCH /api/v1/auth/me {"language": "hi"}` (backend V83), so push and inbox messages are written in it. Signed out,
+  the sign-in screen shows the phone's last choice (`localStorage.language`). At sign-in, first that applies: a
+  language tapped on the sign-in screen just now; one chosen on this phone and not yet saved on the account; the
+  account's own (`language` from `/me`, also over this phone's older one); else the phone's, saved on the account once.
+- **Sending it** (`src/i18n/sync.ts`): fire and forget, one call at a time per account (tapping through the languages
+  sends the first and then only the newest). A failed call waits on the phone (`language.unsynced:<userId>`) and goes
+  again at the next start; a 400 (an older backend) is dropped. Never sent for an account that signed out meanwhile;
+  two phones never send their languages back and forth.
+- **The phone's own language** (`navigator.languages`) is shown on the very first open when the app has it; the
+  sign-in screen still offers the others. Signing in (or recovering the account) with it on screen counts as choosing
+  it: kept on the phone and saved on the account unless the account has its own.
+- **Kept texts, no English flash.** The chosen language's texts are kept on the phone (`localStorage["language.texts"]`,
+  not for English): a cold start shows them at once, and the download refreshes them. English is in the main download;
+  each other language is a download of its own, fetched when chosen. Offline at start-up with nothing kept, English
+  until the phone is back online. A language whose file is gone (a new deploy) reloads the app once.
+- **Confirmation** (`LanguageToast`): after choosing, a line at the bottom for 5 seconds, in the new language, says it
+  changed and where to change it again (Profile → Language, in that language's words).
+- **Where the words are.** `src/i18n/<language>/<area>.json`, the same keys in every language; a text a language lacks
+  shows in English. Blanks are `{name}`; counts use `{ "one": …, "other": … }`. In a component `const t = useT()` then
+  `t('salon.bookNow')`; outside React `t()` from `src/i18n`, called when the text is needed.
+- **The backend's messages.** `messageOf(e)` (`src/api/errors.ts`) looks for the app's words for the error's code
+  (`error.json`), then for the backend's exact English message (`server.json`), else shows it as it came. Field
+  reasons (`fieldError`) go through `server.json` too. Messages built with names or numbers in them stay English.
+- **Push and the inbox** come in the account's saved language. A message written before that, in English only, shows
+  the title its type has here (`notifications.type<TYPE>`, `titleOf`) when the app is in another language; its body
+  stays as sent. A salon's "what went well" tags are shown in the reader's language.
+- **Service names.** A name from the service list is spelt in the reader's script (`serviceName()`,
+  `src/lib/serviceName.ts` and `service.json`, copied from the partner app: "Haircut" → "हेयरकट"); a name the salon
+  typed is shown as typed; saved as given. Booking cards (Home's "Your booking", My bookings) and a booking's page
+  show its services' pictures (`BookingServiceIcons`, at most 3), for someone who can't read the names.
+- **Short words in tight places.** A booking's status pill never wraps or shrinks; the salon's name beside it wraps,
+  and the services line keeps two lines so the price shows.
+- **Outside the app's words.** The robot check (Turnstile) is drawn in Hindi for Hindi and in English otherwise
+  (Cloudflare has no Telugu, Marathi, Tamil or Kannada), with a line in the language saying so. The phone's own menus
+  in the location help are named in English, as most phones show them.
+- **Dates and numbers.** Day and month names follow the language; times keep the app's own words; digits stay 0-9
+  everywhere, never grouped.
+- **Not translated.** The legal pages (About, Terms, Privacy, Contact) stay in English, the language they are binding
+  in; their links, "Last updated" and About's way in are translated. Names people type, and everything saved, stay
+  as entered.
+- **CI check.** `src/i18n/i18n.test.ts` fails when a language lacks a text English has, has one English doesn't, an
+  empty one, or different blanks. The first translations were written by AI (rules shared with the partner app) and
+  should be read once by a native speaker of each language.
+
 ## Changelog
+
+### 0.26.0 — 2026-11-20
+
+Uses the backend with V83 (each user's language); deploy the backend first. On an older backend nothing breaks: the
+language stays on the phone and messages stay in English.
+
+- **Languages:** the whole app in Hindi, Telugu, Marathi, Tamil and Kannada as well as English (about 960 texts per
+  language, including 253 of the backend's fixed messages), chosen on the sign-in screen and under Profile → Language
+  (see Languages above).
+- **About and Contact in every language**, with the language choice at the top of About for first-time visitors.
+  Terms, Privacy stay in English (the text that applies); in another language their title is translated and a
+  line at the top says so.
+- **The language is the account's**, saved on it (`PATCH /auth/me {"language"}`), so push and inbox messages come in
+  it; each account on a shared phone gets its own back at sign-in; sent once, never in a storm, again at the next start
+  if it failed.
+- **First open in the phone's language** when the app has it; signing in with it on screen keeps it.
+- **No English flash:** the chosen language's texts are kept on the phone for a cold start. The offline page speaks the
+  saved language.
+- **After choosing a language**, a short line in the new language says where to change it again; a "Language: <name>"
+  button with a globe at the top of Profile.
+- **Service names from the service list in the reader's script**, and **each booking shows its services' pictures**
+  (Home, My bookings, the booking's page).
+- **Old messages** in the inbox show their type's title in the reader's language.
+- **Kirana category removed** from `categories.ts` (it was hidden; it stays on the kirana branches).
+- Booking status pills never wrap (the salon's name wraps instead); Turnstile in Hindi for Hindi, with a line when it
+  is in English.
 
 ### 0.25.2 — 2026-11-16
 
