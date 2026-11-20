@@ -1,4 +1,6 @@
 import { ApiError } from '../api/errors'
+import { language, t } from '../i18n'
+import { timeIst } from './ist'
 import type { AddressIn, Described, Precision } from '../api/places'
 
 /**
@@ -66,10 +68,10 @@ export function zoomFor(p: Precision): number {
 export function addressProblems(f: AddressIn): Partial<Record<keyof AddressIn, string>> {
   const out: Partial<Record<keyof AddressIn, string>> = {}
   const len = (v: string, min: number, max: number) => v.trim().length >= min && v.trim().length <= max
-  if (!len(f.addressLine, 2, 200)) out.addressLine = 'Enter your house or flat number and street.'
-  if (!len(f.area, 2, 100)) out.area = 'Enter the area.'
-  if (!len(f.city, 2, 60)) out.city = 'Enter the city.'
-  if (!/^[1-9]\d{5}$/.test(f.pincode.trim())) out.pincode = 'Enter the 6-digit pincode.'
+  if (!len(f.addressLine, 2, 200)) out.addressLine = t('misc.addressLineProblem')
+  if (!len(f.area, 2, 100)) out.area = t('misc.addressAreaProblem')
+  if (!len(f.city, 2, 60)) out.city = t('misc.addressCityProblem')
+  if (!/^[1-9]\d{5}$/.test(f.pincode.trim())) out.pincode = t('misc.addressPincodeProblem')
   return out
 }
 
@@ -80,7 +82,7 @@ export function canSearchAddress(f: AddressIn): boolean {
 
 /** What to tell the customer about a pin from the address. */
 export function precisionHint(p: Precision): string {
-  return p === 'EXACT' ? 'Check the pin is on your building.' : 'This is only close by. Drag the pin onto your building.'
+  return p === 'EXACT' ? t('misc.pinCheckBuilding') : t('misc.pinOnlyClose')
 }
 
 /**
@@ -109,39 +111,54 @@ export function resetAddressSearch(): void {
 export function waitEndsText(seconds: number, now: Date = new Date()): string {
   const end = new Date(now.getTime() + seconds * 1000)
   const day = (d: Date) => d.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' })
-  const time = end.toLocaleTimeString('en-US', { timeZone: 'Asia/Kolkata', hour: 'numeric', minute: '2-digit' })
-  return day(end) === day(now) ? time : `tomorrow, ${time}`
+  // In another language: the app's own "4:30 PM" words (as everywhere else); English exactly as it always was
+  const time = language() === 'en'
+    ? end.toLocaleTimeString('en-US', { timeZone: 'Asia/Kolkata', hour: 'numeric', minute: '2-digit' })
+    : timeIst(end.toISOString())
+  return day(end) === day(now) ? time : t('misc.waitEndsTomorrow', { time })
 }
 
-/** What a failed search means for the screen: hide the button, or the words to show. */
-export function searchFailure(e: unknown): { hide: true } | { hide: false; text: string } {
+/**
+ * What a failed search says, kept as its key and values (not words): the screen words it when drawn, so it follows a
+ * language change. A used-up day keeps when the searches come back ({@code until}, ms), not the time as words.
+ */
+export type SearchMessage =
+  | { key: 'misc.searchNotFound' | 'misc.searchCheckAddress' | 'misc.searchBroken' }
+  | { key: 'misc.searchTooMany'; count: number }
+  | { key: 'misc.searchUsedUp'; until: number }
+
+/** A failed search's words, in the app's language now. */
+export function searchMessageText(m: SearchMessage, now: Date = new Date()): string {
+  if (m.key === 'misc.searchTooMany') return t(m.key, { count: m.count })
+  if (m.key === 'misc.searchUsedUp') {
+    return t(m.key, { when: waitEndsText(Math.max(0, Math.round((m.until - now.getTime()) / 1000)), now) })
+  }
+  return t(m.key)
+}
+
+/** What a failed search means for the screen: hide the button, or what to say (worded with searchMessageText). */
+export function searchFailure(e: unknown, now: Date = new Date()): { hide: true } | { hide: false; message: SearchMessage } {
   const code = e instanceof ApiError ? e.code : 'UNKNOWN'
   if (code === 'GEOCODING_OFF') {
     searchOff = true
     return { hide: true }
   }
   if (code === 'ADDRESS_NOT_FOUND') {
-    return { hide: false, text: "Couldn't find that address. Check the pincode and area, or use your current location." }
+    return { hide: false, message: { key: 'misc.searchNotFound' } }
   }
   if (code === 'TRY_LATER' && e instanceof ApiError) {
     const minutes = Math.max(1, Math.ceil((e.retryAfterSeconds ?? 60) / 60))
     // The day's lookups (10 a person, in 24 hours from the first) are used up: say when they come back
     if (minutes > 60) {
-      return {
-        hide: false,
-        text: `You've used your searches for new addresses for now. Try again after ${waitEndsText(e.retryAfterSeconds ?? 0)}, or use your current location.`,
-      }
+      return { hide: false, message: { key: 'misc.searchUsedUp', until: now.getTime() + (e.retryAfterSeconds ?? 0) * 1000 } }
     }
-    return {
-      hide: false,
-      text: `Many address searches in a short time. Try again in ${minutes} ${minutes === 1 ? 'minute' : 'minutes'}, or use your current location.`,
-    }
+    return { hide: false, message: { key: 'misc.searchTooMany', count: minutes } }
   }
   if (code === 'VALIDATION_FAILED') {
-    return { hide: false, text: 'Check the address, area, city and pincode above, then try again.' }
+    return { hide: false, message: { key: 'misc.searchCheckAddress' } }
   }
   // GEOCODING_UNAVAILABLE, SERVICE_BUSY, offline, anything else
-  return { hide: false, text: "Address search isn't working right now. Use your current location, or try again later." }
+  return { hide: false, message: { key: 'misc.searchBroken' } }
 }
 
 /**
@@ -158,4 +175,7 @@ export function fillEmpty<F extends AddressIn>(form: F, at: Described): F {
   return next
 }
 
-export const FILLED_TEXT = "We filled the address from your location. Check it and correct anything that's wrong."
+/** Said after "Use current location" filled the address (in the language on screen). */
+export function filledText(): string {
+  return t('misc.addressFilled')
+}

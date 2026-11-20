@@ -1,4 +1,5 @@
 import { useQuery, type QueryClient } from '@tanstack/react-query'
+import { t } from '../i18n'
 import { addressSearchOff, markAddressSearchOff } from '../lib/addressPin'
 import { storage } from '../lib/storage'
 import { NEAR_ADDRESS_KEY } from '../store/location'
@@ -91,7 +92,7 @@ export function refreshPlaces(qc: QueryClient) {
 
 /** "Home", "Work", or the place's own name. */
 export function placeLabel(p: Pick<SavedPlace, 'kind' | 'name'>): string {
-  return p.kind === 'HOME' ? 'Home' : p.kind === 'WORK' ? 'Work' : (p.name ?? 'Saved place')
+  return p.kind === 'HOME' ? t('misc.placeHome') : p.kind === 'WORK' ? t('misc.placeWork') : (p.name ?? t('misc.placeSaved'))
 }
 
 /** "Flat 4B, Kondapur": enough to tell places apart. */
