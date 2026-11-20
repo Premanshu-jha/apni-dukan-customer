@@ -9,8 +9,12 @@ import { duration, rupees } from '../../lib/money'
 import { MAX_SERVICES, useDraft } from '../../store/bookingDraft'
 import { ServiceIcon } from '../../components/ServiceIcon'
 import { SalonPhoto } from './SalonList'
+import { useT } from '../../i18n'
+import { serviceName } from '../../lib/serviceName'
+import { tagText } from '../../lib/ratings'
 
 export function SalonPage() {
+  const t = useT()
   const { id = '' } = useParams()
   const navigate = useNavigate()
   const salon = useSalon(id)
@@ -81,12 +85,12 @@ export function SalonPage() {
   const s = salon.data
   const picked = draft?.salonId === id ? draft.serviceIds : []
   const chosen = services.data.filter((x) => picked.includes(x.id))
-  const minutes = chosen.reduce((t, x) => t + x.durationMinutes, 0)
-  const paise = chosen.reduce((t, x) => t + x.pricePaise, 0)
+  const minutes = chosen.reduce((sum, x) => sum + x.durationMinutes, 0)
+  const paise = chosen.reduce((sum, x) => sum + x.pricePaise, 0)
   const isFrom = chosen.some((x) => x.priceIsFrom)
   const paused = s.pausedUntil !== null && Date.parse(s.pausedUntil) > now
   const off = s.notTakingBookings === true
-  const names = new Map(services.data.map((x) => [x.id, x.name]))
+  const names = new Map(services.data.map((x) => [x.id, serviceName(x.name)]))
 
   return (
     <Page
@@ -96,26 +100,26 @@ export function SalonPage() {
         <div className="flex items-center gap-3">
           <div className="flex-1">
             {off && !paused ? (
-              <p className="text-sm text-muted">Not taking online bookings right now</p>
+              <p className="text-sm text-muted">{t('salon.notTakingOnline')}</p>
             ) : chosen.length ? (
               <>
                 <p className="font-semibold">
-                  {chosen.length} {chosen.length === 1 ? 'service' : 'services'} · {rupees(paise, isFrom)}
+                  {t('salon.servicesCount', { count: chosen.length })} · {rupees(paise, isFrom)}
                 </p>
-                <p className="text-sm text-muted">About {duration(minutes)}</p>
+                <p className="text-sm text-muted">{t('salon.aboutDurationStart', { duration: duration(minutes) })}</p>
               </>
             ) : (
-              <p className="text-sm text-muted">Pick one or more services</p>
+              <p className="text-sm text-muted">{t('salon.pickServices')}</p>
             )}
           </div>
           <Button disabled={!chosen.length || Boolean(paused) || off} onClick={() => navigate(`/salons/${id}/book`)}>
-            Pick a time
+            {t('salon.pickTime')}
           </Button>
         </div>
       }
     >
       {(salon.isRefetchError || services.isRefetchError) && (
-        <Banner tone="warn">Couldn't refresh this salon: {salonReadMessage(salon.error ?? services.error)}</Banner>
+        <Banner tone="warn">{t('salon.refreshSalonFailed', { message: salonReadMessage(salon.error ?? services.error) })}</Banner>
       )}
       <SalonPhoto url={s.photoUrl} name={s.name} large />
       <div className="flex flex-col gap-1">
@@ -123,7 +127,7 @@ export function SalonPage() {
           <p className={s.rating.average !== null ? 'font-semibold text-accent' : 'text-sm text-muted'}>
             {ratingText(s.rating)}
             {s.rating.tags.length > 0 && (
-              <span className="font-normal text-muted"> · {s.rating.tags.slice(0, 3).map((t) => t.label).join(', ')}</span>
+              <span className="font-normal text-muted"> · {s.rating.tags.slice(0, 3).map((tag) => tagText(tag.tag, tag.label)).join(', ')}</span>
             )}
           </p>
         )}
@@ -132,45 +136,45 @@ export function SalonPage() {
         </p>
         {s.licensedUntil && (
           <p className="text-sm">
-            <span className="mr-2 inline-block rounded-full border border-good px-2 text-xs font-medium text-good">Licensed</span>
-            <span className="text-muted">Its trade licence was checked by Clozest (valid until {licenceDay(s.licensedUntil)}).</span>
+            <span className="mr-2 inline-block rounded-full border border-good px-2 text-xs font-medium text-good">{t('salon.licensed')}</span>
+            <span className="text-muted">{t('salon.licenceCheckedUntil', { date: licenceDay(s.licensedUntil) })}</span>
           </p>
         )}
         {s.mapLink && (
           <a href={s.mapLink} target="_blank" rel="noreferrer" className="text-sm text-link underline">
-            Open in Maps
+            {t('salon.openInMaps')}
           </a>
         )}
       </div>
       {off && !paused && (
         <Banner tone="warn">
-          This salon isn't taking online bookings right now. You can still visit it, or{' '}
+          {t('salon.notTakingBefore')}{' '}
           <Link to="/" className="underline">
-            pick another salon nearby
+            {t('salon.notTakingLink')}
           </Link>
-          . A booking you already have here stays.
+          {t('salon.notTakingAfter')}
         </Banner>
       )}
       {paused && (
-        <Banner tone="warn">This salon isn't taking bookings until {dateTimeIst(s.pausedUntil!)}.</Banner>
+        <Banner tone="warn">{t('salon.pausedUntil', { time: dateTimeIst(s.pausedUntil!) })}</Banner>
       )}
 
-      {linkedOffer && !(s.offers ?? []).some((o) => o.id === linkedOffer) && <Banner tone="info">That offer has ended. The prices below are the salon's own.</Banner>}
+      {linkedOffer && !(s.offers ?? []).some((o) => o.id === linkedOffer) && <Banner tone="info">{t('salon.offerEnded')}</Banner>}
       {((s.offers?.length ?? 0) > 0 || (s.offerMessages ?? null) !== null) && (
         <section aria-labelledby="offers-title" className="flex flex-col gap-2">
           <h2 id="offers-title" className="text-lg font-semibold">
-            Offers
+            {t('salon.offers')}
           </h2>
           {(s.offers ?? []).map((o) => (
             <p key={o.id} className="rounded-xl border border-accent/40 bg-accent/10 px-4 py-3">
-              <span className="font-semibold text-accent">{o.percentOff}% off</span> {offerWhat(o, names)}
-              <span className="block text-sm text-muted">{offerWhen(o)}. The price shows when you pick a time.</span>
+              <span className="font-semibold text-accent">{t('salon.percentOff', { percent: o.percentOff })}</span> {offerWhat(o, names)}
+              <span className="block text-sm text-muted">{t('salon.offerWhenNote', { when: offerWhen(o) })}</span>
             </p>
           ))}
           {(s.offerMessages ?? null) !== null && (
             <Switch
-              label="Offer messages from this salon"
-              hint={s.offerMessages ? "You've been here, so you get a message when it has a discount" : 'Off: no messages about its discounts. Its offers still show here.'}
+              label={t('salon.offerMessagesLabel')}
+              hint={s.offerMessages ? t('salon.offerMessagesOnHint') : t('salon.offerMessagesOffHint')}
               on={s.offerMessages === true}
               busy={offerMessages.isPending}
               onChange={(on) => offerMessages.mutate(on)}
@@ -182,10 +186,10 @@ export function SalonPage() {
 
       <section aria-labelledby="services-title" className="flex flex-col gap-3">
         <h2 id="services-title" className="text-lg font-semibold">
-          Services
+          {t('salon.services')}
         </h2>
         {services.data.length === 0 ? (
-          <p className="text-muted">This salon hasn't added its services yet.</p>
+          <p className="text-muted">{t('salon.noServices')}</p>
         ) : (
           <ul className="flex flex-col gap-2">
             {services.data.map((x) => {
@@ -205,14 +209,14 @@ export function SalonPage() {
                     />
                     <ServiceIcon service={x} size={22} className="text-link" />
                     <span className="flex-1">
-                      <span className="block font-medium">{x.name}</span>
+                      <span className="block font-medium">{serviceName(x.name)}</span>
                       <span className="text-sm text-muted">{duration(x.durationMinutes)}</span>
                     </span>
                     {x.offerPricePaise != null ? (
                       <span className="text-right">
                         <s className="block text-sm text-muted">{rupees(x.pricePaise, x.priceIsFrom)}</s>
                         <span className="font-semibold text-accent">{rupees(x.offerPricePaise, x.priceIsFrom)}</span>
-                        <span className="block text-xs text-muted">in the offer's hours</span>
+                        <span className="block text-xs text-muted">{t('salon.inOfferHours')}</span>
                       </span>
                     ) : (
                       <span className="font-semibold">{rupees(x.pricePaise, x.priceIsFrom)}</span>
@@ -224,14 +228,14 @@ export function SalonPage() {
           </ul>
         )}
         {chosen.some((x) => x.priceIsFrom) && (
-          <p className="text-sm text-muted">"from" prices can go up at the salon, for example for long hair.</p>
+          <p className="text-sm text-muted">{t('salon.fromPricesNote')}</p>
         )}
       </section>
 
       {s.hours.length > 0 && (
         <section aria-labelledby="hours-title" className="flex flex-col gap-2">
           <h2 id="hours-title" className="text-lg font-semibold">
-            Opening hours
+            {t('salon.openingHours')}
           </h2>
           <dl className="grid grid-cols-[4rem_1fr] gap-y-1 text-sm">
             {[1, 2, 3, 4, 5, 6, 7].map((d) => {
@@ -239,13 +243,13 @@ export function SalonPage() {
               return (
                 <div key={d} className="contents">
                   <dt className="text-muted">{weekdayName(d)}</dt>
-                  <dd>{h ? `${clock12(h.open)} – ${clock12(h.close)}` : 'Closed'}</dd>
+                  <dd>{h ? `${clock12(h.open)} – ${clock12(h.close)}` : t('salon.closed')}</dd>
                 </div>
               )
             })}
           </dl>
           {s.closedDates?.length > 0 && (
-            <p className="text-sm text-muted">Holidays: {s.closedDates.map((d) => dayLabel(d)).join(', ')}.</p>
+            <p className="text-sm text-muted">{t('salon.holidays', { days: s.closedDates.map((d) => dayLabel(d)).join(', ') })}</p>
           )}
         </section>
       )}

@@ -11,6 +11,7 @@ import { formatPhone, normalizePhone } from '../../lib/phone'
 import { flashPhoneChanged, rememberPhoneMove, takePhoneMove } from '../../lib/phoneMoved'
 import { SUPPORT_EMAIL } from '../../lib/config'
 import { useSession } from '../../store/session'
+import { useT } from '../../i18n'
 import { rememberAfterEmail } from '../auth/flow'
 
 /**
@@ -19,6 +20,7 @@ import { rememberAfterEmail } from '../auth/flow'
  * to the new number (bookings and history stay); every other device is signed out and this one carries on.
  */
 export function ChangePhone() {
+  const t = useT()
   const navigate = useNavigate()
   const user = useSession((s) => s.user)!
   const [step, setStep] = useState<'number' | 'codes'>('number')
@@ -57,7 +59,7 @@ export function ChangePhone() {
       setSecondCode('')
       setStep('codes')
     } catch (e) {
-      fail(isApiError(e, 'PHONE_IN_USE') ? 'This number already has its own Clozest account. Use another number.' : messageOf(e))
+      fail(isApiError(e, 'PHONE_IN_USE') ? t('profile.phoneInUse') : messageOf(e))
     } finally {
       setBusy(false)
     }
@@ -82,21 +84,21 @@ export function ChangePhone() {
         if (stillIn) {
           // The old tokens still work: the change didn't go through
           takePhoneMove()
-          fail("Couldn't change your number (no answer). Your number is still the same. Try again.")
+          fail(t('profile.phoneNotChanged'))
         } else {
           // No answer at all (offline): not known yet; if it went through, sign-in will say so
-          fail("No answer from Clozest, so we can't tell yet whether your number changed. Check your connection, then open this screen again.")
+          fail(t('profile.phoneChangeUnknown'))
         }
       } else if (isApiError(e, 'SEND_CODES_AGAIN')) {
-        fail(`${messageOf(e)} Tap "Send the codes again".`)
+        fail(t('profile.sendCodesAgainHint', { reason: messageOf(e) }))
       } else if (isApiError(e, 'PHONE_IN_USE')) {
-        fail('This number got its own Clozest account meanwhile. Use another number.')
+        fail(t('profile.phoneTakenMeanwhile'))
         setStep('number')
       } else if (isApiError(e, 'WRONG_CODE')) {
         const left = Number(e.details.attemptsLeft)
-        fail(Number.isFinite(left) ? `One of the codes isn't right. ${left} ${left === 1 ? 'try' : 'tries'} left.` : messageOf(e))
+        fail(Number.isFinite(left) ? t('profile.wrongCode', { count: left }) : messageOf(e))
       } else if (isApiError(e, 'CODE_EXPIRED') || isApiError(e, 'TOO_MANY_ATTEMPTS')) {
-        fail(`${messageOf(e)} Tap "Send the codes again".`)
+        fail(t('profile.sendCodesAgainHint', { reason: messageOf(e) }))
       } else {
         fail(messageOf(e))
       }
@@ -105,17 +107,17 @@ export function ChangePhone() {
     }
   }
 
-  const secondLabel = second?.secondCodeTo === 'EMAIL' ? `Code sent to your email (${second.sentTo})` : `Code sent to your current number (${second?.sentTo ?? ''})`
+  const secondLabel = second?.secondCodeTo === 'EMAIL' ? t('profile.codeSentToEmail', { email: second.sentTo }) : t('profile.codeSentToCurrentNumber', { number: second?.sentTo ?? '' })
   return (
-    <Page back="/profile" title="Change mobile number">
+    <Page back="/profile" title={t('profile.changePhoneTitle')}>
       <p className="text-muted">
-        Now: <span className="text-ink">+91 {formatPhone(user.phone)}</span>
+        {t('profile.now')} <span className="text-ink">+91 {formatPhone(user.phone)}</span>
       </p>
       {step === 'number' ? (
         <div className="flex flex-col gap-4">
           <Field
             id="new-phone"
-            label="New mobile number"
+            label={t('profile.newMobile')}
             type="tel"
             inputMode="tel"
             autoComplete="tel-national"
@@ -125,17 +127,17 @@ export function ChangePhone() {
               setInput(e.target.value)
               setError(null)
             }}
-            error={same ? 'This is already your number.' : undefined}
-            hint="Your bookings and history stay with your account. Other devices will be signed out."
+            error={same ? t('profile.alreadyYourNumber') : undefined}
+            hint={t('profile.newMobileHint')}
           />
           {!user.emailVerified && (
             // Said before they start: someone whose old SIM is gone learns now, not after "Send codes"
             <p className="text-sm text-muted">
-              We'll also send a code to your current number, +91 {formatPhone(user.phone)}. No longer have it?{' '}
+              {t('profile.oldNumberBefore', { phone: formatPhone(user.phone) })}{' '}
               <Link to="/verify-email" onClick={() => rememberAfterEmail('/profile/phone', user.id)} className="text-link underline">
-                Verify an email
+                {t('profile.oldNumberLink')}
               </Link>{' '}
-              first (the code then goes there), or write to us at{' '}
+              {t('profile.oldNumberAfter')}{' '}
               <a href={`mailto:${SUPPORT_EMAIL}`} className="text-link underline [overflow-wrap:anywhere]">
                 {SUPPORT_EMAIL}
               </a>
@@ -148,16 +150,16 @@ export function ChangePhone() {
             </div>
           )}
           <Button busy={busy} disabled={!newPhone || same} onClick={send}>
-            Send codes
+            {t('profile.sendCodes')}
           </Button>
         </div>
       ) : (
         <div className="flex flex-col gap-4">
           <p className="text-muted">
-            We sent a code to <span className="text-ink">+91 {formatPhone(sentTo)}</span> and one to{' '}
-            <span className="text-ink">{second?.secondCodeTo === 'EMAIL' ? second.sentTo : `your current number (${second?.sentTo})`}</span>.
+            {t('profile.codesSentBefore')} <span className="text-ink">+91 {formatPhone(sentTo)}</span> {t('profile.codesSentMiddle')}{' '}
+            <span className="text-ink">{second?.secondCodeTo === 'EMAIL' ? second.sentTo : t('profile.yourCurrentNumber', { number: String(second?.sentTo) })}</span>{t('profile.codesSentAfter')}
           </p>
-          <CodeInput id="new-phone-code" label="Code sent to the new number" value={phoneCode} onChange={setPhoneCode} />
+          <CodeInput id="new-phone-code" label={t('profile.newNumberCode')} value={phoneCode} onChange={setPhoneCode} />
           <CodeInput id="phone-change-second-code" label={secondLabel} value={secondCode} onChange={setSecondCode} autoFocus={false} />
           {error && (
             <div ref={errorRef} tabIndex={-1} className="outline-none">
@@ -165,10 +167,10 @@ export function ChangePhone() {
             </div>
           )}
           <Button busy={busy} disabled={phoneCode.length !== 6 || secondCode.length !== 6} onClick={change}>
-            Change number
+            {t('profile.changeNumber')}
           </Button>
           <Button variant="ghost" disabled={busy} onClick={send}>
-            Send the codes again
+            {t('profile.sendCodesAgain')}
           </Button>
           <Button
             variant="ghost"
@@ -178,7 +180,7 @@ export function ChangePhone() {
               setError(null)
             }}
           >
-            Use a different number
+            {t('profile.useDifferentNumber')}
           </Button>
         </div>
       )}

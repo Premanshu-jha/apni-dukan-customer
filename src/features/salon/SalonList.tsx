@@ -5,6 +5,7 @@ import { SALONS_RADIUS_KM, useNearbySalons } from '../../api/salons'
 import { Button, EmptyState, ErrorState, Loading } from '../../components/ui'
 import { offerBadgeText, openText, ratingText, servicesText } from '../../lib/salonCard'
 import { todayIst } from '../../lib/ist'
+import { useT } from '../../i18n'
 
 
 /** A moment as India time "HH:mm", for "Opens at …" on the cards. */
@@ -13,6 +14,7 @@ function hhmmIst(at: number): string {
 }
 
 export function SalonList({ lat, lng }: { lat: number; lng: number }) {
+  const t = useT()
   const salons = useNearbySalons(lat, lng)
   const [offlineTap, setOfflineTap] = useState(false)
   const listRef = useRef<HTMLUListElement | null>(null)
@@ -30,15 +32,15 @@ export function SalonList({ lat, lng }: { lat: number; lng: number }) {
   // Each page's cards are told from when that page was read, like their openNow (a page read later doesn't move them)
   const fallbackNow = salons.dataUpdatedAt
 
-  if (salons.isPending) return <Loading label="Looking for salons near you…" />
+  if (salons.isPending) return <Loading label={t('salon.lookingForSalons')} />
   // Only when nothing is on screen yet: a failed "Show more" (or a background refresh) keeps the list and says so
   if (salons.isError && !salons.data) {
     // The backend answers VALIDATION_FAILED on lat/lng for a point outside India
     if (isApiError(salons.error, 'VALIDATION_FAILED')) {
       return (
         <EmptyState
-          title="Clozest works only in India"
-          body="Your location seems to be outside India. Open the app when you're in India, or tap Update after moving."
+          title={t('salon.outsideIndiaTitle')}
+          body={t('salon.outsideIndiaBody')}
         />
       )
     }
@@ -50,14 +52,14 @@ export function SalonList({ lat, lng }: { lat: number; lng: number }) {
   if (list.length === 0) {
     return (
       <EmptyState
-        title="No salons near you yet"
-        body="We're adding salons area by area. Tell us where you are and we'll come to you sooner."
+        title={t('salon.noSalonsTitle')}
+        body={t('salon.noSalonsBody')}
         action={
           <Link
             className="text-link underline"
-            to={`/help?${new URLSearchParams({ about: 'Please add salons near me', text: `My area: \nLocation: ${lat.toFixed(4)}, ${lng.toFixed(4)}` })}`}
+            to={`/help?${new URLSearchParams({ about: t('salon.addSalonsHelpAbout'), text: t('salon.addSalonsHelpText', { lat: lat.toFixed(4), lng: lng.toFixed(4) }) })}`}
           >
-            Let us know
+            {t('salon.letUsKnow')}
           </Link>
         }
       />
@@ -65,13 +67,14 @@ export function SalonList({ lat, lng }: { lat: number; lng: number }) {
   }
 
   return (
-    <section aria-label="Salons near you" className="flex flex-col gap-3">
+    <section aria-label={t('salon.salonsNearYou')} className="flex flex-col gap-3">
       <p className="text-sm text-muted">
-        {salons.hasNextPage ? 'Salons' : `${list.length} ${list.length === 1 ? 'salon' : 'salons'}`} within{' '}
-        {SALONS_RADIUS_KM} km, nearest first
+        {salons.hasNextPage
+          ? t('salon.listHeadingMore', { km: SALONS_RADIUS_KM })
+          : t('salon.listHeadingCount', { count: list.length, km: SALONS_RADIUS_KM })}
       </p>
       <p aria-live="polite" className="sr-only">
-        {list.length} salons shown
+        {t('salon.salonsShown', { count: list.length })}
       </p>
       <ul ref={listRef} className="flex flex-col gap-3">
         {list.map((s, i) => (
@@ -108,12 +111,12 @@ export function SalonList({ lat, lng }: { lat: number; lng: number }) {
                   {s.registered && (
                     <span
                       className="mr-2 inline-block rounded-full border border-good px-2 text-xs font-medium text-good"
-                      title="Its trade licence was checked by Clozest"
+                      title={t('salon.licenceCheckedTitle')}
                     >
-                      Licensed
+                      {t('salon.licensed')}
                     </span>
                   )}
-                  <span className="text-link">{s.distanceKm.toFixed(1)} km away</span>
+                  <span className="text-link">{t('salon.kmAway', { km: s.distanceKm.toFixed(1) })}</span>
                   {openText(s, hhmmIst(s.readAt ?? fallbackNow)) && (
                     <span className={s.openNow ? ' text-good' : ' text-muted'}> · {openText(s, hhmmIst(s.readAt ?? fallbackNow))}</span>
                   )}
@@ -126,10 +129,10 @@ export function SalonList({ lat, lng }: { lat: number; lng: number }) {
       {(moreFailed || offlineTap || refreshFailed) && (
         <p role="alert" className="text-sm text-bad">
           {offlineTap
-            ? "You're offline. Connect to the internet and tap Show more salons again."
+            ? t('salon.offlineShowMore')
             : moreFailed
-              ? "Couldn't load more salons. Check your connection and tap Show more salons again."
-              : "Couldn't refresh the list. It may be a little out of date."}
+              ? t('salon.moreFailed')
+              : t('salon.refreshListFailed')}
         </p>
       )}
       {salons.hasNextPage && (
@@ -148,7 +151,7 @@ export function SalonList({ lat, lng }: { lat: number; lng: number }) {
             void salons.fetchNextPage()
           }}
         >
-          {salons.isFetchingNextPage ? 'Loading more salons…' : 'Show more salons'}
+          {salons.isFetchingNextPage ? t('salon.loadingMore') : t('salon.showMore')}
         </Button>
       )}
     </section>

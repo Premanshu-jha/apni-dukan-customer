@@ -4,6 +4,7 @@ import { SALONS_RADIUS_KM } from '../../api/salons'
 import { Banner, Button, Loading } from '../../components/ui'
 import { platform } from '../../lib/device'
 import { permissionState, STALE_MS, useLocation, type Place } from '../../store/location'
+import { useT } from '../../i18n'
 
 /**
  * Salons near the phone's location. Before the browser asks, we say why; if location is off or blocked we show how to
@@ -11,6 +12,7 @@ import { permissionState, STALE_MS, useLocation, type Place } from '../../store/
  * address (/places).
  */
 export function LocationGate({ children }: { children: (place: Place) => ReactNode }) {
+  const t = useT()
   const { place, finding, error, locate } = useLocation()
   const [blocked, setBlocked] = useState(false)
 
@@ -29,7 +31,7 @@ export function LocationGate({ children }: { children: (place: Place) => ReactNo
   }, [stale, locate])
 
   if (place) return <>{children(place)}</>
-  if (finding) return <Loading label="Finding where you are…" />
+  if (finding) return <Loading label={t('places.findingYou')} />
   if (blocked || error === 'denied') {
     return (
       <>
@@ -45,18 +47,17 @@ export function LocationGate({ children }: { children: (place: Place) => ReactNo
         ⌖
       </span>
       <div className="flex flex-col gap-2">
-        <p className="text-xl font-semibold">Find salons near you</p>
+        <p className="text-xl font-semibold">{t('places.findSalonsNearYou')}</p>
         <p className="max-w-xs text-muted">
           {/* The same radius as the list and the backend (BookingService.RADIUS_METRES) */}
-          Clozest needs your location to show salons within {SALONS_RADIUS_KM} km. It is used only to find salons and is
-          never shared.
+          {t('places.locationWhy', { km: SALONS_RADIUS_KM })}
         </p>
       </div>
-      {error === 'timeout' && <Banner tone="warn">That took too long. Move near a window or turn on GPS, then try again.</Banner>}
-      {error === 'unavailable' && <Banner tone="warn">Your phone couldn't find your location. Check that location is on, then try again.</Banner>}
-      {error === 'unsupported' && <Banner tone="bad">This browser can't share a location. Open Clozest in Chrome or Safari.</Banner>}
+      {error === 'timeout' && <Banner tone="warn">{t('places.gateTimeout')}</Banner>}
+      {error === 'unavailable' && <Banner tone="warn">{t('places.gateUnavailable')}</Banner>}
+      {error === 'unsupported' && <Banner tone="bad">{t('places.gateUnsupported')}</Banner>}
       <Button className="w-full max-w-xs" onClick={locate}>
-        Allow location
+        {t('places.allowLocation')}
       </Button>
       <OrAnAddress />
     </div>
@@ -65,42 +66,44 @@ export function LocationGate({ children }: { children: (place: Place) => ReactNo
 
 /** The way round location: a saved place, or an address typed in. */
 function OrAnAddress() {
+  const t = useT()
   return (
     <Link to="/places" className="py-2 text-center text-link underline">
-      Or enter an address
+      {t('places.orEnterAddress')}
     </Link>
   )
 }
 
 /** Shown when the browser has blocked location for this site. */
 export function LocationGuide({ onRetry }: { onRetry: () => void }) {
+  const t = useT()
   const p = platform()
   const steps =
     p === 'ios'
       ? [
-          'Open the Settings app on your iPhone.',
-          'Tap Privacy & Security, then Location Services, and make sure it is on.',
-          'Scroll down to Safari Websites (or your browser) and choose "While Using the App".',
-          'Come back here and reload the page, then tap Try again.',
+          t('places.guideIos1'),
+          t('places.guideIos2'),
+          t('places.guideIos3'),
+          t('places.guideIos4'),
         ]
       : p === 'android'
         ? [
-            'Tap the icon at the left of the address bar (a lock or two sliders).',
-            'Tap Permissions, then Location, and choose Allow.',
-            'Check that Location is on in your phone’s quick settings (swipe down from the top).',
-            'Come back here and tap Try again.',
+            t('places.guideAndroid1'),
+            t('places.guideAndroid2'),
+            t('places.guideAndroid3'),
+            t('places.guideAndroid4'),
           ]
         : [
-            'Click the icon at the left of the address bar.',
-            'Find Location and set it to Allow.',
-            'Reload the page and click Try again.',
-            'For the best results, open Clozest on your phone: a computer can only guess your location.',
+            t('places.guideDesktop1'),
+            t('places.guideDesktop2'),
+            t('places.guideDesktop3'),
+            t('places.guideDesktop4'),
           ]
   return (
     <div className="flex flex-col gap-5 py-6">
       <div className="flex flex-col gap-2">
-        <p className="text-xl font-semibold">Location is turned off</p>
-        <p className="text-muted">We can only show salons near you with your location. Here's how to turn it on:</p>
+        <p className="text-xl font-semibold">{t('places.locationOff')}</p>
+        <p className="text-muted">{t('places.locationOffHow')}</p>
       </div>
       <ol className="flex flex-col gap-3">
         {steps.map((s, i) => (
@@ -112,7 +115,7 @@ export function LocationGuide({ onRetry }: { onRetry: () => void }) {
           </li>
         ))}
       </ol>
-      <Button onClick={onRetry}>Try again</Button>
+      <Button onClick={onRetry}>{t('common.retry')}</Button>
     </div>
   )
 }

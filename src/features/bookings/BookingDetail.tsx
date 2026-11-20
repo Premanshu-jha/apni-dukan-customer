@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams, useSearchParams } from 'react-router'
 import { useBooking, useCancelBooking, useEarlierAlert, useMoveBooking } from '../../api/bookings'
 import { isApiError, messageOf } from '../../api/errors'
 import { Banner, Button, Card, ErrorState, Loading, Page, Sheet, Switch } from '../../components/ui'
+import { useT } from '../../i18n'
 import { dateTimeIst, minutesUntil, timeIst } from '../../lib/ist'
 import { duration, rupees } from '../../lib/money'
 import { NotificationsPrompt } from '../profile/Notifications'
@@ -10,11 +11,14 @@ import { RateVisit } from '../ratings/RateVisit'
 import { StatusPill } from './StatusPill'
 import { cancelIsLate, lateCancelFromOf } from './lateCancel'
 import { earlierOffer, isEarlier } from './status'
+import { serviceName } from '../../lib/serviceName'
+import { ServiceIcon } from '../../components/ServiceIcon'
 
 /** Bookings can't be moved within this many minutes of the start (the backend's TOO_LATE_TO_MOVE). */
 const NO_MOVE_MIN = 60
 
 export function BookingDetail() {
+  const t = useT()
   const { id = '' } = useParams()
   const navigate = useNavigate()
   const [params, setParams] = useSearchParams()
@@ -44,28 +48,28 @@ export function BookingDetail() {
 
   if (booking.isPending) {
     return (
-      <Page back="/bookings" title="Booking">
+      <Page back="/bookings" title={t('bookings.bookingTitle')}>
         <Loading />
       </Page>
     )
   }
   if (booking.isError) {
     return (
-      <Page back="/bookings" title="Booking">
+      <Page back="/bookings" title={t('bookings.bookingTitle')}>
         <ErrorState message={messageOf(booking.error)} onRetry={() => booking.refetch()} />
       </Page>
     )
   }
 
   const b = booking.data
-  const minutes = b.services.reduce((t, s) => t + s.durationMinutes, 0)
+  const minutes = b.services.reduce((sum, s) => sum + s.durationMinutes, 0)
   const withinHour = minutesUntil(b.startsAt) < NO_MOVE_MIN
   // From the booking's own lateCancelFrom: a booking made for soon is free to cancel for its first 10 minutes
   const late = cancelIsLate(b)
 
   return (
-    <Page back="/bookings" title={`Booking ${b.bookingNo}`}>
-      {justBooked && b.status === 'CONFIRMED' && <Banner tone="good">You're booked! See you at {timeIst(b.startsAt)}.</Banner>}
+    <Page back="/bookings" title={t('bookings.bookingNo', { no: b.bookingNo })}>
+      {justBooked && b.status === 'CONFIRMED' && <Banner tone="good">{t('bookings.justBooked', { time: timeIst(b.startsAt) })}</Banner>}
       {note && (
         <div ref={noteRef} tabIndex={-1} role="status" className="outline-none">
           <Banner tone="info">{note}</Banner>
@@ -75,29 +79,28 @@ export function BookingDetail() {
       {earlier && b.status === 'CONFIRMED' && isEarlier(earlier, b.startsAt) && (
         <div ref={offerRef} tabIndex={-1} className="outline-none">
           <Card className="flex flex-col gap-3">
-            <p className="font-semibold">An earlier time opened: {dateTimeIst(earlier)}</p>
+            <p className="font-semibold">{t('bookings.earlierOpened', { when: dateTimeIst(earlier) })}</p>
             {!b.canMove ? (
               <p className="text-sm text-muted">
-                This booking can't be moved any more, so it stays at {timeIst(b.startsAt)}.
+                {t('bookings.earlierCantMove', { time: timeIst(b.startsAt) })}
               </p>
             ) : minutesUntil(earlier) <= 0 ? (
-              <p className="text-sm text-muted">This time has passed. Your booking stays at {timeIst(b.startsAt)}.</p>
+              <p className="text-sm text-muted">{t('bookings.earlierPassed', { time: timeIst(b.startsAt) })}</p>
             ) : isApiError(move.error, 'SLOT_TAKEN') || isApiError(move.error, 'OUTSIDE_WINDOW') ? (
               <>
                 <Banner tone="warn">
                   {isApiError(move.error, 'SLOT_TAKEN')
-                    ? `Someone else took ${timeIst(earlier)} first.`
-                    : `${timeIst(earlier)} is too soon to book now.`}{' '}
-                  Your booking stays at {timeIst(b.startsAt)}.
+                    ? t('bookings.earlierTaken', { time: timeIst(earlier), current: timeIst(b.startsAt) })
+                    : t('bookings.earlierTooSoon', { time: timeIst(earlier), current: timeIst(b.startsAt) })}
                 </Banner>
                 <Button variant="secondary" onClick={() => navigate(`/bookings/${b.id}/move`)}>
-                  See other times
+                  {t('bookings.seeOtherTimes')}
                 </Button>
               </>
             ) : (
               <>
                 <p className="text-sm text-muted">
-                  Whoever moves first gets it. Your booking stays at {timeIst(b.startsAt)} if you don't.
+                  {t('bookings.earlierFirstWins', { time: timeIst(b.startsAt) })}
                 </p>
                 {move.isError && <Banner tone="bad">{messageOf(move.error)}</Banner>}
                 <Button
@@ -107,7 +110,7 @@ export function BookingDetail() {
                       { id: b.id, salonId: b.salonId, startAt: earlier },
                       {
                         onSuccess: (moved) => {
-                          setNote(`Moved to ${dateTimeIst(moved.startsAt)}.`)
+                          setNote(t('bookings.movedTo', { when: dateTimeIst(moved.startsAt) }))
                           setParams({}, { replace: true })
                           focusNote.current = true
                         },
@@ -117,7 +120,7 @@ export function BookingDetail() {
                     )
                   }
                 >
-                  Move to {timeIst(earlier)}
+                  {t('bookings.moveTo', { time: timeIst(earlier) })}
                 </Button>
               </>
             )}
@@ -127,8 +130,8 @@ export function BookingDetail() {
 
       <Card className="flex flex-col gap-3">
         <div className="flex items-start justify-between gap-3">
-          <div>
-            <p className="text-lg font-semibold">{b.salonName}</p>
+          <div className="min-w-0">
+            <p className="text-lg font-semibold break-words">{b.salonName}</p>
             <p className="text-sm text-muted">{b.salonAddress}</p>
           </div>
           <StatusPill status={b.status} />
@@ -136,31 +139,35 @@ export function BookingDetail() {
         <p className="text-xl font-bold text-link">{dateTimeIst(b.startsAt)}</p>
         {b.mapLink && (
           <a href={b.mapLink} target="_blank" rel="noreferrer" className="text-sm text-link underline">
-            Directions
+            {t('bookings.directions')}
           </a>
         )}
       </Card>
 
       {b.status === 'CONFIRMED' && b.startCode && (
         <Card className="flex flex-col items-center gap-2 text-center">
-          <p className="text-sm text-muted">Show this code at the salon when you arrive</p>
-          <p aria-label={`Start code ${b.startCode.split('').join(' ')}`} className="font-mono text-5xl font-bold tracking-[0.3em]">
+          <p className="text-sm text-muted">{t('bookings.showCode')}</p>
+          <p aria-label={t('bookings.startCode', { code: b.startCode.split('').join(' ') })} className="font-mono text-5xl font-bold tracking-[0.3em]">
             {b.startCode}
           </p>
-          <p className="text-sm text-muted">Arrive by {timeIst(b.heldUntil)} or the booking may be marked missed.</p>
+          <p className="text-sm text-muted">{t('bookings.arriveBy', { time: timeIst(b.heldUntil) })}</p>
         </Card>
       )}
 
       {b.cancelReason && (b.status === 'CANCELLED_BY_SALON' || b.status === 'CANCELLED_BY_CUSTOMER') && (
-        <Banner tone={b.status === 'CANCELLED_BY_SALON' ? 'bad' : 'info'}>Reason: {b.cancelReason}</Banner>
+        <Banner tone={b.status === 'CANCELLED_BY_SALON' ? 'bad' : 'info'}>{t('bookings.reason', { reason: b.cancelReason })}</Banner>
       )}
 
       <Card className="flex flex-col gap-2">
         <ul className="flex flex-col gap-1">
           {b.services.map((s) => (
             <li key={s.serviceId} className="flex justify-between gap-3">
-              <span>
-                {s.name} <span className="text-sm text-muted">· {duration(s.durationMinutes)}</span>
+              <span className="flex items-center gap-2">
+                {/* The picture its name fits, so the service is known without reading */}
+                <ServiceIcon service={s} size={18} className="text-link" />
+                <span>
+                  {serviceName(s.name)} <span className="text-sm text-muted">· {duration(s.durationMinutes)}</span>
+                </span>
               </span>
               <span>
                 {s.listPricePaise != null && <s className="text-sm text-muted">{rupees(s.listPricePaise, s.priceIsFrom)}</s>}{' '}
@@ -170,7 +177,7 @@ export function BookingDetail() {
           ))}
         </ul>
         <div className="flex justify-between border-t border-line pt-2 font-semibold">
-          <span>Total · about {duration(minutes)}</span>
+          <span>{t('bookings.totalAbout', { duration: duration(minutes) })}</span>
           <span>
             {b.totalListPricePaise != null && (
               <s className="font-normal text-muted">{rupees(b.totalListPricePaise, b.priceIsFrom)}</s>
@@ -178,8 +185,8 @@ export function BookingDetail() {
             <span className={b.totalListPricePaise != null ? 'text-accent' : ''}>{rupees(b.totalPricePaise, b.priceIsFrom)}</span>
           </span>
         </div>
-        {b.totalListPricePaise != null && <p className="text-sm text-accent">Booked at the salon's offer price.</p>}
-        <p className="text-sm text-muted">Pay at the salon.</p>
+        {b.totalListPricePaise != null && <p className="text-sm text-accent">{t('bookings.offerPrice')}</p>}
+        <p className="text-sm text-muted">{t('bookings.payAtSalon')}</p>
       </Card>
 
       {b.status === 'COMPLETED' && <RateVisit booking={b} focus={toRate} />}
@@ -189,8 +196,8 @@ export function BookingDetail() {
       {b.status === 'CONFIRMED' && b.canMove && (
         <Card className="flex flex-col gap-2">
           <Switch
-            label="Tell me if an earlier time opens"
-            hint="If someone cancels earlier that day, we'll send you a message. You choose whether to move."
+            label={t('bookings.earlierAlert')}
+            hint={t('bookings.earlierAlertHint')}
             on={Boolean(b.earlierAlert)}
             busy={earlierSwitch.isPending}
             onChange={(on) => earlierSwitch.mutate({ id: b.id, on })}
@@ -203,27 +210,27 @@ export function BookingDetail() {
         <div className="flex flex-col gap-2">
           {b.canMove ? (
             <Button variant="secondary" onClick={() => navigate(`/bookings/${b.id}/move`)}>
-              Move to another time
+              {t('bookings.moveToAnother')}
             </Button>
           ) : (
             b.canChange && (
               <p className="text-center text-sm text-muted">
                 {withinHour
-                  ? "Bookings can't be moved within 1 hour of the start."
-                  : "The salon isn't taking changes right now, so this booking can't be moved. You can still cancel it."}
+                  ? t('bookings.noMoveWithinHour')
+                  : t('bookings.salonNotTakingChanges')}
               </p>
             )
           )}
           {b.canChange && (
             <p className="text-center text-sm text-muted">
               {late
-                ? 'Cancelling now counts as a late cancel.'
-                : `Free to cancel until ${dateTimeIst(lateCancelFromOf(b))}.`}
+                ? t('bookings.cancelNowLate')
+                : t('bookings.freeToCancel', { when: dateTimeIst(lateCancelFromOf(b)) })}
             </p>
           )}
           {b.canChange && (
             <Button variant="danger" onClick={() => setAsking(true)}>
-              Cancel booking
+              {t('bookings.cancelBooking')}
             </Button>
           )}
         </div>
@@ -231,19 +238,18 @@ export function BookingDetail() {
 
       <p className="text-center text-sm text-muted">
         <Link to={`/salons/${b.salonId}`} className="underline">
-          Book again at {b.salonName}
+          {t('bookings.bookAgain', { salon: b.salonName })}
         </Link>
       </p>
 
-      <Sheet open={asking} title="Cancel this booking?" onClose={() => setAsking(false)}>
+      <Sheet open={asking} title={t('bookings.cancelTitle')} onClose={() => setAsking(false)}>
         <div className="flex flex-col gap-4">
           {late ? (
             <Banner tone="warn">
-              It's past {timeIst(lateCancelFromOf(b))}, so this counts as a late cancel. Too many late cancels or missed bookings
-              can stop you booking for a while.
+              {t('bookings.lateCancelWarning', { time: timeIst(lateCancelFromOf(b)) })}
             </Banner>
           ) : (
-            <p className="text-muted">The salon will be told, and the time goes back on offer.</p>
+            <p className="text-muted">{t('bookings.cancelInfo')}</p>
           )}
           {cancel.isError && <Banner tone="bad">{messageOf(cancel.error)}</Banner>}
           <Button
@@ -253,23 +259,26 @@ export function BookingDetail() {
               cancel.mutate(b.id, {
                 onSuccess: (r) => {
                   setAsking(false)
-                  setNote(r.countedAsLate ? 'Cancelled. This was counted as a late cancel.' : 'Cancelled.')
+                  setNote(r.countedAsLate ? t('bookings.cancelledLate') : t('bookings.cancelled'))
                 },
               })
             }
           >
-            Yes, cancel it
+            {t('bookings.yesCancel')}
           </Button>
           <Button variant="secondary" onClick={() => setAsking(false)}>
-            Keep it
+            {t('bookings.keepIt')}
           </Button>
         </div>
       </Sheet>
       <Link
-        to={`/help?${new URLSearchParams({ about: `Booking ${b.bookingNo}`, text: `About my booking ${b.bookingNo}: ` })}`}
+        to={`/help?${new URLSearchParams({
+          about: t('bookings.helpAbout', { no: b.bookingNo }),
+          text: t('bookings.helpText', { no: b.bookingNo }),
+        })}`}
         className="py-2 text-center text-sm text-link underline"
       >
-        Need help with this booking?
+        {t('bookings.needHelp')}
       </Link>
     </Page>
   )

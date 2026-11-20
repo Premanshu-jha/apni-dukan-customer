@@ -1,10 +1,11 @@
+import { t } from '../../i18n'
+
 /**
  * The categories, like Swiggy's Food and Instamart. Only the live ones show: a category not open yet would be a tile
  * that leads nowhere. Opening one is setting live to true (and building what it shows on Home).
  */
 export const CATEGORIES = [
-  { id: 'salon', label: 'Salon', icon: '✂', live: true },
-  { id: 'kirana', label: 'Kirana', icon: '🛒', live: false },
+  { id: 'salon', get label() { return t('home.categorySalon') }, icon: '✂', live: true },
   { id: 'services', label: 'Services', icon: '🔧', live: false },
 ] as const
 

@@ -6,8 +6,10 @@ import { todayIst, timeIst } from '../../lib/ist'
 import { duration } from '../../lib/money'
 import { useDraft } from '../../store/bookingDraft'
 import { DateChips, SlotGrid } from './SlotGrid'
+import { useT } from '../../i18n'
 
 export function BookTime() {
+  const t = useT()
   const { id = '' } = useParams()
   const navigate = useNavigate()
   const slotTaken = Boolean((useLocation().state as { slotTaken?: boolean } | null)?.slotTaken)
@@ -31,26 +33,26 @@ export function BookTime() {
 
   const minutes = (services.data ?? [])
     .filter((s) => draft.serviceIds.includes(s.id))
-    .reduce((t, s) => t + s.durationMinutes, 0)
+    .reduce((sum, s) => sum + s.durationMinutes, 0)
 
   return (
     <Page
       back={`/salons/${id}`}
-      title="Pick a time"
+      title={t('salon.pickTimeTitle')}
       footer={
         <Button className="w-full" disabled={!draft.startAt} onClick={() => navigate(`/salons/${id}/confirm`)}>
-          {draft.startAt ? `Continue with ${timeIst(draft.startAt)}` : 'Pick a time'}
+          {draft.startAt ? t('salon.continueWith', { time: timeIst(draft.startAt) }) : t('salon.pickTime')}
         </Button>
       }
     >
       <p className="text-muted">
         {salon.data?.name}
-        {minutes > 0 && ` · about ${duration(minutes)}`}
+        {minutes > 0 && ` · ${t('salon.aboutDuration', { duration: duration(minutes) })}`}
       </p>
       {slotTaken && !taken && !draft.startAt && (
-        <Banner tone="warn">Someone just booked that time. Pick another one.</Banner>
+        <Banner tone="warn">{t('salon.slotTaken')}</Banner>
       )}
-      {taken && !draft.startAt && <Banner tone="warn">That time isn't free any more. Pick another one.</Banner>}
+      {taken && !draft.startAt && <Banner tone="warn">{t('salon.timeNotFree')}</Banner>}
       <DateChips
         value={date}
         onChange={(d) => {
@@ -64,9 +66,9 @@ export function BookTime() {
         serviceIds={draft.serviceIds}
         date={date}
         selected={draft.startAt}
-        onPick={(t, terms, price) => {
+        onPick={(at, terms, price) => {
           setTaken(false)
-          pickSlot(t, terms, price)
+          pickSlot(at, terms, price)
         }}
         onSelectedGone={selectedGone}
       />

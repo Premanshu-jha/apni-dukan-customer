@@ -13,6 +13,8 @@ import { authApi } from '../../api/auth'
 import { rememberAfterEmail, rememberReturn } from '../auth/flow'
 import { ServiceIcon } from '../../components/ServiceIcon'
 import { lateCancelSoon, termsFor } from '../bookings/lateCancel'
+import { useT } from '../../i18n'
+import { serviceName } from '../../lib/serviceName'
 
 /** A booking can't be moved within this many minutes of its start (the backend's LATE_CANCEL). */
 const LATE_CANCEL_MIN = 60
@@ -31,6 +33,7 @@ const FINAL = new Set([
 ])
 
 export function ConfirmBooking() {
+  const t = useT()
   const { id = '' } = useParams()
   const navigate = useNavigate()
   const salon = useSalon(id)
@@ -45,8 +48,8 @@ export function ConfirmBooking() {
   // The late-cancel warning depends on the clock: look again every 15 seconds while the screen is open
   const [now, setNow] = useState(() => Date.now())
   useEffect(() => {
-    const t = setInterval(() => setNow(Date.now()), 15_000)
-    return () => clearInterval(t)
+    const timer = setInterval(() => setNow(Date.now()), 15_000)
+    return () => clearInterval(timer)
   }, [])
   // The free times of the services actually sent, read again here (from the cache when fresh): the price at the
   // picked time as it is now, so an offer ended or published meanwhile, or a service gone, shows its real price
@@ -66,7 +69,7 @@ export function ConfirmBooking() {
   }
   if (salon.isPending || services.isPending) {
     return (
-      <Page back={`/salons/${id}/book`} title="Confirm booking">
+      <Page back={`/salons/${id}/book`} title={t('salon.confirmTitle')}>
         <Loading />
       </Page>
     )
@@ -74,7 +77,7 @@ export function ConfirmBooking() {
   // Only when there is nothing to show: a failed refresh (a 429 on coming back to the app) keeps the page
   if ((salon.isError && !salon.data) || (services.isError && !services.data)) {
     return (
-      <Page back={`/salons/${id}/book`} title="Confirm booking">
+      <Page back={`/salons/${id}/book`} title={t('salon.confirmTitle')}>
         <ErrorState
           message={salonReadMessage(salon.error ?? services.error)}
           onRetry={() => {
@@ -89,8 +92,8 @@ export function ConfirmBooking() {
   const chosen = (services.data ?? []).filter((s) => draft.serviceIds.includes(s.id))
   // A service the salon removed since it was picked: what is sent must be exactly what is shown
   const sendIds = chosen.map((s) => s.id)
-  const minutes = chosen.reduce((t, s) => t + s.durationMinutes, 0)
-  const listPaise = chosen.reduce((t, s) => t + s.pricePaise, 0)
+  const minutes = chosen.reduce((sum, s) => sum + s.durationMinutes, 0)
+  const listPaise = chosen.reduce((sum, s) => sum + s.pricePaise, 0)
   // The time's price from the free times as read now (or, until they are, as picked, if for the same services): with
   // the salon's offer there, less than the services' own prices. The backend prices the booking again when it is
   // made; an offer ended in the last seconds shows on the booking's page
@@ -146,7 +149,7 @@ export function ConfirmBooking() {
             void qc.invalidateQueries({ queryKey: ['bookings'] })
             setError({
               code: e.code,
-              message: 'Your earlier try may already have booked. Check My bookings before booking again.',
+              message: t('salon.earlierTryMayHaveBooked'),
             })
             return
           }
@@ -154,7 +157,7 @@ export function ConfirmBooking() {
           const until = isApiError(e, 'BOOKING_BLOCKED') && typeof e.details.until === 'string' ? e.details.until : null
           setError({
             code: isApiError(e) ? e.code : 'UNKNOWN',
-            message: until ? `${messageOf(e)} You can book online again from ${dateTimeIst(until)}.` : messageOf(e),
+            message: until ? t('salon.blockedUntil', { message: messageOf(e), time: dateTimeIst(until) }) : messageOf(e),
           })
         },
       },
@@ -164,18 +167,18 @@ export function ConfirmBooking() {
   return (
     <Page
       back={`/salons/${id}/book`}
-      title="Confirm booking"
+      title={t('salon.confirmTitle')}
       footer={
         <Button className="w-full" busy={book.isPending} disabled={sendIds.length === 0} onClick={submit}>
-          Book now
+          {t('salon.bookNow')}
         </Button>
       }
     >
       {timeGone && (
         <Banner tone="warn">
-          That time isn't free any more.{' '}
+          {t('salon.timeGone')}{' '}
           <button type="button" className="underline" onClick={() => navigate(`/salons/${id}/book`)}>
-            Pick another time
+            {t('salon.pickAnotherTime')}
           </button>
         </Banner>
       )}
@@ -193,7 +196,7 @@ export function ConfirmBooking() {
               <span className="flex items-center gap-2">
                 <ServiceIcon service={s} size={18} className="text-link" />
                 <span>
-                  {s.name} <span className="text-sm text-muted">· {duration(s.durationMinutes)}</span>
+                  {serviceName(s.name)} <span className="text-sm text-muted">· {duration(s.durationMinutes)}</span>
                 </span>
               </span>
               <span>{rupees(s.pricePaise, s.priceIsFrom)}</span>
@@ -201,9 +204,9 @@ export function ConfirmBooking() {
           ))}
         </ul>
         {/* The lines are each service's usual price; the offer is worked out on the total (as the salon prices it) */}
-        {offer && <p className="text-xs text-muted">Usual prices above; the offer price is in the total.</p>}
+        {offer && <p className="text-xs text-muted">{t('salon.usualPricesNote')}</p>}
         <div className="flex justify-between border-t border-line pt-3 font-semibold">
-          <span>Total · about {duration(minutes)}</span>
+          <span>{t('salon.totalAbout', { duration: duration(minutes) })}</span>
           <span>
             {offer && (
               <>
@@ -213,34 +216,33 @@ export function ConfirmBooking() {
             <span className={offer ? 'text-accent' : ''}>{rupees(paise, isFrom)}</span>
           </span>
         </div>
-        {offer && <p className="text-sm text-accent">The salon's offer price at this time.</p>}
+        {offer && <p className="text-sm text-accent">{t('salon.offerPriceAtTime')}</p>}
       </Card>
       {soon &&
         (Date.parse(terms.lateCancelFrom) <= now ? (
           <Banner tone="warn">
-            This time starts within the hour, so the booking can't be moved. Cancelling more than{' '}
-            {terms.freeCancelMinutes} minutes after booking counts as a late cancel.
+            {t('salon.lateCancelWithinHour', { minutes: terms.freeCancelMinutes })}
           </Banner>
         ) : (
           <Banner tone="warn">
-            This time starts in just over an hour. You can move it until {timeIst(terms.lateCancelFrom)}, and cancel it
-            for free until{' '}
-            {timeIst(new Date(Math.max(Date.parse(terms.lateCancelFrom), now + terms.freeCancelMinutes * 60_000)).toISOString())}.
+            {t('salon.lateCancelJustOverHour', {
+              moveUntil: timeIst(terms.lateCancelFrom),
+              freeUntil: timeIst(new Date(Math.max(Date.parse(terms.lateCancelFrom), now + terms.freeCancelMinutes * 60_000)).toISOString()),
+            })}
           </Banner>
         ))}
       {canAlert && (
         <Card>
           <Switch
-            label="Tell me if an earlier time opens"
-            hint="If someone cancels earlier that day, we'll send you a message. You choose whether to move."
+            label={t('salon.earlierAlertLabel')}
+            hint={t('salon.earlierAlertHint')}
             on={earlierAlert}
             onChange={setEarlierAlert}
           />
         </Card>
       )}
       <p className="text-sm text-muted">
-        Pay at the salon. Arrive on time: if you're more than 10 minutes late, the booking may be marked a no-show.
-        You can cancel or move it from My bookings.
+        {t('salon.payAtSalon')}
       </p>
       {error && (
         <Banner tone="bad">
@@ -249,7 +251,7 @@ export function ConfirmBooking() {
             <>
               {' '}
               <button type="button" className="underline" onClick={() => navigate('/bookings')}>
-                See my bookings
+                {t('salon.seeMyBookings')}
               </button>
             </>
           )}

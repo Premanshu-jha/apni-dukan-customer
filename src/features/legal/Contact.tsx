@@ -1,16 +1,22 @@
 import { Link } from 'react-router'
+import { spaceBefore, useT } from '../../i18n'
 import { BUSINESS } from '../../lib/business'
 import { LegalPage, Section } from './LegalPage'
 
-/** How to reach Clozest: email, phone and address (also the grievance contact under the privacy policy). */
+/**
+ * How to reach Clozest: email, phone and address (also the grievance contact under the privacy policy). The words are
+ * in the reader's language; the email, phone and address are data, the same in every language.
+ */
 export function Contact() {
+  const t = useT()
   const tel = BUSINESS.phone.replace(/\s/g, '')
+  const profile = t('app.tabProfile')
   return (
-    <LegalPage path="/contact" title="Contact us">
-      <Section title="Write or call">
+    <LegalPage path="/contact" title={t('legal.contactTitle')}>
+      <Section title={t('legal.contactWriteTitle')}>
         <dl className="flex flex-col gap-3">
           <div>
-            <dt>Email</dt>
+            <dt>{t('legal.contactEmail')}</dt>
             <dd>
               <a href={`mailto:${BUSINESS.email}`} className="text-link underline [overflow-wrap:anywhere]">
                 {BUSINESS.email}
@@ -18,7 +24,7 @@ export function Contact() {
             </dd>
           </div>
           <div>
-            <dt>Phone</dt>
+            <dt>{t('legal.contactPhone')}</dt>
             <dd>
               <a href={`tel:${tel}`} className="text-link underline">
                 {BUSINESS.phone}
@@ -26,7 +32,7 @@ export function Contact() {
             </dd>
           </div>
           <div>
-            <dt>Address</dt>
+            <dt>{t('legal.contactAddress')}</dt>
             <dd className="text-ink">
               {BUSINESS.operator} ({BUSINESS.brand}), {BUSINESS.address}
             </dd>
@@ -34,20 +40,27 @@ export function Contact() {
         </dl>
       </Section>
 
-      <Section title="Help with a booking">
+      <Section title={t('legal.contactHelpTitle')}>
         <p>
-          Signed in? Use <strong>Profile → Write to support</strong> with your booking number. We reply by email, and
-          you can read our replies under <strong>Profile → My requests</strong>.
+          {t('legal.contactHelpBefore')} <strong>{`${profile} → ${t('help.writeToSupport')}`}</strong>
+          {spaceBefore(t('legal.contactHelpMiddle'))}
+          {t('legal.contactHelpMiddle')} <strong>{`${profile} → ${t('help.myRequestsTitle')}`}</strong>
+          {spaceBefore(t('legal.contactHelpAfter'))}
+          {t('legal.contactHelpAfter')}
         </p>
       </Section>
 
-      <Section title="Grievance officer">
+      <Section title={t('legal.contactGrievanceTitle')}>
         <p>
-          For complaints about the service or about your personal data (see the{' '}
+          {t('legal.contactGrievanceBefore')}{' '}
           <Link to="/privacy" className="text-link underline">
-            privacy policy
+            {t('legal.contactGrievanceLink')}
           </Link>
-          ), write to {BUSINESS.operator} at <span className="[overflow-wrap:anywhere]">{BUSINESS.email}</span>.
+          {spaceBefore(t('legal.contactGrievanceMiddle', { operator: BUSINESS.operator }))}
+          {t('legal.contactGrievanceMiddle', { operator: BUSINESS.operator })}{' '}
+          <span className="[overflow-wrap:anywhere]">{BUSINESS.email}</span>
+          {spaceBefore(t('legal.contactGrievanceAfter'))}
+          {t('legal.contactGrievanceAfter')}
         </p>
       </Section>
     </LegalPage>

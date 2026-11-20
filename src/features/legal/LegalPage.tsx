@@ -4,27 +4,29 @@ import { Page } from '../../components/ui'
 import { OPERATED_BY } from '../../lib/business'
 import { screensBehind } from '../../lib/nav'
 import { useSession } from '../../store/session'
+import { useLanguage, useT } from '../../i18n'
 
-/** The public pages, in the order the footer lists them. Open to everyone: no sign-in needed. */
+/** The public pages, in the order the footer lists them (labels are text keys). Open to everyone: no sign-in needed. */
 const LEGAL_LINKS = [
-  { to: '/about', label: 'About' },
-  { to: '/contact', label: 'Contact' },
-  { to: '/terms', label: 'Terms' },
-  { to: '/privacy', label: 'Privacy' },
+  { to: '/about', label: 'legal.about' },
+  { to: '/contact', label: 'legal.contact' },
+  { to: '/terms', label: 'legal.terms' },
+  { to: '/privacy', label: 'legal.privacy' },
 ] as const
 
 /** A row of links to the public pages (on sign-in, Profile and every public page). */
 export function LegalLinks({ current }: { current?: string }) {
+  const t = useT()
   return (
-    <nav aria-label="About Clozest" className="flex flex-wrap justify-center gap-x-4 gap-y-2 text-sm">
+    <nav aria-label={t('legal.linksLabel')} className="flex flex-wrap justify-center gap-x-4 gap-y-2 text-sm">
       {LEGAL_LINKS.map((l) =>
         l.to === current ? (
           <span key={l.to} aria-current="page" className="text-muted">
-            {l.label}
+            {t(l.label)}
           </span>
         ) : (
           <Link key={l.to} to={l.to} className="text-link underline">
-            {l.label}
+            {t(l.label)}
           </Link>
         ),
       )}
@@ -47,33 +49,62 @@ export function Section({ title, children }: { title: string; children: ReactNod
 /**
  * The frame of every public page: title, back (to the screen that opened it, or Home / About when opened from a link),
  * the "operated by" line, an optional "last updated" date, and the links to the other pages at the bottom.
+ * {@code englishOnly}: a policy whose text stays in English (it is the one that applies); in another language its
+ * title and links are translated and one line at the top says the English text applies.
  */
 export function LegalPage({
   path,
   title,
   updated,
+  englishOnly = false,
   children,
 }: {
   path: string
   title: string
   updated?: string
+  englishOnly?: boolean
   children: ReactNode
 }) {
   // Back: to the screen that opened this one. Opened from a link: Home when signed in, otherwise the front page
   // (About). About itself, opened first, has no Back.
   // While the session is still starting, `/` too: its guard sends each person to the right place once it is known.
+  const t = useT()
+  const lang = useLanguage()
+  // In another language, what stays in English says so (screen readers then read it as English)
+  const inEnglish = lang !== 'en' ? 'en' : undefined
   const signedOut = useSession((s) => s.status === 'signedOut')
   const back = screensBehind() > 0 ? true : !signedOut ? '/' : path === '/about' ? undefined : '/about'
   return (
     <Page title={title} back={back} backReplace>
       <article className="flex flex-col gap-5">
-        {updated && <p className="text-xs text-muted">Last updated: {updated}</p>}
-        {children}
-        <p className="text-sm text-muted">{OPERATED_BY}</p>
+        {englishOnly && inEnglish && (
+          <p role="note" className="rounded-xl border border-line bg-raised p-3 text-sm text-ink">
+            {t('legal.englishApplies')}
+          </p>
+        )}
+        {updated && <p className="text-xs text-muted">{t('legal.lastUpdated', { date: policyDate(updated, lang) })}</p>}
+        {englishOnly && inEnglish ? (
+          <div lang="en" className="contents">
+            {children}
+          </div>
+        ) : (
+          children
+        )}
+        <p lang={inEnglish} className="text-sm text-muted">
+          {OPERATED_BY}
+        </p>
       </article>
       <div className="mt-auto border-t border-line pt-4">
         <LegalLinks current={path} />
       </div>
     </Page>
   )
+}
+
+/** A policy date ("2026-11-15") as the reader writes it, digits 0-9: "15 November 2026" in English. */
+export function policyDate(iso: string, lang: string): string {
+  const [y, m, d] = iso.split('-').map(Number)
+  return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString(`${lang}-IN-u-nu-latn`, {
+    day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC',
+  })
 }

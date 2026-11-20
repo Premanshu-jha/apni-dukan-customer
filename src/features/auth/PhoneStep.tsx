@@ -4,6 +4,8 @@ import { authApi } from '../../api/auth'
 import { isApiError, messageOf } from '../../api/errors'
 import { Banner, Button, Field, Page } from '../../components/ui'
 import { Turnstile } from '../../components/Turnstile'
+import { keepShownLanguage, useT } from '../../i18n'
+import { LanguagePicker } from '../../i18n/LanguagePicker'
 import { TURNSTILE_SITE_KEY } from '../../lib/config'
 import { formatPhone, normalizePhone } from '../../lib/phone'
 import { takePhoneMove } from '../../lib/phoneMoved'
@@ -11,6 +13,7 @@ import { LegalLinks } from '../legal/LegalPage'
 import { Brand } from './Brand'
 
 export function PhoneStep() {
+  const t = useT()
   const navigate = useNavigate()
   const deleted = Boolean((useLocation().state as { deleted?: boolean } | null)?.deleted)
   // A phone change whose answer was lost and which ended the session: it most likely went through
@@ -27,11 +30,13 @@ export function PhoneStep() {
   async function submit(e: React.FormEvent) {
     e.preventDefault()
     if (!normalized) {
-      setError('Enter a 10-digit Indian mobile number')
+      setError(t('auth.phoneInvalid'))
       return
     }
     setBusy(true)
     setError(null)
+    // Signing in with the language on screen keeps it: the app doesn't offer the languages again afterwards
+    keepShownLanguage()
     try {
       await authApi.sendCode(normalized, captcha)
       navigate('/signin/code', { state: { phone: normalized } })
@@ -46,35 +51,35 @@ export function PhoneStep() {
 
   return (
     <Page>
-      <Brand subtitle="Book a slot at a salon near you. Sign in with your mobile number." />
-      {deleted && <Banner tone="info">Your account has been deleted.</Banner>}
+      <Brand subtitle={t('auth.phoneSubtitle')} />
+      {/* Before anything is typed: each language in its own script, for someone who can't read the one showing */}
+      <LanguagePicker heading />
+      {deleted && <Banner tone="info">{t('auth.phoneDeleted')}</Banner>}
       {movedTo && (
-        <Banner tone="info">
-          Your number was probably changed to +91 {formatPhone(movedTo)}. Sign in with that number to keep your account.
-        </Banner>
+        <Banner tone="info">{t('auth.phoneMoved', { phone: formatPhone(movedTo) })}</Banner>
       )}
       <form onSubmit={submit} className="flex flex-col gap-4" noValidate>
         <Field
           id="phone"
-          label="Mobile number"
+          label={t('auth.phoneLabel')}
           type="tel"
           inputMode="tel"
           autoComplete="tel-national"
-          placeholder="98480 12345"
+          placeholder={t('auth.phonePlaceholder')}
           value={phone}
           onChange={(e) => setPhone(e.target.value)}
-          hint="We'll send a 6-digit code by SMS."
+          hint={t('auth.phoneHint')}
         />
         <Turnstile onToken={setCaptcha} resetKey={resetKey} />
         {error && <Banner tone="bad">{error}</Banner>}
         <Button type="submit" busy={busy} disabled={!normalized || (needsCaptcha && !captcha)}>
-          Send code
+          {t('auth.sendCode')}
         </Button>
       </form>
       <p className="mt-2 text-center text-sm text-muted">
-        Lost your phone number?{' '}
+        {t('auth.phoneLost')}{' '}
         <Link to="/signin/recover" className="text-link underline">
-          Recover with your email
+          {t('auth.phoneRecoverLink')}
         </Link>
       </p>
       <div className="mt-auto pt-6">

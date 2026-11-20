@@ -7,9 +7,11 @@ import { CodeInput } from '../../components/CodeInput'
 import { Banner, Button, Page } from '../../components/ui'
 import { formatPhone } from '../../lib/phone'
 import { useSession } from '../../store/session'
+import { useT } from '../../i18n'
 import { signOutHere } from './signOut'
 
 export function DeleteAccount() {
+  const t = useT()
   const qc = useQueryClient()
   const navigate = useNavigate()
   const phone = useSession((s) => s.user?.phone)
@@ -46,26 +48,25 @@ export function DeleteAccount() {
   }
 
   return (
-    <Page back="/profile" title="Delete account">
+    <Page back="/profile" title={t('profile.deleteTitle')}>
       <Banner tone="warn">
-        This can't be undone. Your upcoming bookings are cancelled, your name, phone and email are removed, and you are
-        signed out everywhere. Salons keep a record of past visits without your details.
+        {t('profile.deleteWarning')}
       </Banner>
       {!sent ? (
         <Button variant="danger" busy={busy} onClick={send}>
-          Send code to +91 {formatPhone(phone)}
+          {t('profile.sendDeleteCode', { phone: formatPhone(phone) })}
         </Button>
       ) : (
         <div className="flex flex-col gap-4">
-          <CodeInput id="delete-code" label="SMS code" value={code} onChange={setCode} />
+          <CodeInput id="delete-code" label={t('profile.smsCode')} value={code} onChange={setCode} />
           <Button variant="danger" busy={busy} disabled={code.length !== 6} onClick={remove}>
-            Delete my account
+            {t('profile.deleteAccount')}
           </Button>
         </div>
       )}
       {error && <Banner tone="bad">{error}</Banner>}
       <Button variant="secondary" onClick={() => navigate('/profile')}>
-        Keep my account
+        {t('profile.keepAccount')}
       </Button>
     </Page>
   )

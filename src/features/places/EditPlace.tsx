@@ -21,7 +21,7 @@ import {
   addressProblems,
   addressSearchOff,
   canSearchAddress,
-  FILLED_TEXT,
+  filledText,
   fillEmpty,
   insideIndia,
   locateOnce,
@@ -31,6 +31,8 @@ import {
   ROUGH_PIN_METRES,
   round6,
   searchFailure,
+  searchMessageText,
+  type SearchMessage,
   zoomFor,
   type Fix,
   type LocateError,
@@ -38,6 +40,7 @@ import {
 import { goBack, screensBehind } from '../../lib/nav'
 import { forgetPlaceDraft, PLACE_DRAFT_KEY, permissionState, useLocation } from '../../store/location'
 import { LocationGuide } from '../location/LocationGate'
+import { t as translate, useT } from '../../i18n'
 
 const loadMap = () => lazy(() => import('../../components/PinMap').then((m) => ({ default: m.PinMap })))
 
@@ -59,14 +62,16 @@ interface Pin {
   placement: number
 }
 
-const KINDS: { kind: PlaceKind; label: string }[] = [
-  { kind: 'HOME', label: 'Home' },
-  { kind: 'WORK', label: 'Work' },
-  { kind: 'OTHER', label: 'Other' },
+/** Each kind's chip; the label is a text key, translated where it shows. */
+const KINDS: { kind: PlaceKind; labelKey: string }[] = [
+  { kind: 'HOME', labelKey: 'places.kindHome' },
+  { kind: 'WORK', labelKey: 'places.kindWork' },
+  { kind: 'OTHER', labelKey: 'places.kindOther' },
 ]
 
 /** /places/new, or /places/:id to change one. */
 export function EditPlace() {
+  const t = useT()
   const { id } = useParams()
   const places = usePlaces()
   // The place as it was when the form opened: deleted on another phone meanwhile, the form stays (Save then offers
@@ -75,7 +80,7 @@ export function EditPlace() {
   const found = id ? places.data?.find((p) => p.id === id) : undefined
   if (found && opened?.id !== found.id) setOpened(found)
   const back = screensBehind() > 0 ? true : '/places'
-  const title = id ? 'Change place' : 'Add an address'
+  const title = id ? t('places.changePlaceTitle') : t('places.addAddress')
   if (places.isPending) return <Page back={back} title={title}><Loading /></Page>
   if (places.isError && !places.data) {
     return (
@@ -87,15 +92,15 @@ export function EditPlace() {
   const existing = found ?? (opened?.id === id ? opened : undefined)
   if (id && !existing) {
     return (
-      <Page back={back} title="Change place">
-        <EmptyState title="That place isn't saved any more" body="It may have been deleted on another phone." />
+      <Page back={back} title={t('places.changePlaceTitle')}>
+        <EmptyState title={t('places.notSavedTitle')} body={t('places.notSavedBody')} />
       </Page>
     )
   }
   if (!id && places.data.length >= MAX_PLACES) {
     return (
       <Page back={back} title={title}>
-        <EmptyState title={`You've saved ${MAX_PLACES} places`} body="That's the most there can be. Change or delete one to add another." />
+        <EmptyState title={t('places.fullTitle', { max: MAX_PLACES })} body={t('places.fullBody')} />
       </Page>
     )
   }
@@ -117,7 +122,7 @@ class MapBoundary extends Component<{ children: ReactNode; onRetry: () => void }
   render() {
     return this.state.failed ? (
       <Banner tone="warn">
-        The map couldn't load. Your pin is kept and can be saved.{' '}
+        {translate('places.mapFailed')}{' '}
         <button
           type="button"
           className="underline"
@@ -126,7 +131,7 @@ class MapBoundary extends Component<{ children: ReactNode; onRetry: () => void }
             this.setState({ failed: false })
           }}
         >
-          Try again
+          {translate('common.retry')}
         </button>
       </Banner>
     ) : (
@@ -179,6 +184,7 @@ function firstFreeKind(all: SavedPlace[]): PlaceKind {
  * older tap never moves the pin or undoes a drag.
  */
 function PlaceForm({ existing, all }: { existing: SavedPlace | null; all: SavedPlace[] }) {
+  const t = useT()
   const qc = useQueryClient()
   const navigate = useNavigate()
   const from = (useRouterLocation().state as { from?: string } | null)?.from
@@ -200,7 +206,8 @@ function PlaceForm({ existing, all }: { existing: SavedPlace | null; all: SavedP
   const [locError, setLocError] = useState<LocateError | null>(null)
   const [blocked, setBlocked] = useState(false)
   const [searching, setSearching] = useState(false)
-  const [searchError, setSearchError] = useState<string | null>(null)
+  // Kept as a key, worded when drawn: it follows a language change
+  const [searchError, setSearchError] = useState<SearchMessage | null>(null)
   const [searchHidden, setSearchHidden] = useState(addressSearchOff)
   /** How exact the pin from the address is; null once GPS, a drag or a later edit took over. */
   const [found, setFound] = useState<Precision | null>(null)
@@ -235,7 +242,7 @@ function PlaceForm({ existing, all }: { existing: SavedPlace | null; all: SavedP
   // Home and Work are one each: taken by another of this person's places
   const takenBy = (k: PlaceKind) => (k === 'OTHER' ? undefined : all.find((p) => p.kind === k && p.id !== existing?.id))
   const problems: Partial<Record<keyof Form, string>> = { ...addressProblems(form) }
-  if (form.kind === 'OTHER' && form.name.trim().length < 2) problems.name = 'Give this place a name, e.g. Gym.'
+  if (form.kind === 'OTHER' && form.name.trim().length < 2) problems.name = t('places.nameNeeded')
   const show = (k: keyof Form) => (touched ? problems[k] : undefined) ?? fieldError(error, k)
 
   const set = (k: keyof Form) => (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -330,7 +337,7 @@ function PlaceForm({ existing, all }: { existing: SavedPlace | null; all: SavedP
         // The button that was tapped is gone: on to the way that is left (or the card's heading when the steps to turn
         // location on show instead)
         requestAnimationFrame(() => (document.getElementById('use-current-location') ?? document.getElementById('place-map'))?.focus())
-      } else setSearchError(failure.text)
+      } else setSearchError(failure.message)
     } finally {
       setSearching(false)
     }
@@ -436,48 +443,49 @@ function PlaceForm({ existing, all }: { existing: SavedPlace | null; all: SavedP
   const taken = takenBy(form.kind)
 
   return (
-    <Page back={screensBehind() > 0 ? true : '/places'} title={existing ? `Change ${placeLabel(existing)}` : 'Add an address'}>
+    <Page back={screensBehind() > 0 ? true : '/places'} title={existing ? t('places.changeTitle', { place: placeLabel(existing) }) : t('places.addAddress')}>
       <Card className="flex flex-col gap-3">
         <p className="font-medium outline-none" id="kind-label" tabIndex={-1}>
-          Save as
+          {t('places.saveAs')}
         </p>
         <div className="flex flex-wrap gap-2" role="group" aria-labelledby="kind-label">
-          {KINDS.map(({ kind, label }) => (
+          {KINDS.map(({ kind, labelKey }) => (
             <Chip key={kind} selected={form.kind === kind} onClick={() => { setForm((f) => ({ ...f, kind })); setError(null) }}>
-              {label}
+              {t(labelKey)}
             </Chip>
           ))}
         </div>
         {taken && (
           <p className="text-sm text-warn" role="status">
-            You already have a {form.kind === 'HOME' ? 'Home' : 'Work'} address ({taken.addressLine}). Change that one, or
-            save this as Other.
+            {form.kind === 'HOME'
+              ? t('places.homeTaken', { address: taken.addressLine })
+              : t('places.workTaken', { address: taken.addressLine })}
           </p>
         )}
         {form.kind === 'OTHER' && (
-          <Field id="place-name" label="Name" placeholder="e.g. Gym, Mom's place" value={form.name} onChange={set('name')} maxLength={30} error={show('name')} />
+          <Field id="place-name" label={t('places.nameLabel')} placeholder={t('places.namePlaceholder')} value={form.name} onChange={set('name')} maxLength={30} error={show('name')} />
         )}
       </Card>
 
       <Card className="flex flex-col gap-4">
-        <Field id="address" label="House or flat number, building, street" value={form.addressLine} onChange={set('addressLine')} maxLength={200} autoComplete="address-line1" error={show('addressLine')} />
-        <Field id="area" label="Area" value={form.area} onChange={set('area')} maxLength={100} error={show('area')} />
+        <Field id="address" label={t('places.addressLineLabel')} value={form.addressLine} onChange={set('addressLine')} maxLength={200} autoComplete="address-line1" error={show('addressLine')} />
+        <Field id="area" label={t('places.areaLabel')} value={form.area} onChange={set('area')} maxLength={100} error={show('area')} />
         <div className="grid grid-cols-2 gap-3">
-          <Field id="city" label="City" value={form.city} onChange={set('city')} maxLength={60} autoComplete="address-level2" error={show('city')} />
-          <Field id="pincode" label="Pincode" inputMode="numeric" value={form.pincode} onChange={set('pincode')} maxLength={6} autoComplete="postal-code" error={show('pincode')} />
+          <Field id="city" label={t('places.cityLabel')} value={form.city} onChange={set('city')} maxLength={60} autoComplete="address-level2" error={show('city')} />
+          <Field id="pincode" label={t('places.pincodeLabel')} inputMode="numeric" value={form.pincode} onChange={set('pincode')} maxLength={6} autoComplete="postal-code" error={show('pincode')} />
         </div>
       </Card>
 
       <Card className="flex flex-col gap-3">
         <div>
           <p id="place-map" tabIndex={-1} className="font-semibold outline-none">
-            On the map
+            {t('places.onTheMap')}
           </p>
           <p className="text-sm text-muted">
             {searchHidden
-              ? 'Tap Use current location when you are there, then drag the pin onto your building.'
-              : 'Use your current location, or find the address on the map. Then drag the pin onto your building.'}{' '}
-            Salons are found around this pin; they never see your address.
+              ? t('places.mapHintNoSearch')
+              : t('places.mapHint')}{' '}
+            {t('places.pinPrivacy')}
           </p>
         </div>
         {!searchHidden && (
@@ -490,39 +498,39 @@ function PlaceForm({ existing, all }: { existing: SavedPlace | null; all: SavedP
             onClick={searchAddress}
             aria-describedby={needFields ? 'address-search-needs' : undefined}
           >
-            Find on map
+            {t('places.findOnMap')}
           </Button>
         )}
         <div aria-live="polite" className="flex flex-col gap-2 empty:hidden">
           {needFields && (
             <p id="address-search-needs" className="text-sm text-muted">
-              Fill in the address, area, city and pincode above to find it on the map.
+              {t('places.needFields')}
             </p>
           )}
-          {filled && <Banner tone="info" live={false}>{FILLED_TEXT}</Banner>}
-          {searchError && <Banner tone="warn" live={false}>{searchError}</Banner>}
+          {filled && <Banner tone="info" live={false}>{filledText()}</Banner>}
+          {searchError && <Banner tone="warn" live={false}>{searchMessageText(searchError)}</Banner>}
           {found && <Banner tone={found === 'EXACT' ? 'info' : 'warn'} live={false}>{precisionHint(found)}</Banner>}
-          {addressChanged && <Banner tone="info" live={false}>You changed the address. Tap Find on map again, or drag the pin.</Banner>}
-          {locError === 'timeout' && <Banner tone="warn" live={false}>That took too long. Turn on GPS and move near a window, then try again.</Banner>}
-          {locError === 'unavailable' && <Banner tone="warn" live={false}>Your phone couldn't find its location. Check that location is on.</Banner>}
-          {locError === 'unsupported' && <Banner tone="warn" live={false}>This browser can't share a location. Find the address on the map instead.</Banner>}
+          {addressChanged && <Banner tone="info" live={false}>{t('places.addressChanged')}</Banner>}
+          {locError === 'timeout' && <Banner tone="warn" live={false}>{t('places.locTimeout')}</Banner>}
+          {locError === 'unavailable' && <Banner tone="warn" live={false}>{t('places.locUnavailable')}</Banner>}
+          {locError === 'unsupported' && <Banner tone="warn" live={false}>{t('places.locUnsupported')}</Banner>}
         </div>
         {pin && (
           <>
             <MapBoundary onRetry={() => setPinMap(loadMap)}>
-              <Suspense fallback={<Loading label="Loading the map…" />}>
+              <Suspense fallback={<Loading label={t('places.loadingMap')} />}>
                 <PinMap lat={pin.lat} lng={pin.lng} zoom={pin.zoom} placement={pin.placement} onMove={moveByHand} />
               </Suspense>
             </MapBoundary>
             <p className="text-sm text-muted">
-              Drag the pin, or tap the map, if it's off.
-              {pin.gps && ` GPS was accurate to about ${pin.gps.accuracy} m.`}
-              {moved > 0 && ` Moved ${moved} m from the GPS point.`}
+              {t('places.dragPin')}
+              {pin.gps && ` ${t('places.gpsAccuracy', { metres: String(pin.gps.accuracy) })}`}
+              {moved > 0 && ` ${t('places.movedFromGps', { metres: String(moved) })}`}
             </p>
             {pin.gps && pin.gps.accuracy > ROUGH_PIN_METRES && (
-              <Banner tone="warn">The phone isn't sure where it is. Drag the pin onto your building, or try again near a window.</Banner>
+              <Banner tone="warn">{t('places.roughPin')}</Banner>
             )}
-            {!insideIndia(pin.lat, pin.lng) && <Banner tone="bad">The pin must be in India.</Banner>}
+            {!insideIndia(pin.lat, pin.lng) && <Banner tone="bad">{t('places.pinOutsideIndia')}</Banner>}
           </>
         )}
         {(locError === 'denied' || (!pin && blocked)) && searchHidden ? (
@@ -530,48 +538,48 @@ function PlaceForm({ existing, all }: { existing: SavedPlace | null; all: SavedP
           <LocationGuide onRetry={locate} />
         ) : locError === 'denied' || (!pin && blocked) ? (
           <>
-            <Banner tone="warn">Location is blocked for this site. Find the address on the map instead, or allow location in your browser.</Banner>
+            <Banner tone="warn">{t('places.locBlocked')}</Banner>
             <Button id="use-current-location" variant="secondary" disabled={searching} onClick={locate}>
-              Try my location again
+              {t('places.tryLocationAgain')}
             </Button>
           </>
         ) : (
           <Button id="use-current-location" variant={pin ? 'secondary' : 'primary'} busy={locating} disabled={searching} onClick={locate}>
-            {pin?.gps ? 'Take my location again' : 'Use current location'}
+            {pin?.gps ? t('places.takeLocationAgain') : t('places.useCurrentLocation')}
           </Button>
         )}
-        {touched && !pin && <p className="text-sm text-bad">Put the pin on the map: use your current location or find the address.</p>}
+        {touched && !pin && <p className="text-sm text-bad">{t('places.pinNeeded')}</p>}
       </Card>
 
       {gone ? (
         <Banner tone="bad">
-          This place was deleted on another phone.{' '}
+          {t('places.deletedElsewhere')}{' '}
           <button type="button" className="underline" disabled={busy} onClick={() => save(true)}>
-            Save it as a new place
+            {t('places.saveAsNew')}
           </button>
         </Banner>
       ) : (
         generalError && <Banner tone="bad">{generalError}</Banner>
       )}
       <Button busy={busy} disabled={askDelete} onClick={() => save()}>
-        {existing ? 'Save changes' : 'Save address'}
+        {existing ? t('places.saveChanges') : t('places.saveAddress')}
       </Button>
       {existing &&
         (askDelete ? (
           <Card className="flex flex-col gap-2">
-            <p className="text-sm">Delete {placeLabel(existing)}? You can add it again any time.</p>
+            <p className="text-sm">{t('places.deleteConfirm', { place: placeLabel(existing) })}</p>
             <div className="grid grid-cols-2 gap-2">
               <Button variant="danger" busy={busy} onClick={remove}>
-                Yes, delete
+                {t('places.yesDelete')}
               </Button>
               <Button variant="secondary" disabled={busy} onClick={() => setAskDelete(false)}>
-                Keep it
+                {t('places.keepIt')}
               </Button>
             </div>
           </Card>
         ) : (
           <Button variant="ghost" className="text-bad" disabled={busy} onClick={() => setAskDelete(true)}>
-            Delete this place
+            {t('places.deletePlace')}
           </Button>
         ))}
     </Page>
