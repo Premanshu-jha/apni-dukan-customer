@@ -1,0 +1,18 @@
+{
+  "spinnerLoading": "லோட் ஆகிறது",
+
+  "errorTitle": "இந்த ஸ்கிரீனில் ஏதோ தவறு நடந்துவிட்டது",
+  "errorBody": "உங்கள் புக்கிங்கள் பாதுகாப்பாக உள்ளன. தொடர, மீண்டும் தொடங்குங்கள்.",
+  "errorStartAgain": "மீண்டும் தொடங்கு",
+
+  "updateAvailable": "புதிய வெர்ஷன் வந்துள்ளது",
+  "updateReload": "ரீலோட்",
+
+  "mapAttribution": "© OpenStreetMap contributors",
+  "mapPinTitle": "உங்கள் இடம்",
+  "mapPinMovedNorth": "பின் வடக்கே நகர்ந்தது.",
+  "mapPinMovedSouth": "பின் தெற்கே நகர்ந்தது.",
+  "mapPinMovedWest": "பின் மேற்கே நகர்ந்தது.",
+  "mapPinMovedEast": "பின் கிழக்கே நகர்ந்தது.",
+  "mapAria": "மேப்: பின்னை உங்கள் கட்டிடத்துக்கு இழுங்கள், அல்லது Tab மூலம் பின்னுக்குச் சென்று ஆரோ கீகளைப் பயன்படுத்துங்கள்"
+}

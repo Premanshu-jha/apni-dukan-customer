@@ -1,0 +1,29 @@
+{
+  "categorySalon": "సెలూన్",
+  "greetingWithName": "{greeting}, {name}",
+  "subtitle": "ఈరోజు మీకు ఏం కావాలి?",
+  "categoriesLabel": "కేటగిరీలు",
+  "roughLocation": "మీ లొకేషన్ సుమారు {km} km వరకు మాత్రమే కరెక్ట్, అందుకే ఈ సెలూన్‌లు అన్నిటికంటే దగ్గరివి కాకపోవచ్చు. మంచి ఫలితాల కోసం మీ ఫోన్‌లో Clozest ఓపెన్ చేయండి.",
+  "placeBarLabel": "{place}, {area} దగ్గర సెలూన్‌లు. మార్చండి",
+  "nearPlace": "{place} దగ్గర",
+  "locationBlocked": "లొకేషన్ ఇప్పుడు బ్లాక్ అయింది, అందుకే మీరు చివరిసారి ఉన్న చోటు చూపిస్తున్నాము. అప్‌డేట్ చేయడానికి మీ బ్రౌజర్‌లో Allow చేయండి.",
+  "locationNotUpdated": "మీ లొకేషన్ అప్‌డేట్ కాలేదు. మీరు చివరిసారి ఉన్న చోటు చూపిస్తున్నాము.",
+  "nearCurrentLocation": "మీరు ఇప్పుడు ఉన్న చోటు దగ్గర",
+  "accuracyMetres": "±{metres} m",
+  "accuracyKm": "±{km} km",
+  "agoMinutes": "{minutes} నిమి. క్రితం",
+  "agoHours": "{hours} గం. క్రితం",
+  "updating": "అప్‌డేట్ అవుతోంది…",
+  "update": "అప్‌డేట్ చేయండి",
+  "changePlaceLabel": "సెలూన్‌లు ఎక్కడ వెతకాలో మార్చండి",
+  "yourBooking": "మీ బుకింగ్",
+  "bookingWhen": "{day}, {start} నుండి {end} వరకు",
+  "startCode": "సెలూన్‌లో చూపించాల్సిన కోడ్: {code}",
+  "seeAllBookings": {
+    "one": "మొత్తం {count} బుకింగ్‌లు చూడండి",
+    "other": "మొత్తం {count} బుకింగ్‌లు చూడండి"
+  },
+  "bookAgainTitle": "మళ్లీ బుక్ చేయాలా?",
+  "anotherTime": "వేరే టైమ్",
+  "bookNow": "ఇప్పుడే బుక్ చేయండి"
+}

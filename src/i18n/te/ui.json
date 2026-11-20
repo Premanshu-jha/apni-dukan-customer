@@ -1,0 +1,15 @@
+{
+  "spinnerLoading": "లోడ్ అవుతోంది",
+  "errorTitle": "ఈ స్క్రీన్‌లో ఏదో పొరపాటు జరిగింది",
+  "errorBody": "మీ బుకింగ్‌లు సురక్షితంగా ఉన్నాయి. కొనసాగడానికి మళ్లీ మొదలుపెట్టండి.",
+  "errorStartAgain": "మళ్లీ మొదలుపెట్టండి",
+  "updateAvailable": "కొత్త వెర్షన్ వచ్చింది",
+  "updateReload": "రీలోడ్ చేయండి",
+  "mapAttribution": "© OpenStreetMap contributors",
+  "mapPinTitle": "మీ చోటు",
+  "mapPinMovedNorth": "పిన్ ఉత్తరం వైపు జరిగింది.",
+  "mapPinMovedSouth": "పిన్ దక్షిణం వైపు జరిగింది.",
+  "mapPinMovedWest": "పిన్ పడమర వైపు జరిగింది.",
+  "mapPinMovedEast": "పిన్ తూర్పు వైపు జరిగింది.",
+  "mapAria": "మ్యాప్: పిన్‌ని మీ బిల్డింగ్ మీదికి లాగండి, లేదా Tab నొక్కి పిన్ దగ్గరకు వెళ్లి యారో కీలు వాడండి"
+}

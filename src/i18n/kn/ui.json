@@ -1,0 +1,18 @@
+{
+  "spinnerLoading": "ಲೋಡ್ ಆಗುತ್ತಿದೆ",
+
+  "errorTitle": "ಈ ಸ್ಕ್ರೀನ್‌ನಲ್ಲಿ ಏನೋ ತಪ್ಪಾಗಿದೆ",
+  "errorBody": "ನಿಮ್ಮ ಬುಕಿಂಗ್‌ಗಳು ಸುರಕ್ಷಿತವಾಗಿವೆ. ಮುಂದುವರಿಸಲು ಮತ್ತೆ ಶುರು ಮಾಡಿ.",
+  "errorStartAgain": "ಮತ್ತೆ ಶುರು ಮಾಡಿ",
+
+  "updateAvailable": "ಹೊಸ ವರ್ಷನ್ ಬಂದಿದೆ",
+  "updateReload": "ರೀಲೋಡ್ ಮಾಡಿ",
+
+  "mapAttribution": "© OpenStreetMap contributors",
+  "mapPinTitle": "ನಿಮ್ಮ ಜಾಗ",
+  "mapPinMovedNorth": "ಪಿನ್ ಉತ್ತರಕ್ಕೆ ಸರಿಯಿತು.",
+  "mapPinMovedSouth": "ಪಿನ್ ದಕ್ಷಿಣಕ್ಕೆ ಸರಿಯಿತು.",
+  "mapPinMovedWest": "ಪಿನ್ ಪಶ್ಚಿಮಕ್ಕೆ ಸರಿಯಿತು.",
+  "mapPinMovedEast": "ಪಿನ್ ಪೂರ್ವಕ್ಕೆ ಸರಿಯಿತು.",
+  "mapAria": "ಮ್ಯಾಪ್: ಪಿನ್ ಅನ್ನು ನಿಮ್ಮ ಕಟ್ಟಡದ ಮೇಲೆ ಎಳೆದು ಇಡಿ, ಅಥವಾ Tab ಒತ್ತಿ ಪಿನ್‌ಗೆ ಹೋಗಿ ಆರೋ ಕೀಗಳನ್ನು ಬಳಸಿ"
+}

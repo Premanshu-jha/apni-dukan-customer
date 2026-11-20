@@ -1,0 +1,37 @@
+{
+  "messages": "మెసేజ్‌లు",
+  "bellUnread": {
+    "other": "మెసేజ్‌లు, {count} చదవనివి"
+  },
+  "bellUnreadMany": "మెసేజ్‌లు, చదవనివి 99 కంటే ఎక్కువ",
+  "justNow": "ఇప్పుడే",
+  "minAgo": {
+    "other": "{count} నిమి. క్రితం"
+  },
+  "hoursAgo": {
+    "other": "{count} గం. క్రితం"
+  },
+  "unreadCount": "{n} చదవనివి",
+  "markAllRead": "అన్నీ చదివినట్టు మార్క్ చేయండి",
+  "noMessages": "ఇంకా మెసేజ్‌లు లేవు",
+  "noMessagesBody": "బుకింగ్ కన్ఫర్మేషన్లు, రిమైండర్లు, మార్పులు ఇక్కడ కనిపిస్తాయి.",
+  "unread": "చదవలేదు",
+  "showOlder": "పాతవి చూపించండి",
+  "showingLatest": {
+    "other": "తాజా {count} మెసేజ్‌లు చూపిస్తున్నాము."
+  },
+  "keptFor": "మెసేజ్‌లు 90 రోజులు ఉంటాయి.",
+  "typeBOOKING_CONFIRMED": "బుకింగ్ అయింది",
+  "typeBOOKING_RESCHEDULED": "బుకింగ్ టైమ్ మారింది",
+  "typeBOOKING_CANCELLED": "బుకింగ్ క్యాన్సిల్ అయింది",
+  "typeBOOKING_CANCELLED_BY_SALON": "సెలూన్ బుకింగ్ క్యాన్సిల్ చేసింది",
+  "typeBOOKING_NO_SHOW": "బుకింగ్ మిస్ అయింది",
+  "typeBOOKING_EARLIER_SLOT": "ముందు టైమ్ ఖాళీ అయింది",
+  "typeBOOKING_NO_SHOW_UNDONE": "మిస్ అయిన బుకింగ్ తీసేశారు",
+  "typeBOOKING_BARBER_CHANGED": "మీ బార్బర్ మారారు",
+  "typeBOOKING_REMINDER": "1 గంటలో మీ బుకింగ్ ఉంది",
+  "typeBOOKING_RATE_VISIT": "మీ విజిట్ ఎలా ఉంది?",
+  "typeBOOKING_COME_BACK": "మీ తదుపరి విజిట్‌కి టైమ్ అయిందా?",
+  "typeBOOKING_OFFER": "ఒక సెలూన్‌లో ఆఫర్",
+  "typeCUSTOMERHELP_REPLIED": "సపోర్ట్ జవాబు ఇచ్చింది"
+}
