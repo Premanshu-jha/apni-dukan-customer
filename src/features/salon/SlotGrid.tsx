@@ -7,10 +7,12 @@ import { clashesWithMine } from './clash'
 import { Banner, Chip, EmptyState, ErrorState, Loading } from '../../components/ui'
 import { clock12, dayLabel, endTimeIst, nextDates } from '../../lib/ist'
 import type { CancelTerms, SlotPrice } from '../../store/bookingDraft'
+import { useT } from '../../i18n'
 
 export function DateChips({ value, onChange, maxDaysAhead }: { value: string; onChange: (d: string) => void; maxDaysAhead?: number }) {
+  const t = useT()
   return (
-    <div role="group" aria-label="Day" className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
+    <div role="group" aria-label={t('salon.dayLabel')} className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
       {nextDates(daysShown(maxDaysAhead)).map((d) => (
         <Chip key={d} selected={d === value} onClick={() => onChange(d)}>
           {dayLabel(d)}
@@ -51,6 +53,7 @@ export function SlotGrid({
   /** The picked time is no longer free (a refresh found it taken): the screen clears it and says so. */
   onSelectedGone?: () => void
 }) {
+  const t = useT()
   const slots = useSlots(salonId, serviceIds, date, moving)
   // My own bookings (the cached list My bookings and Home use): times that clash with them are left out
   const mine = useUpcomingBookings({ staleTime: 30_000 })
@@ -68,17 +71,17 @@ export function SlotGrid({
     if (selectedGone) onSelectedGone?.()
   }, [selectedGone, onSelectedGone])
 
-  if (slots.isPending) return <Loading label="Checking free times…" />
+  if (slots.isPending) return <Loading label={t('salon.checkingTimes')} />
   // A refresh that failed keeps the times already shown (with a note); only a first read that failed has nothing to show
   if (slots.isError && !slots.data) {
     if (isApiError(slots.error, 'OUTSIDE_WINDOW')) {
-      return <EmptyState title="Not open for booking" body={slots.error.message} />
+      return <EmptyState title={t('salon.notOpenForBooking')} body={slots.error.message} />
     }
     if (isApiError(slots.error, 'NO_BARBER_FOR_SERVICES')) {
       return (
         <EmptyState
-          title="No one barber does all of these"
-          body="Take some services off and book them separately."
+          title={t('salon.noBarberTitle')}
+          body={t('salon.noBarberBody')}
         />
       )
     }
@@ -92,33 +95,37 @@ export function SlotGrid({
   const starts = shown(slots.data.starts)
   const anyOffer = starts.some((s) => s.listPricePaise != null)
   const stale = slots.isError ? (
-    <Banner tone="warn">Couldn't check the times again just now. They may have changed: we'll try again shortly.</Banner>
+    <Banner tone="warn">{t('salon.timesStale')}</Banner>
   ) : null
   if (starts.length === 0) {
     return (
       <>
         {stale}
-        <EmptyState title="No free times" body="The salon is fully booked or closed on this day. Try another day." />
+        <EmptyState title={t('salon.noFreeTimes')} body={t('salon.noFreeTimesBody')} />
       </>
     )
   }
 
   const groups = [
-    { name: 'Morning', list: starts.filter((s) => s.time < '12:00') },
-    { name: 'Afternoon', list: starts.filter((s) => s.time >= '12:00' && s.time < '17:00') },
-    { name: 'Evening', list: starts.filter((s) => s.time >= '17:00') },
+    { id: 'morning', name: t('salon.morning'), list: starts.filter((s) => s.time < '12:00') },
+    { id: 'afternoon', name: t('salon.afternoon'), list: starts.filter((s) => s.time >= '12:00' && s.time < '17:00') },
+    { id: 'evening', name: t('salon.evening'), list: starts.filter((s) => s.time >= '17:00') },
   ].filter((g) => g.list.length)
+  // The % mark is styled inside the sentence: one text, split where the mark goes
+  const [markBefore, markAfter = ''] = t('salon.offerMarkNote').split('{mark}')
 
   return (
     <div className="flex flex-col gap-4">
       {stale}
       {anyOffer && (
         <p className="text-sm text-muted">
-          Times marked <span className="font-semibold text-accent">%</span> have the salon's offer price.
+          {markBefore}
+          <span className="font-semibold text-accent">%</span>
+          {markAfter}
         </p>
       )}
       {groups.map((g) => (
-        <section key={g.name} aria-label={g.name} className="flex flex-col gap-2">
+        <section key={g.id} aria-label={g.name} className="flex flex-col gap-2">
           <h3 className="text-sm font-medium text-muted">{g.name}</h3>
           <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
             {g.list.map((s) => (
@@ -134,9 +141,9 @@ export function SlotGrid({
                       </span>
                     )}
                   </span>
-                  <span className="text-xs font-normal"> to {endTimeIst(s.startAt, length)}</span>
+                  <span className="text-xs font-normal"> {t('salon.slotEnds', { time: endTimeIst(s.startAt, length) })}</span>
                 </span>
-                {s.listPricePaise != null && <span className="sr-only">, offer price</span>}
+                {s.listPricePaise != null && <span className="sr-only">, {t('salon.offerPriceSr')}</span>}
               </Chip>
             ))}
           </div>

@@ -5,22 +5,26 @@ import { isApiError, messageOf } from '../../api/errors'
 import { uniqueById } from '../../api/pages'
 import type { Booking } from '../../api/types'
 import { Button, Chip, EmptyState, ErrorState, Loading, Page } from '../../components/ui'
+import { useT } from '../../i18n'
 import { dateTimeIst } from '../../lib/ist'
 import { rupees } from '../../lib/money'
 import { canRate } from '../../lib/ratings'
+import { BookingServiceIcons } from './BookingServiceIcons'
 import { StatusPill } from './StatusPill'
+import { serviceName } from '../../lib/serviceName'
 
 export function MyBookings() {
+  const t = useT()
   const [when, setWhen] = useState<'upcoming' | 'past'>('upcoming')
 
   return (
-    <Page title="My bookings">
-      <div role="group" aria-label="Which bookings" className="flex gap-2">
+    <Page title={t('bookings.myBookingsTitle')}>
+      <div role="group" aria-label={t('bookings.whichBookings')} className="flex gap-2">
         <Chip selected={when === 'upcoming'} onClick={() => setWhen('upcoming')}>
-          Upcoming
+          {t('bookings.upcoming')}
         </Chip>
         <Chip selected={when === 'past'} onClick={() => setWhen('past')}>
-          Past
+          {t('bookings.past')}
         </Chip>
       </div>
       {when === 'upcoming' ? <Upcoming /> : <Past />}
@@ -29,17 +33,18 @@ export function MyBookings() {
 }
 
 function Upcoming() {
+  const t = useT()
   const list = useUpcomingBookings()
   if (list.isPending) return <Loading />
   if (list.isError) return <ErrorState message={messageOf(list.error)} onRetry={() => list.refetch()} />
   if (list.data.length === 0) {
     return (
       <EmptyState
-        title="No upcoming bookings"
-        body="Find a salon near you and book a time."
+        title={t('bookings.noUpcoming')}
+        body={t('bookings.noUpcomingBody')}
         action={
           <Link to="/" className="text-link underline">
-            Find a salon
+            {t('bookings.findSalon')}
           </Link>
         }
       />
@@ -58,6 +63,7 @@ function Upcoming() {
 
 /** Past bookings, latest first, 30 at a time with "Show more bookings" (as the salon list). */
 function Past() {
+  const t = useT()
   const list = usePastBookings()
   const listRef = useRef<HTMLUListElement | null>(null)
   const countRef = useRef<HTMLParagraphElement | null>(null)
@@ -90,21 +96,20 @@ function Past() {
   if (list.isPending) return <Loading />
   // Only when nothing is on screen yet: a failed "Show more" (or refresh) keeps the list and says so
   if (list.isError && !list.data) return <ErrorState message={messageOf(list.error)} onRetry={() => list.refetch()} />
-  if (loaded === 0) return <EmptyState title="No past bookings" />
+  if (loaded === 0) return <EmptyState title={t('bookings.noPast')} />
   const capped = full && afterCap.data === true
   const moreFailed = list.isFetchNextPageError
   const refreshFailed = list.isRefetchError
 
   return (
-    <section aria-label="Past bookings" className="flex flex-col gap-3">
+    <section aria-label={t('bookings.pastBookings')} className="flex flex-col gap-3">
       <p ref={countRef} tabIndex={-1} className="text-sm text-muted focus:outline-none">
         {list.hasNextPage || capped
-          ? `Your latest ${loaded} bookings`
-          : `${loaded} past ${loaded === 1 ? 'booking' : 'bookings'}`}
-        , latest first
+          ? t('bookings.latestCount', { count: loaded })
+          : t('bookings.pastCount', { count: loaded })}
       </p>
       <p aria-live="polite" className="sr-only">
-        {loaded} bookings shown
+        {t('bookings.shownCount', { count: loaded })}
       </p>
       <ul ref={listRef} aria-busy={list.isFetchingNextPage} className="flex flex-col gap-3">
         {items.map((b, i) => (
@@ -114,16 +119,16 @@ function Past() {
           </li>
         ))}
       </ul>
-      {capped && <p className="text-center text-sm text-muted">Showing your latest {loaded} bookings.</p>}
+      {capped && <p className="text-center text-sm text-muted">{t('bookings.showingLatest', { count: loaded })}</p>}
       {(moreFailed || offlineTap || refreshFailed) && (
         <p role="alert" className="text-sm text-bad">
           {offlineTap
-            ? "You're offline. Connect to the internet and tap Show more bookings again."
+            ? t('bookings.offlineTap')
             : moreFailed
               ? isApiError(list.error, 'NETWORK')
-                ? "You're offline or the server can't be reached. Connect and tap Show more bookings again."
-                : "Couldn't load more bookings. Tap Show more bookings to try again."
-              : "Couldn't refresh the list. It may be a little out of date."}
+                ? t('bookings.moreOffline')
+                : t('bookings.moreFailed')
+              : t('bookings.refreshFailed')}
         </p>
       )}
       {list.hasNextPage && (
@@ -142,7 +147,7 @@ function Past() {
             void list.fetchNextPage()
           }}
         >
-          {list.isFetchingNextPage ? 'Loading more bookings…' : 'Show more bookings'}
+          {list.isFetchingNextPage ? t('bookings.loadingMore') : t('bookings.showMore')}
         </Button>
       )}
     </section>
@@ -150,6 +155,7 @@ function Past() {
 }
 
 function BookingCard({ b, index }: { b: Booking; index: number }) {
+  const t = useT()
   const [now] = useState(Date.now)
   return (
     <Link
@@ -158,14 +164,16 @@ function BookingCard({ b, index }: { b: Booking; index: number }) {
       className="flex flex-col gap-2 rounded-2xl border border-line bg-surface p-4 transition hover:bg-raised"
     >
       <div className="flex items-start justify-between gap-3">
-        <p className="font-semibold">{b.salonName}</p>
+        <p className="min-w-0 font-semibold break-words">{b.salonName}</p>
         <StatusPill status={b.status} />
       </div>
       <p className="text-link">{dateTimeIst(b.startsAt)}</p>
-      <p className="truncate text-sm text-muted">
-        {b.services.map((s) => s.name).join(', ')} · {rupees(b.totalPricePaise, b.priceIsFrom)}
+      <BookingServiceIcons services={b.services} />
+      {/* Two lines at most, so the price at the end still shows with several services in a long language */}
+      <p className="line-clamp-2 text-sm break-words text-muted">
+        {b.services.map((s) => serviceName(s.name)).join(', ')} · {rupees(b.totalPricePaise, b.priceIsFrom)}
       </p>
-      {!b.rating && canRate(b.rateUntil, now) && <p className="text-sm font-semibold text-accent">★ Rate your visit</p>}
+      {!b.rating && canRate(b.rateUntil, now) && <p className="text-sm font-semibold text-accent">{t('bookings.rateYourVisit')}</p>}
     </Link>
   )
 }

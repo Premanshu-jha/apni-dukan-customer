@@ -1,6 +1,7 @@
 import 'leaflet/dist/leaflet.css'
 import L from 'leaflet'
 import { useEffect, useRef } from 'react'
+import { t as translate, useT } from '../i18n'
 
 const TILES = (import.meta.env.VITE_MAP_TILES as string | undefined) || 'https://tile.openstreetmap.org/{z}/{x}/{y}.png'
 
@@ -31,6 +32,7 @@ export function PinMap({
   zoom?: number
   placement?: number
 }) {
+  const t = useT()
   const box = useRef<HTMLDivElement>(null)
   const map = useRef<L.Map | null>(null)
   const marker = useRef<L.Marker | null>(null)
@@ -45,8 +47,8 @@ export function PinMap({
   useEffect(() => {
     if (!box.current || map.current) return
     const m = L.map(box.current, { zoomControl: true, attributionControl: true }).setView([lat, lng], zoom)
-    L.tileLayer(TILES, { maxZoom: 19, attribution: '© OpenStreetMap contributors' }).addTo(m)
-    const mk = L.marker([lat, lng], { draggable: true, icon: pin, keyboard: true, title: 'Your place' }).addTo(m)
+    L.tileLayer(TILES, { maxZoom: 19, attribution: translate('ui.mapAttribution') }).addTo(m)
+    const mk = L.marker([lat, lng], { draggable: true, icon: pin, keyboard: true, title: translate('ui.mapPinTitle') }).addTo(m)
     mk.on('dragend', () => {
       const p = mk.getLatLng()
       moved.current(p.lat, p.lng)
@@ -65,12 +67,12 @@ export function PinMap({
       if (!m.getBounds().pad(-0.15).contains(next)) m.panTo(next)
       moved.current(next.lat, next.lng)
       // Screen readers hear each move (cleared first, so the same move twice is said twice)
-      const words = ({ ArrowUp: 'north', ArrowDown: 'south', ArrowLeft: 'west', ArrowRight: 'east' } as Record<string, string>)[e.key]
+      const words = ({ ArrowUp: 'ui.mapPinMovedNorth', ArrowDown: 'ui.mapPinMovedSouth', ArrowLeft: 'ui.mapPinMovedWest', ArrowRight: 'ui.mapPinMovedEast' } as Record<string, string>)[e.key]
       if (said.current) said.current.textContent = ''
       // Holding a key repeats it: only the last move is said
       window.clearTimeout(saying.current)
       saying.current = window.setTimeout(() => {
-        if (said.current) said.current.textContent = `Pin moved ${words}.`
+        if (said.current) said.current.textContent = translate(words)
       }, 50)
     })
     m.on('click', (e: L.LeafletMouseEvent) => {
@@ -109,7 +111,7 @@ export function PinMap({
       <div
         ref={box}
         role="application"
-        aria-label="Map: drag the pin onto your building, or tab to the pin and use the arrow keys"
+        aria-label={t('ui.mapAria')}
         className="h-56 w-full overflow-hidden rounded-xl border border-line"
       />
       <span ref={said} aria-live="polite" className="sr-only" />

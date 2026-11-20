@@ -4,6 +4,8 @@ import { Link, useNavigate } from 'react-router'
 import { authApi } from '../../api/auth'
 import { fieldError, messageOf } from '../../api/errors'
 import { Banner, Button, Card, Field, Page, Sheet } from '../../components/ui'
+import { LANGUAGES, useLanguage, useT } from '../../i18n'
+import { GlobeIcon, LanguagePicker } from '../../i18n/LanguagePicker'
 import { formatPhone } from '../../lib/phone'
 import { takePhoneChanged } from '../../lib/phoneMoved'
 import { SUPPORT_EMAIL } from '../../lib/config'
@@ -16,6 +18,8 @@ import { SalonMessageSwitches } from './SalonMessageSwitches'
 import { signOutHere } from './signOut'
 
 export function Profile() {
+  const t = useT()
+  const lang = useLanguage()
   const qc = useQueryClient()
   const navigate = useNavigate()
   const [phoneChanged] = useState(takePhoneChanged)
@@ -62,28 +66,42 @@ export function Profile() {
       navigate('/signin', { replace: true })
     } catch (e) {
       // Not signed out anywhere: say so, so nobody believes a lost phone is signed out
-      setOutError(`${messageOf(e)} Your other devices are still signed in.`)
+      setOutError(t('profile.signOutFailed', { reason: messageOf(e) }))
       setBusy(false)
     }
   }
 
   return (
-    <Page title="Profile">
+    <Page title={t('profile.title')}>
+      {/* The way to the language, first thing on Profile: found without reading (its name in its own script) */}
+      <div className="-mb-2 flex justify-end">
+        <button
+          type="button"
+          className="inline-flex min-h-11 items-center gap-1.5 rounded-full border border-line px-3 text-sm text-link"
+          onClick={() => {
+            const card = document.getElementById('language')
+            card?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+            card?.querySelector<HTMLButtonElement>('button[aria-pressed="true"]')?.focus({ preventScroll: true })
+          }}
+        >
+          <GlobeIcon />
+          {t('language.button', { name: LANGUAGES.find((l) => l.code === lang)?.name ?? lang })}
+        </button>
+      </div>
       <VerifyEmailBanner />
       {phoneChanged && (
         <Banner tone="good">
-          Your mobile number is now +91 {formatPhone(phoneChanged)}. Other devices were signed out; sign in there with
-          the new number.
+          {t('profile.phoneChanged', { phone: formatPhone(phoneChanged) })}
         </Banner>
       )}
       <Card className="flex flex-col gap-4">
         {editing ? (
           <div className="flex flex-col gap-3">
-            <Field id="profile-name" label="Name" value={name} maxLength={60} onChange={(e) => setName(e.target.value)} />
+            <Field id="profile-name" label={t('profile.name')} value={name} maxLength={60} onChange={(e) => setName(e.target.value)} />
             {error && <Banner tone="bad">{error}</Banner>}
             <div className="flex gap-2">
               <Button busy={busy} disabled={name.trim().length < 2} onClick={saveName} className="flex-1">
-                Save
+                {t('common.save')}
               </Button>
               <Button
                 variant="ghost"
@@ -93,33 +111,33 @@ export function Profile() {
                   setError(null)
                 }}
               >
-                Cancel
+                {t('common.cancel')}
               </Button>
             </div>
           </div>
         ) : (
-          <Row label="Name" value={user.name ?? ''} action={<button type="button" className="text-link" onClick={startEditing}>Edit</button>} />
+          <Row label={t('profile.name')} value={user.name ?? ''} action={<button type="button" className="text-link" onClick={startEditing}>{t('common.edit')}</button>} />
         )}
         <Row
-          label="Mobile"
+          label={t('profile.mobile')}
           value={`+91 ${formatPhone(user.phone)}`}
           action={
-            <Link to="/profile/phone" className="text-link" aria-label="Change mobile number">
-              Change
+            <Link to="/profile/phone" className="text-link" aria-label={t('profile.changePhoneAria')}>
+              {t('common.change')}
             </Link>
           }
         />
         <Row
-          label="Email"
-          value={emailPending ? (user.email ? `${user.email} · not verified` : 'Not verified yet') : (user.email ?? '')}
+          label={t('profile.email')}
+          value={emailPending ? (user.email ? t('profile.emailNotVerified', { email: user.email }) : t('profile.notVerifiedYet')) : (user.email ?? '')}
           action={
             emailPending ? (
               <Link to="/verify-email" className="text-link" onClick={forgetAfterEmail}>
-                Verify
+                {t('profile.verify')}
               </Link>
             ) : (
               <Link to="/profile/email" className="text-link">
-                Change
+                {t('common.change')}
               </Link>
             )
           }
@@ -131,20 +149,25 @@ export function Profile() {
         <SalonMessageSwitches />
       </Card>
 
+      <Card id="language" className="flex scroll-mt-20 flex-col gap-2">
+        <p className="font-medium">{t('language.title')}</p>
+        <LanguagePicker />
+        <p className="text-sm text-muted">{t('language.profileHint')}</p>
+      </Card>
+
       <Card className="flex flex-col gap-1">
-        <p className="font-medium">Need help?</p>
+        <p className="font-medium">{t('profile.needHelp')}</p>
         <p className="text-sm text-muted">
-          A problem with a booking, or a missed booking you think is wrong? Write to us with your booking number; we
-          reply by email.
+          {t('profile.needHelpBody')}
         </p>
         <Link to="/help" className="text-sm text-link underline">
-          Write to support
+          {t('profile.writeToSupport')}
         </Link>
         <Link to="/help/requests" state={{ from: true }} className="text-sm text-link underline">
-          My requests (our replies and yours)
+          {t('profile.myRequests')}
         </Link>
         <p className="text-sm text-muted">
-          Or email{' '}
+          {t('profile.orEmail')}{' '}
           <a href={`mailto:${SUPPORT_EMAIL}`} className="text-link underline [overflow-wrap:anywhere]">
             {SUPPORT_EMAIL}
           </a>
@@ -152,36 +175,36 @@ export function Profile() {
       </Card>
 
       <Card className="flex flex-col gap-1">
-        <p className="font-medium">Saved addresses</p>
-        <p className="text-sm text-muted">Home, Work and other places, to find salons near them.</p>
+        <p className="font-medium">{t('profile.savedAddresses')}</p>
+        <p className="text-sm text-muted">{t('profile.savedAddressesBody')}</p>
         <Link to="/places" className="text-sm text-link underline">
-          Manage addresses
+          {t('profile.manageAddresses')}
         </Link>
       </Card>
 
       <div className="flex flex-col gap-2">
         <Button variant="secondary" busy={busy} onClick={() => out(false)}>
-          Sign out
+          {t('profile.signOut')}
         </Button>
         <Button variant="ghost" onClick={() => setConfirmAll(true)}>
-          Sign out on all devices
+          {t('profile.signOutAll')}
         </Button>
         <Link to="/profile/delete" className="py-3 text-center text-sm text-bad underline">
-          Delete my account
+          {t('profile.deleteAccount')}
         </Link>
       </div>
 
       <LegalLinks />
 
-      <Sheet open={confirmAll} title="Sign out everywhere?" onClose={() => setConfirmAll(false)}>
+      <Sheet open={confirmAll} title={t('profile.signOutEverywhereTitle')} onClose={() => setConfirmAll(false)}>
         <div className="flex flex-col gap-3">
-          <p className="text-muted">Every phone and computer signed in to your account will need the SMS code again.</p>
+          <p className="text-muted">{t('profile.signOutEverywhereBody')}</p>
           {outError && <Banner tone="bad">{outError}</Banner>}
           <Button busy={busy} onClick={() => out(true)}>
-            Sign out everywhere
+            {t('profile.signOutEverywhere')}
           </Button>
           <Button variant="secondary" onClick={() => setConfirmAll(false)}>
-            Cancel
+            {t('common.cancel')}
           </Button>
         </div>
       </Sheet>

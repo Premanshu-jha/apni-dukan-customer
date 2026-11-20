@@ -4,6 +4,7 @@ import {
 } from "../../api/bookings";
 import { messageOf } from "../../api/errors";
 import { Banner, Switch } from "../../components/ui";
+import { useT } from "../../i18n";
 
 /**
  * The salon messages in Profile, each on unless switched off:
@@ -14,6 +15,7 @@ import { Banner, Switch } from "../../components/ui";
  * Each switch saves only its own choice. One read of both, so one error and one "Try again".
  */
 export function SalonMessageSwitches() {
+  const t = useT();
   const prefs = useSalonPreferences();
   const comeBack = useSetSalonPreferences();
   const offers = useSetSalonPreferences();
@@ -23,8 +25,8 @@ export function SalonMessageSwitches() {
   return (
     <div className="flex flex-col gap-4">
       <Switch
-        label="Come-back reminders"
-        hint="A message when it's time for your next haircut or other service"
+        label={t("profile.comeBackReminders")}
+        hint={t("profile.comeBackRemindersHint")}
         on={!unknown && (prefs.data?.comeBackReminders ?? true)}
         // While a change is saving, a second tap waits (two saves out of order could leave the wrong one)
         busy={comeBack.isPending}
@@ -36,8 +38,8 @@ export function SalonMessageSwitches() {
         prefs.isPending ||
         prefs.data?.salonOffers !== undefined) && (
         <Switch
-          label="Offers from salons I've visited"
-          hint="A message when a salon you've been to has a discount"
+          label={t("profile.salonOffers")}
+          hint={t("profile.salonOffersHint")}
           on={!unknown && (prefs.data?.salonOffers ?? true)}
           busy={offers.isPending}
           disabled={prefs.isPending || unknown}
@@ -53,7 +55,7 @@ export function SalonMessageSwitches() {
           className="self-start text-sm text-link underline"
           onClick={() => prefs.refetch()}
         >
-          Try again
+          {t("common.retry")}
         </button>
       )}
     </div>

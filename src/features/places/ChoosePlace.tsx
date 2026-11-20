@@ -4,6 +4,7 @@ import { messageOf } from '../../api/errors'
 import { Card, EmptyState, ErrorState, Loading, Page } from '../../components/ui'
 import { goBack, screensBehind } from '../../lib/nav'
 import { useLocation } from '../../store/location'
+import { useT } from '../../i18n'
 
 const ICON: Record<SavedPlace['kind'], string> = { HOME: '⌂', WORK: '▣', OTHER: '◉' }
 
@@ -13,6 +14,7 @@ const ICON: Record<SavedPlace['kind'], string> = { HOME: '⌂', WORK: '▣', OTH
  * new ones added (up to 10).
  */
 export function ChoosePlace() {
+  const t = useT()
   const navigate = useNavigate()
   const places = usePlaces()
   const chosen = useLocation((s) => s.chosen)
@@ -24,8 +26,8 @@ export function ChoosePlace() {
   const list = places.data ?? []
   const full = list.length >= MAX_PLACES
   return (
-    <Page back={screensBehind() > 0 ? true : '/'} title="Find salons near">
-      <ul className="flex flex-col gap-2" aria-label="Places">
+    <Page back={screensBehind() > 0 ? true : '/'} title={t('places.chooseTitle')}>
+      <ul className="flex flex-col gap-2" aria-label={t('places.placesLabel')}>
         <li>
           <button
             type="button"
@@ -35,10 +37,10 @@ export function ChoosePlace() {
           >
             <span aria-hidden className="text-xl">⌖</span>
             <span className="flex-1">
-              <span className="block font-semibold">Current location</span>
-              <span className="block text-sm text-muted">From your phone's GPS</span>
+              <span className="block font-semibold">{t('places.currentLocation')}</span>
+              <span className="block text-sm text-muted">{t('places.fromGps')}</span>
             </span>
-            {chosen === null && <span className="text-sm text-link">Selected</span>}
+            {chosen === null && <span className="text-sm text-link">{t('places.selected')}</span>}
           </button>
         </li>
         {list.map((p) => {
@@ -53,10 +55,10 @@ export function ChoosePlace() {
                     {placeShort(p)}, {p.city} {p.pincode}
                   </span>
                 </span>
-                {on && <span className="text-sm text-link">Selected</span>}
+                {on && <span className="text-sm text-link">{t('places.selected')}</span>}
               </button>
-              <Link to={`/places/${p.id}`} className="flex items-center px-4 text-sm text-link" aria-label={`Change ${placeLabel(p)}`}>
-                Change
+              <Link to={`/places/${p.id}`} className="flex items-center px-4 text-sm text-link" aria-label={t('places.changePlaceLabel', { place: placeLabel(p) })}>
+                {t('common.change')}
               </Link>
             </li>
           )
@@ -64,20 +66,20 @@ export function ChoosePlace() {
       </ul>
 
       {places.isPending ? (
-        <Loading label="Loading your places…" />
+        <Loading label={t('places.loadingPlaces')} />
       ) : places.isError && !places.data ? (
         <ErrorState message={messageOf(places.error)} onRetry={() => places.refetch()} />
       ) : list.length === 0 ? (
-        <EmptyState title="No saved places yet" body="Save Home, Work or any address to find salons near it, wherever you are." />
+        <EmptyState title={t('places.noPlacesTitle')} body={t('places.noPlacesBody')} />
       ) : null}
 
       {!places.isPending && !(places.isError && !places.data) && (
         <Card className="flex flex-col gap-2">
           {full ? (
-            <p className="text-sm text-muted">You've saved {MAX_PLACES} places, the most there can be. Change or delete one to add another.</p>
+            <p className="text-sm text-muted">{t('places.placesFull', { max: MAX_PLACES })}</p>
           ) : (
             <Link to="/places/new" state={{ from: 'places' }} className="inline-flex min-h-12 items-center justify-center rounded-xl bg-brand px-5 font-semibold text-brand-ink">
-              Add an address
+              {t('places.addAddress')}
             </Link>
           )}
         </Card>

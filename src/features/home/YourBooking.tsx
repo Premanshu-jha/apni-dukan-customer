@@ -4,8 +4,11 @@ import { useSalon } from '../../api/salons'
 import type { Booking } from '../../api/types'
 import { dateOfIst, dayLabel, timeIst } from '../../lib/ist'
 import { rupees } from '../../lib/money'
+import { BookingServiceIcons } from '../bookings/BookingServiceIcons'
 import { StatusPill } from '../bookings/StatusPill'
 import { bookAgainLink } from './bookAgain'
+import { useT } from '../../i18n'
+import { serviceName } from '../../lib/serviceName'
 
 /** Bookings still to come or under way: the ones "Your booking" is about. */
 function isAhead(b: Booking): boolean {
@@ -23,6 +26,7 @@ const HOME_STALE_MS = 30_000
  * My bookings says what went wrong). At the limit of upcoming bookings there is no Book now: a third is refused.
  */
 export function YourBooking() {
+  const t = useT()
   const upcoming = useUpcomingBookings({ staleTime: HOME_STALE_MS })
   const ahead = upcoming.isSuccess ? upcoming.data.filter(isAhead).sort((x, y) => x.startsAt.localeCompare(y.startsAt)) : []
   const next = ahead[0] ?? null
@@ -37,37 +41,42 @@ export function YourBooking() {
   if (!again) return null
   // The limit counts bookings not started yet (AppointmentStore.activeBookings): one in the chair doesn't
   const full = ahead.filter((b) => b.status === 'CONFIRMED').length >= MAX_UPCOMING
+  // The code is bold inside the sentence: one text, split where the code goes
+  const [codeBefore, codeAfter = ''] = t('home.startCode').split('{code}')
 
   return (
     <section aria-labelledby="your-booking" className="flex flex-col gap-3">
       {next && (
         <>
           <h2 id="your-booking" className="font-display text-lg font-semibold">
-            Your booking
+            {t('home.yourBooking')}
           </h2>
           <Link
             to={`/bookings/${next.id}`}
             className="flex flex-col gap-1.5 rounded-2xl border border-brand/40 bg-brand/10 p-4 transition hover:bg-raised"
           >
             <div className="flex items-start justify-between gap-3">
-              <p className="font-semibold">{next.salonName}</p>
+              <p className="min-w-0 font-semibold break-words">{next.salonName}</p>
               <StatusPill status={next.status} />
             </div>
             <p className="font-semibold text-link">
-              {dayLabel(dateOfIst(next.startsAt))}, {timeIst(next.startsAt)} to {timeIst(next.endsAt)}
+              {t('home.bookingWhen', { day: dayLabel(dateOfIst(next.startsAt)), start: timeIst(next.startsAt), end: timeIst(next.endsAt) })}
             </p>
-            <p className="text-sm text-muted">
-              {next.services.map((s) => s.name).join(', ')} · {rupees(next.totalPricePaise, next.priceIsFrom)}
+            <BookingServiceIcons services={next.services} />
+            <p className="line-clamp-2 text-sm break-words text-muted">
+              {next.services.map((s) => serviceName(s.name)).join(', ')} · {rupees(next.totalPricePaise, next.priceIsFrom)}
             </p>
             {next.status === 'CONFIRMED' && next.startCode && (
               <p className="text-sm">
-                Code to show at the salon: <span className="font-bold tracking-widest">{next.startCode}</span>
+                {codeBefore}
+                <span className="font-bold tracking-widest">{next.startCode}</span>
+                {codeAfter}
               </p>
             )}
           </Link>
           {ahead.length > 1 && (
             <Link to="/bookings" className="text-sm text-link underline">
-              See all {ahead.length} bookings
+              {t('home.seeAllBookings', { count: ahead.length })}
             </Link>
           )}
         </>
@@ -76,18 +85,18 @@ export function YourBooking() {
         <div className="flex items-center justify-between gap-3 rounded-2xl border border-line bg-surface p-4">
           <div className="min-w-0">
             <h2 id={next ? undefined : 'your-booking'} className="font-semibold">
-              Want to book again?
+              {t('home.bookAgainTitle')}
             </h2>
             <p className="text-sm text-muted">
-              {again.salonName} · {again.services.map((s) => s.name).join(', ')}
-              {next && ' · another time'}
+              {again.salonName} · {again.services.map((s) => serviceName(s.name)).join(', ')}
+              {next && ` · ${t('home.anotherTime')}`}
             </p>
           </div>
           <Link
             to={bookAgainLink(again)}
             className="flex min-h-11 shrink-0 items-center justify-center rounded-xl bg-brand px-4 font-semibold text-brand-ink hover:brightness-110"
           >
-            Book now
+            {t('home.bookNow')}
           </Link>
         </div>
       )}

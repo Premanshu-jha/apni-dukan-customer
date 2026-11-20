@@ -11,6 +11,9 @@ import { forgetHelpDrafts } from './features/help/drafts'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { UpdatePrompt } from './components/UpdatePrompt'
 import { forgetReturn } from './features/auth/flow'
+import { restoreLanguage } from './i18n'
+import { LanguageToast } from './i18n/LanguageToast'
+import { followAccountLanguage } from './lib/accountLanguage'
 import { useDraft } from './store/bookingDraft'
 import { followOtherTabs, useSession } from './store/session'
 import { useLocation } from './store/location'
@@ -71,6 +74,10 @@ async function start() {
   })
 }
 
+// The language chosen on this phone before (shown at once from the texts kept on the phone)
+void restoreLanguage()
+// Then each account's own language, saved on the account too
+followAccountLanguage()
 void start()
 
 createRoot(document.getElementById('root')!).render(
@@ -81,6 +88,7 @@ createRoot(document.getElementById('root')!).render(
           <App />
         </ErrorBoundary>
         <UpdatePrompt />
+        <LanguageToast />
       </BrowserRouter>
     </QueryClientProvider>
   </StrictMode>,

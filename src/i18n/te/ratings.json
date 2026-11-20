@@ -1,0 +1,32 @@
+{
+  "wordPoor": "బాగాలేదు",
+  "wordNotGreat": "అంత బాగాలేదు",
+  "wordOkay": "పర్వాలేదు",
+  "wordGood": "బాగుంది",
+  "wordExcellent": "చాలా బాగుంది",
+  "tagOnTime": "టైమ్‌కి చేశారు",
+  "tagClean": "శుభ్రంగా ఉంది",
+  "tagFriendly": "మర్యాదగా మాట్లాడారు",
+  "tagSkilled": "పని బాగా వచ్చు",
+  "tagGoodValue": "డబ్బుకు తగ్గ సర్వీస్",
+  "yourRating": "మీ రేటింగ్",
+  "starsOutOf5": {
+    "other": "5 స్టార్లలో {count}"
+  },
+  "thanks": "థాంక్స్! మీ రేటింగ్ సెలూన్‌కి కనిపిస్తుంది.",
+  "changeRating": "రేటింగ్ మార్చండి",
+  "changeUntil": "{when} వరకు మార్చవచ్చు.",
+  "howWasVisit": "మీ విజిట్ ఎలా ఉంది?",
+  "helpsOthers": "ఇది ఇతరులు ఎంచుకోవడానికి సహాయపడుతుంది, ఏది బాగా జరిగిందో {salon}కి తెలుస్తుంది.",
+  "stars": "స్టార్లు",
+  "starCount": {
+    "one": "{count} స్టార్",
+    "other": "{count} స్టార్లు"
+  },
+  "whatWentWell": "ఏది బాగా జరిగింది",
+  "commentLabel": "సెలూన్‌కి ఏమైనా చెప్పాలా? (వాళ్లకు మాత్రమే కనిపిస్తుంది)",
+  "commentError": "కామెంట్ {error}.",
+  "saveRating": "రేటింగ్ సేవ్ చేయండి",
+  "sendRating": "రేటింగ్ పంపండి",
+  "keepRating": "నా రేటింగ్ ఉంచండి"
+}

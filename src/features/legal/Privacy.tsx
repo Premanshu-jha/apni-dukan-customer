@@ -1,11 +1,13 @@
 import { Link } from 'react-router'
 import { BUSINESS } from '../../lib/business'
+import { useT } from '../../i18n'
 import { LegalPage, Section } from './LegalPage'
 
 /** The privacy policy (Digital Personal Data Protection Act, 2023). */
 export function Privacy() {
+  const t = useT()
   return (
-    <LegalPage path="/privacy" title="Privacy policy" updated={BUSINESS.policiesUpdated}>
+    <LegalPage path="/privacy" title={t('legal.privacyTitle')} updated={BUSINESS.policiesUpdated} englishOnly>
       <p className="text-sm text-muted">
         This policy explains what personal data {BUSINESS.brand} collects from customers, why, who it is shared with, and your rights
         under the Digital Personal Data Protection Act, 2023. {BUSINESS.operator} is the data fiduciary.

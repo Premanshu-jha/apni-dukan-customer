@@ -5,6 +5,7 @@ import { messageOf } from '../../api/errors'
 import { CodeInput } from '../../components/CodeInput'
 import { Banner, Button, Field, Page } from '../../components/ui'
 import { looksLikeEmail } from '../../lib/phone'
+import { useT } from '../../i18n'
 import { useSession } from '../../store/session'
 import { SUPPORT_EMAIL } from '../../lib/config'
 import { cameFromBooking, forgetAfterEmail, takeAfterEmail } from './flow'
@@ -16,6 +17,7 @@ import { cameFromBooking, forgetAfterEmail, takeAfterEmail } from './flow'
  * going (the booking they started, still filled in); Back leaves it for later.
  */
 export function EmailStep() {
+  const t = useT()
   const navigate = useNavigate()
   // Nothing in this app to go back to (opened from a link, a reload, the installed app's start): Back goes Home
   const first = ((window.history.state as { idx?: number } | null)?.idx ?? 0) === 0
@@ -33,8 +35,8 @@ export function EmailStep() {
 
   useEffect(() => {
     if (wait <= 0) return
-    const t = setTimeout(() => setWait((w) => w - 1), 1000)
-    return () => clearTimeout(t)
+    const timer = setTimeout(() => setWait((w) => w - 1), 1000)
+    return () => clearTimeout(timer)
   }, [wait])
 
   async function send(e?: React.FormEvent) {
@@ -42,7 +44,7 @@ export function EmailStep() {
     if (busy) return
     const address = email.trim()
     if (!looksLikeEmail(address)) {
-      setError('Enter a valid email address')
+      setError(t('auth.emailInvalid'))
       return
     }
     setBusy(true)
@@ -76,45 +78,43 @@ export function EmailStep() {
   }
 
   return (
-    <Page title="Verify your email" back={first ? '/' : true} onBack={forgetAfterEmail}>
+    <Page title={t('auth.emailTitle')} back={first ? '/' : true} onBack={forgetAfterEmail}>
       {forBooking ? (
         <Banner tone="info">
-          <span className="font-semibold">One step before you book.</span> Verify your email once: if you ever lose
-          your phone number, it's how you get your account back. Then you come straight back to your booking, with
-          what you picked still there. You won't be asked again.
+          <span className="font-semibold">{t('auth.emailForBookingLead')}</span> {t('auth.emailForBookingBody')}
         </Banner>
       ) : (
         <p className="text-muted">
-          Verify your email to secure your account. You need it to book and to get help from us, and if you ever lose
-          your phone number, it's how you get your account back.
+          {t('auth.emailIntro')}
         </p>
       )}
       {!sentTo ? (
         <form onSubmit={send} className="flex flex-col gap-4" noValidate>
           <Field
             id="email"
-            label="Email"
+            label={t('auth.emailLabel')}
             type="email"
             inputMode="email"
             autoComplete="email"
-            placeholder="you@example.com"
+            placeholder={t('auth.emailPlaceholder')}
             value={email}
             onChange={(e) => setEmail(e.target.value)}
           />
           {error && <Banner tone="bad">{error}</Banner>}
           <Button type="submit" busy={busy} disabled={!looksLikeEmail(email)}>
-            Send code
+            {t('auth.sendCode')}
           </Button>
         </form>
       ) : (
         <div className="flex flex-col gap-4">
           <p className="text-muted">
-            We sent a code to <span className="text-ink [overflow-wrap:anywhere]">{sentTo}</span>. Check spam if you
-            don't see it.
+            {t('auth.emailSentBefore')}
+            <span className="text-ink [overflow-wrap:anywhere]">{sentTo}</span>
+            {t('auth.emailSentAfter')}
           </p>
           <CodeInput
             id="email-code"
-            label="Code"
+            label={t('auth.codeLabel')}
             value={code}
             onChange={(v) => {
               setCode(v)
@@ -123,18 +123,18 @@ export function EmailStep() {
           />
           {error && <Banner tone="bad">{error}</Banner>}
           <Button busy={busy} disabled={code.length !== 6} onClick={() => verify(code)}>
-            Verify
+            {t('auth.verify')}
           </Button>
           <div className="flex justify-between">
             <Button variant="ghost" onClick={() => send()} disabled={busy || wait > 0}>
-              {wait > 0 ? `Send again in ${wait} s` : 'Send again'}
+              {wait > 0 ? t('auth.emailSendAgainIn', { seconds: wait }) : t('auth.emailSendAgain')}
             </Button>
             <Button variant="ghost" onClick={() => setSentTo(null)}>
-              Change email
+              {t('auth.emailChange')}
             </Button>
           </div>
           <p className="text-center text-sm text-muted">
-            No code after a few minutes? Email us at{' '}
+            {t('auth.emailNoCode')}{' '}
             <a href={`mailto:${SUPPORT_EMAIL}`} className="text-link underline [overflow-wrap:anywhere]">
               {SUPPORT_EMAIL}
             </a>

@@ -3,10 +3,12 @@ import { useRateVisit } from '../../api/bookings'
 import { fieldError, isApiError, messageOf } from '../../api/errors'
 import type { Booking, RatingTag } from '../../api/types'
 import { Banner, Button, Card, Chip } from '../../components/ui'
+import { useT } from '../../i18n'
 import { dateTimeIst } from '../../lib/ist'
-import { canRate, MAX_COMMENT, TAGS } from '../../lib/ratings'
+import { canRate, MAX_COMMENT, TAGS, tagText } from '../../lib/ratings'
 
-const WORDS = ['', 'Poor', 'Not great', 'Okay', 'Good', 'Excellent']
+/** The key of the word for each number of stars (translated where shown). */
+const WORDS = ['', 'ratings.wordPoor', 'ratings.wordNotGreat', 'ratings.wordOkay', 'ratings.wordGood', 'ratings.wordExcellent']
 
 /**
  * Rating a completed visit (and changing the rating until `rateUntil`): stars, what went well, and a comment only the
@@ -14,6 +16,7 @@ const WORDS = ['', 'Poor', 'Not great', 'Okay', 'Good', 'Excellent']
  * @param focus opened from the "How was your visit?" message: the card is scrolled to and its first star focused
  */
 export function RateVisit({ booking, focus }: { booking: Booking; focus: boolean }) {
+  const t = useT()
   const rate = useRateVisit()
   const mine = booking.rating
   const [editing, setEditing] = useState(mine === null)
@@ -41,21 +44,21 @@ export function RateVisit({ booking, focus }: { booking: Booking; focus: boolean
   if (mine && (!editing || !open)) {
     return (
       <Card className="flex flex-col gap-2">
-        <p className="font-semibold">Your rating</p>
-        <p role="img" aria-label={`${mine.stars} out of 5 stars`} className="text-2xl text-accent">
+        <p className="font-semibold">{t('ratings.yourRating')}</p>
+        <p role="img" aria-label={t('ratings.starsOutOf5', { count: mine.stars })} className="text-2xl text-accent">
           <span aria-hidden>{'★'.repeat(mine.stars) + '☆'.repeat(5 - mine.stars)}</span>
         </p>
         {mine.tags.length > 0 && (
-          <p className="text-sm text-muted">{mine.tags.map((t) => TAGS.find((x) => x.tag === t)?.label).join(' · ')}</p>
+          <p className="text-sm text-muted">{mine.tags.map((tg) => tagText(tg)).join(' · ')}</p>
         )}
         {mine.comment && <p className="break-words text-sm">“{mine.comment}”</p>}
-        {saved && <Banner tone="good">Thanks! The salon sees your rating.</Banner>}
+        {saved && <Banner tone="good">{t('ratings.thanks')}</Banner>}
         {open && (
           <Button variant="secondary" onClick={() => setEditing(true)}>
-            Change rating
+            {t('ratings.changeRating')}
           </Button>
         )}
-        {open && <p className="text-xs text-muted">You can change it until {dateTimeIst(booking.rateUntil!)}.</p>}
+        {open && <p className="text-xs text-muted">{t('ratings.changeUntil', { when: dateTimeIst(booking.rateUntil!) })}</p>}
       </Card>
     )
   }
@@ -74,10 +77,10 @@ export function RateVisit({ booking, focus }: { booking: Booking; focus: boolean
   return (
     <Card className="flex flex-col gap-3">
       <div>
-        <p className="font-semibold">How was your visit?</p>
-        <p className="text-sm text-muted">It helps others choose, and tells {booking.salonName} what went well.</p>
+        <p className="font-semibold">{t('ratings.howWasVisit')}</p>
+        <p className="text-sm text-muted">{t('ratings.helpsOthers', { salon: booking.salonName })}</p>
       </div>
-      <div role="radiogroup" aria-label="Stars" className="flex gap-1">
+      <div role="radiogroup" aria-label={t('ratings.stars')} className="flex gap-1">
         {[1, 2, 3, 4, 5].map((n) => (
           <button
             key={n}
@@ -85,7 +88,7 @@ export function RateVisit({ booking, focus }: { booking: Booking; focus: boolean
             type="button"
             role="radio"
             aria-checked={stars === n}
-            aria-label={`${n} star${n === 1 ? '' : 's'}`}
+            aria-label={t('ratings.starCount', { count: n })}
             // A radio group: one tab stop (the chosen star, else the first), arrow keys move and choose
             tabIndex={stars === n || (stars === 0 && n === 1) ? 0 : -1}
             onClick={() => setStars(n)}
@@ -103,20 +106,20 @@ export function RateVisit({ booking, focus }: { booking: Booking; focus: boolean
           </button>
         ))}
       </div>
-      {stars > 0 && <p className="text-sm text-muted">{WORDS[stars]}</p>}
-      <div role="group" aria-label="What went well" className="flex flex-wrap gap-2">
-        {TAGS.map((t) => (
+      {stars > 0 && <p className="text-sm text-muted">{t(WORDS[stars])}</p>}
+      <div role="group" aria-label={t('ratings.whatWentWell')} className="flex flex-wrap gap-2">
+        {TAGS.map((tg) => (
           <Chip
-            key={t.tag}
-            selected={tags.includes(t.tag)}
-            onClick={() => setTags(tags.includes(t.tag) ? tags.filter((x) => x !== t.tag) : [...tags, t.tag])}
+            key={tg.tag}
+            selected={tags.includes(tg.tag)}
+            onClick={() => setTags(tags.includes(tg.tag) ? tags.filter((x) => x !== tg.tag) : [...tags, tg.tag])}
           >
-            {t.label}
+            {tagText(tg.tag)}
           </Chip>
         ))}
       </div>
       <label className="flex flex-col gap-2 text-sm">
-        <span className="font-medium text-muted">Anything to tell the salon? (only they see it)</span>
+        <span className="font-medium text-muted">{t('ratings.commentLabel')}</span>
         <textarea
           value={comment}
           maxLength={MAX_COMMENT}
@@ -128,7 +131,7 @@ export function RateVisit({ booking, focus }: { booking: Booking; focus: boolean
         />
         {commentError && (
           <span id="rate-comment-error" className="text-sm text-bad">
-            The comment {commentError}.
+            {t('ratings.commentError', { error: commentError })}
           </span>
         )}
         <span className="self-end text-xs text-muted">
@@ -137,7 +140,7 @@ export function RateVisit({ booking, focus }: { booking: Booking; focus: boolean
       </label>
       {rate.isError && !commentError && <Banner tone="bad">{messageOf(rate.error)}</Banner>}
       <Button busy={rate.isPending} disabled={stars === 0} onClick={save}>
-        {mine ? 'Save rating' : 'Send rating'}
+        {mine ? t('ratings.saveRating') : t('ratings.sendRating')}
       </Button>
       {mine && (
         <Button
@@ -151,7 +154,7 @@ export function RateVisit({ booking, focus }: { booking: Booking; focus: boolean
             setEditing(false)
           }}
         >
-          Keep my rating
+          {t('ratings.keepRating')}
         </Button>
       )}
     </Card>

@@ -1,12 +1,13 @@
 import type { BookingStatus } from '../../api/types'
 
-export const statusText: Record<BookingStatus, string> = {
-  CONFIRMED: 'Booked',
-  IN_SERVICE: 'In progress',
-  COMPLETED: 'Done',
-  CANCELLED_BY_CUSTOMER: 'Cancelled by you',
-  CANCELLED_BY_SALON: 'Cancelled by the salon',
-  NO_SHOW: 'Missed',
+/** The key of each status's words (translated where shown). */
+export const statusKey: Record<BookingStatus, string> = {
+  CONFIRMED: 'bookings.statusConfirmed',
+  IN_SERVICE: 'bookings.statusInService',
+  COMPLETED: 'bookings.statusCompleted',
+  CANCELLED_BY_CUSTOMER: 'bookings.statusCancelledByCustomer',
+  CANCELLED_BY_SALON: 'bookings.statusCancelledBySalon',
+  NO_SHOW: 'bookings.statusNoShow',
 }
 
 export const statusTone: Record<BookingStatus, string> = {

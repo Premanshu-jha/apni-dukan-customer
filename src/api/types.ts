@@ -9,6 +9,8 @@ export interface User {
   email: string | null
   emailVerified: boolean
   admin: boolean
+  /** The language the account reads ("hi"; its messages come in it); null until chosen. Missing from older backends. */
+  language?: string | null
 }
 
 export interface Tokens {

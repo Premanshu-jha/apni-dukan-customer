@@ -1,0 +1,38 @@
+{
+  "messages": "मेसेज",
+  "bellUnread": {
+    "other": "मेसेज, {count} न वाचलेले"
+  },
+  "bellUnreadMany": "मेसेज, 99 पेक्षा जास्त न वाचलेले",
+  "justNow": "आत्ताच",
+  "minAgo": {
+    "other": "{count} मि. पूर्वी"
+  },
+  "hoursAgo": {
+    "one": "{count} तासापूर्वी",
+    "other": "{count} तासांपूर्वी"
+  },
+  "unreadCount": "{n} न वाचलेले",
+  "markAllRead": "सगळे वाचले म्हणून नोंदवा",
+  "noMessages": "अजून मेसेज नाहीत",
+  "noMessagesBody": "बुकिंग पक्की झाल्याचे मेसेज, आठवण आणि बदल इथे दिसतील.",
+  "unread": "न वाचलेले",
+  "showOlder": "जुने दाखवा",
+  "showingLatest": {
+    "other": "सर्वात नवीन {count} मेसेज दाखवत आहोत."
+  },
+  "keptFor": "मेसेज 90 दिवस ठेवले जातात.",
+  "typeBOOKING_CONFIRMED": "बुकिंग झाले",
+  "typeBOOKING_RESCHEDULED": "बुकिंगची वेळ बदलली",
+  "typeBOOKING_CANCELLED": "बुकिंग रद्द झाले",
+  "typeBOOKING_CANCELLED_BY_SALON": "सलूनने बुकिंग रद्द केले",
+  "typeBOOKING_NO_SHOW": "बुकिंग चुकले",
+  "typeBOOKING_EARLIER_SLOT": "आधीची वेळ मोकळी झाली",
+  "typeBOOKING_NO_SHOW_UNDONE": "चुकलेले बुकिंग काढले",
+  "typeBOOKING_BARBER_CHANGED": "तुमचा बार्बर बदलला",
+  "typeBOOKING_REMINDER": "1 तासात तुमचे बुकिंग आहे",
+  "typeBOOKING_RATE_VISIT": "तुमची भेट कशी होती?",
+  "typeBOOKING_COME_BACK": "पुढच्या भेटीची वेळ झाली?",
+  "typeBOOKING_OFFER": "एका सलूनमध्ये ऑफर",
+  "typeCUSTOMERHELP_REPLIED": "सपोर्टने उत्तर दिले"
+}

@@ -1,3 +1,4 @@
+import { hasText, t } from '../i18n'
 import type { ErrorBody } from './types'
 
 /** Every failed call becomes one of these. `code` is the backend's error code, or NETWORK / UNKNOWN. */
@@ -8,7 +9,7 @@ export class ApiError extends Error {
   readonly retryAfterSeconds: number | null
 
   constructor(status: number, body: Partial<ErrorBody>, retryAfterSeconds: number | null = null) {
-    super(body.message || 'Something went wrong. Please try again.')
+    super(body.message || t('error.UNKNOWN'))
     this.name = 'ApiError'
     this.status = status
     this.code = body.code || 'UNKNOWN'
@@ -35,12 +36,34 @@ export function isApiError(e: unknown, code?: string): e is ApiError {
   return e instanceof ApiError && (code === undefined || e.code === code)
 }
 
-/** The words to show a person for any error. The backend's messages are already written for people. */
+/**
+ * The words to show a person for any error, in their language: the app's own words for the backend's code
+ * (error.json), else for the backend's exact message (server.json), else the backend's message as it came (English,
+ * written for people).
+ */
 export function messageOf(e: unknown): string {
   // 429 TRY_LATER (sign-in codes): this network has to wait before the next try; Retry-After says how long
   if (e instanceof ApiError && e.code === 'TRY_LATER') return tryLaterText(e.retryAfterSeconds)
-  if (e instanceof ApiError) return e.message
-  return 'Something went wrong. Please try again.'
+  if (e instanceof ApiError) {
+    if (e.code === 'NETWORK') return t('error.NETWORK')
+    if (hasText(`error.${e.code}`)) return t(`error.${e.code}`, textVars(e.details))
+    return serverText(e.message)
+  }
+  return t('error.UNKNOWN')
+}
+
+/** A message the backend wrote, in the person's language when the app has words for exactly that message. */
+export function serverText(message: string): string {
+  return t(`server.${message}`, undefined, message)
+}
+
+/** The details that can fill a message's blanks (numbers and words; never lists or objects). */
+function textVars(details: Record<string, unknown>): Record<string, string | number> {
+  const out: Record<string, string | number> = {}
+  for (const [k, v] of Object.entries(details)) {
+    if (typeof v === 'string' || typeof v === 'number') out[k] = v
+  }
+  return out
 }
 
 /**
@@ -49,7 +72,7 @@ export function messageOf(e: unknown): string {
  * repeats only SERVICE_BUSY), so tapping around can't make it worse; the person waits and taps Try again.
  */
 export function salonReadMessage(e: unknown): string {
-  if (e instanceof ApiError && e.status === 429) return 'Too many tries — wait a minute, then try again.'
+  if (e instanceof ApiError && e.status === 429) return t('error.TOO_MANY_REQUESTS')
   return messageOf(e)
 }
 
@@ -57,11 +80,11 @@ export function salonReadMessage(e: unknown): string {
 export function fieldError(e: unknown, field: string): string | undefined {
   if (!(e instanceof ApiError) || e.code !== 'VALIDATION_FAILED') return undefined
   const value = e.details[field]
-  return typeof value === 'string' ? value : undefined
+  return typeof value === 'string' ? serverText(value) : undefined
 }
 
 /** "Too many tries from this network. Try again in 4 minutes." (from Retry-After; at least a minute). */
 export function tryLaterText(seconds: number | null): string {
   const minutes = Math.max(1, Math.ceil((seconds ?? 60) / 60))
-  return `Too many tries from this network. Try again in ${minutes} ${minutes === 1 ? 'minute' : 'minutes'}.`
+  return t('error.TRY_LATER', { count: minutes })
 }

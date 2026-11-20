@@ -4,12 +4,14 @@ import { useBooking, useMoveBooking } from '../../api/bookings'
 import { useSalon } from '../../api/salons'
 import { isApiError, messageOf } from '../../api/errors'
 import { Banner, Button, ErrorState, Loading, Page } from '../../components/ui'
+import { useT } from '../../i18n'
 import { dateOfIst, dateTimeIst, timeIst } from '../../lib/ist'
 import { rupees } from '../../lib/money'
 import type { SlotPrice } from '../../store/bookingDraft'
 import { DateChips, SlotGrid } from '../salon/SlotGrid'
 
 export function MoveBooking() {
+  const t = useT()
   const { id = '' } = useParams()
   const navigate = useNavigate()
   const booking = useBooking(id)
@@ -28,14 +30,14 @@ export function MoveBooking() {
 
   if (booking.isPending) {
     return (
-      <Page back={`/bookings/${id}`} title="Move booking">
+      <Page back={`/bookings/${id}`} title={t('bookings.moveTitle')}>
         <Loading />
       </Page>
     )
   }
   if (booking.isError) {
     return (
-      <Page back={`/bookings/${id}`} title="Move booking">
+      <Page back={`/bookings/${id}`} title={t('bookings.moveTitle')}>
         <ErrorState message={messageOf(booking.error)} onRetry={() => booking.refetch()} />
       </Page>
     )
@@ -47,7 +49,7 @@ export function MoveBooking() {
   return (
     <Page
       back={`/bookings/${id}`}
-      title="Move booking"
+      title={t('bookings.moveTitle')}
       footer={
         <Button
           className="w-full"
@@ -66,24 +68,31 @@ export function MoveBooking() {
             )
           }
         >
-          {startAt ? `Move to ${timeIst(startAt)}` : 'Pick a new time'}
+          {startAt ? t('bookings.moveTo', { time: timeIst(startAt) }) : t('bookings.pickNewTime')}
         </Button>
       }
     >
       <p className="text-muted">
-        Now: <span className="text-ink">{dateTimeIst(b.startsAt)}</span> at {b.salonName}
+        {t('bookings.nowBefore')}
+        <span className="text-ink">{dateTimeIst(b.startsAt)}</span>
+        {t('bookings.nowAfter', { salon: b.salonName })}
       </p>
       {startAt && price && price.startAt === startAt && price.pricePaise !== b.totalPricePaise && (
         <p role="status">
-          At {timeIst(startAt)}: <strong>{rupees(price.pricePaise, b.priceIsFrom)}</strong>{' '}
-          <span className="text-muted">(now {rupees(b.totalPricePaise, b.priceIsFrom)}).</span>{' '}
-          {price.listPricePaise !== null ? <span className="text-accent">That time has the salon's offer price.</span> : "The salon's offer doesn't cover that time."}
+          {t('bookings.priceAt', { time: timeIst(startAt) })}
+          <strong>{rupees(price.pricePaise, b.priceIsFrom)}</strong>{' '}
+          <span className="text-muted">{t('bookings.priceNow', { price: rupees(b.totalPricePaise, b.priceIsFrom) })}</span>{' '}
+          {price.listPricePaise !== null ? (
+            <span className="text-accent">{t('bookings.offerCovers')}</span>
+          ) : (
+            t('bookings.offerNotCovers')
+          )}
         </p>
       )}
-      {taken && !startAt && !move.isError && <Banner tone="warn">That time isn't free any more. Pick another one.</Banner>}
+      {taken && !startAt && !move.isError && <Banner tone="warn">{t('bookings.timeNotFree')}</Banner>}
       {move.isError && (
         <Banner tone="bad">
-          {isApiError(move.error, 'SLOT_TAKEN') ? 'Someone just booked that time. Pick another one.' : messageOf(move.error)}
+          {isApiError(move.error, 'SLOT_TAKEN') ? t('bookings.slotTaken') : messageOf(move.error)}
         </Banner>
       )}
       <DateChips

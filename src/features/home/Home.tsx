@@ -11,6 +11,7 @@ import { VerifyEmailBanner } from '../auth/VerifyEmailBanner'
 import { type CategoryId, shownCategories } from './categories'
 import { greeting } from '../../lib/ist'
 import { YourBooking } from './YourBooking'
+import { useT } from '../../i18n'
 
 /**
  * Home: a greeting by the time of day in India, the verify-your-email banner while the email is pending, the
@@ -18,6 +19,7 @@ import { YourBooking } from './YourBooking'
  * open), then the salons near the customer.
  */
 export function Home() {
+  const t = useT()
   const name = useSession((s) => s.user?.name)
   const shown = shownCategories()
   const [tab, setTab] = useState<CategoryId>(shown[0].id)
@@ -29,8 +31,8 @@ export function Home() {
     <Page>
       <div className="flex items-start justify-between gap-3">
         <div className="flex flex-col gap-1">
-          <h1 className="font-display text-2xl font-bold">{first ? `${hello}, ${first}` : hello}</h1>
-          <p className="text-muted">What do you need today?</p>
+          <h1 className="font-display text-2xl font-bold">{first ? t('home.greetingWithName', { greeting: hello, name: first }) : hello}</h1>
+          <p className="text-muted">{t('home.subtitle')}</p>
         </div>
         <Bell />
       </div>
@@ -38,7 +40,7 @@ export function Home() {
       <YourBooking />
       {/* Tabs only once a second category is open */}
       {shown.length > 1 && (
-      <div role="tablist" aria-label="Categories" className="grid grid-cols-3 gap-2">
+      <div role="tablist" aria-label={t('home.categoriesLabel')} className="grid grid-cols-3 gap-2">
         {shown.map((c) => (
           <button
             key={c.id}
@@ -69,8 +71,7 @@ export function Home() {
               <LocationBar />
               {place.accuracy > ROUGH_METRES && (
                 <Banner tone="warn">
-                  Your location is only accurate to about {Math.round(place.accuracy / 1000)} km, so these salons may
-                  not be the nearest. Open Clozest on your phone for better results.
+                  {t('home.roughLocation', { km: Math.round(place.accuracy / 1000) })}
                 </Banner>
               )}
               <SalonList lat={place.lat} lng={place.lng} />
@@ -126,22 +127,26 @@ function useChosenPlace(): ChosenPlace | null {
 
 /** Salons near a saved place, and the way to pick another (or the current location). */
 function PlaceBar({ chosen }: { chosen: ChosenPlace }) {
+  const t = useT()
+  // The place's name is bold inside the sentence: the sentence is one text, split where the name goes
+  const [nearBefore, nearAfter = ''] = t('home.nearPlace').split('{place}')
   return (
     <Link
       to="/places"
       className="flex items-center justify-between gap-3 rounded-xl border border-line bg-surface px-4 py-2"
-      aria-label={`Salons near ${chosen.label}, ${chosen.short}. Change`}
+      aria-label={t('home.placeBarLabel', { place: chosen.label, area: chosen.short })}
     >
       <span className="min-w-0 text-sm">
-        <span aria-hidden>⌂ </span>Near <span className="font-semibold">{chosen.label}</span>
+        <span aria-hidden>⌂ </span>{nearBefore}<span className="font-semibold">{chosen.label}</span>{nearAfter}
         <span className="block truncate text-muted">{chosen.short}</span>
       </span>
-      <span className="text-sm font-semibold text-link">Change</span>
+      <span className="text-sm font-semibold text-link">{t('common.change')}</span>
     </Link>
   )
 }
 
 function LocationBar() {
+  const t = useT()
   const { place, finding, error, locate } = useLocationStore()
   const [now] = useState(() => Date.now())
   // Where that is, in words (only for a point close enough to mean something: a laptop's guess isn't)
@@ -153,17 +158,20 @@ function LocationBar() {
     {error && (
       <Banner tone="warn">
         {error === 'denied'
-          ? 'Location is now blocked, so this is where you were last time. Allow it in your browser to update.'
-          : "Couldn't update your location. Showing where you were last time."}
+          ? t('home.locationBlocked')
+          : t('home.locationNotUpdated')}
       </Banner>
     )}
     <div className="flex items-center justify-between rounded-xl border border-line bg-surface px-4 py-2">
       <span className="min-w-0 text-sm">
-        <span aria-hidden>⌖ </span>Near your current location
+        <span aria-hidden>⌖ </span>{t('home.nearCurrentLocation')}
         <span className="text-muted">
           {' '}
-          · ±{place.accuracy < 1000 ? `${place.accuracy} m` : `${Math.round(place.accuracy / 1000)} km`}
-          {minutes >= 30 && ` · ${minutes < 120 ? `${minutes} min` : `${Math.round(minutes / 60)} h`} ago`}
+          · {place.accuracy < 1000
+            ? t('home.accuracyMetres', { metres: String(place.accuracy) })
+            : t('home.accuracyKm', { km: Math.round(place.accuracy / 1000) })}
+          {minutes >= 30 &&
+            ` · ${minutes < 120 ? t('home.agoMinutes', { minutes }) : t('home.agoHours', { hours: Math.round(minutes / 60) })}`}
         </span>
         {near.data && (
           <span className="block truncate text-muted" title={near.data}>
@@ -173,10 +181,10 @@ function LocationBar() {
       </span>
       <span className="flex items-center gap-4">
         <button type="button" onClick={locate} disabled={finding} className="text-sm font-semibold text-link disabled:opacity-50">
-          {finding ? 'Updating…' : 'Update'}
+          {finding ? t('home.updating') : t('home.update')}
         </button>
-        <Link to="/places" className="text-sm font-semibold text-link" aria-label="Change where to find salons">
-          Change
+        <Link to="/places" className="text-sm font-semibold text-link" aria-label={t('home.changePlaceLabel')}>
+          {t('common.change')}
         </Link>
       </span>
     </div>
