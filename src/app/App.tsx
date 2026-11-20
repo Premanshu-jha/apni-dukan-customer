@@ -25,10 +25,12 @@ import { BookTime } from '../features/salon/BookTime'
 import { ConfirmBooking } from '../features/salon/ConfirmBooking'
 import { SalonPage } from '../features/salon/SalonPage'
 import { EmptyState, Page } from '../components/ui'
+import { useT } from '../i18n'
 import { EmailVerifiedOnly, FinishingProfile, SignedIn, SignedOutOnly } from './guards'
 import { Bare, Shell } from './Shell'
 
 export function App() {
+  const t = useT()
   return (
     <Routes>
       <Route element={<Bare />}>
@@ -87,10 +89,10 @@ export function App() {
           element={
             <Page back="/">
               <EmptyState
-                title="Page not found"
+                title={t('app.notFoundTitle')}
                 action={
                   <Link to="/" className="text-link underline">
-                    Go home
+                    {t('app.notFoundLink')}
                   </Link>
                 }
               />

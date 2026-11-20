@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactNode } from 'react'
 import { useNavigate } from 'react-router'
+import { useT } from '../i18n'
 
 type Variant = 'primary' | 'secondary' | 'danger' | 'ghost'
 
@@ -63,24 +64,26 @@ export function Field({
   )
 }
 
-export function Card({ children, className = '' }: { children: ReactNode; className?: string }) {
-  return <div className={`rounded-2xl border border-line bg-surface p-4 ${className}`}>{children}</div>
+export function Card({ children, className = '', id }: { children: ReactNode; className?: string; id?: string }) {
+  return <div id={id} className={`rounded-2xl border border-line bg-surface p-4 ${className}`}>{children}</div>
 }
 
 export function Spinner({ small = false, label }: { small?: boolean; label?: string }) {
+  const t = useT()
   const size = small ? 'h-4 w-4 border-2' : 'h-8 w-8 border-[3px]'
   return (
     <span role="status" className="inline-flex items-center gap-3">
       <span className={`${size} animate-spin rounded-full border-muted/30 border-t-brand`} aria-hidden />
-      <span className={label ? 'text-muted' : 'sr-only'}>{label ?? 'Loading'}</span>
+      <span className={label ? 'text-muted' : 'sr-only'}>{label ?? t('ui.spinnerLoading')}</span>
     </span>
   )
 }
 
-export function Loading({ label = 'Loading…' }: { label?: string }) {
+export function Loading({ label }: { label?: string }) {
+  const t = useT()
   return (
     <div className="flex min-h-40 items-center justify-center">
-      <Spinner label={label} />
+      <Spinner label={label ?? t('common.loading')} />
     </div>
   )
 }
@@ -103,12 +106,13 @@ export function Banner({ tone = 'info', children, live = true }: { tone?: Tone; 
 }
 
 export function ErrorState({ message, onRetry }: { message: string; onRetry?: () => void }) {
+  const t = useT()
   return (
     <div className="flex flex-col items-center gap-4 py-10 text-center">
       <p className="text-muted">{message}</p>
       {onRetry && (
         <Button variant="secondary" onClick={onRetry}>
-          Try again
+          {t('common.retry')}
         </Button>
       )}
     </div>
@@ -143,6 +147,7 @@ export function Page({
   footer?: ReactNode
 }) {
   const navigate = useNavigate()
+  const t = useT()
   return (
     <div className="flex flex-1 flex-col">
       {(title || back) && (
@@ -150,7 +155,7 @@ export function Page({
           {back && (
             <button
               type="button"
-              aria-label="Back"
+              aria-label={t('common.back')}
               onClick={() => {
                 onBack?.()
                 if (typeof back === 'string') navigate(back, { replace: backReplace })
