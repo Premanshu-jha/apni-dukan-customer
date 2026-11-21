@@ -94,8 +94,11 @@ export function savedRefreshToken(): string | null {
   return storage.getJson<Saved>(KEY)?.refreshToken ?? null
 }
 
-/** Another tab signed in, refreshed or signed out: follow it. */
-export function followOtherTabs() {
+/**
+ * Another tab signed in, refreshed or signed out: follow it. `personGone` runs when the person this tab showed is no
+ * longer signed in here (signed out there, or someone else signed in there), so this tab forgets what it kept of them.
+ */
+export function followOtherTabs(personGone: () => void = () => {}) {
   window.addEventListener('storage', (e) => {
     if (e.key !== KEY) return
     const saved = e.newValue ? (JSON.parse(e.newValue) as Saved) : null
@@ -110,9 +113,11 @@ export function followOtherTabs() {
           endedHere: true,
           generation: s.generation + 1,
         }))
+        personGone()
       }
       return
     }
+    if (state.user && state.user.id !== saved.user.id) personGone()
     // The other tab's access token isn't shared; the next call here refreshes with the newest refresh token.
     useSession.setState({ refreshToken: saved.refreshToken, user: saved.user, accessToken: null, status: 'signedIn' })
   })

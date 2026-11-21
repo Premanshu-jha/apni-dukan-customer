@@ -1,5 +1,6 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from './client'
+import { ApiError, retryDelay, retryRead } from './errors'
 import type { SalonDetails, SalonService, SalonSummary, Slots } from './types'
 
 const round6 = (n: number) => Math.round(n * 1e6) / 1e6
@@ -11,7 +12,8 @@ export const SLOTS_REFRESH_MS = 30_000
 export const isSlotsKey = (key: readonly unknown[]) => key[0] === 'salons' && key[2] === 'slots'
 
 export const salonKeys = {
-  near: (lat: number, lng: number) => ['salons', 'near', round6(lat), round6(lng)] as const,
+  /** q: the search sent (searchQuery), '' for none: each search has its own pages, cached on their own. */
+  near: (lat: number, lng: number, q = '') => ['salons', 'near', round6(lat), round6(lng), q] as const,
   one: (id: string) => ['salons', id] as const,
   services: (id: string) => ['salons', id, 'services'] as const,
   slots: (id: string, services: string[], date: string, moving?: string) =>
@@ -25,18 +27,21 @@ export const SALONS_RADIUS_KM = 2
 
 /**
  * Salons near the customer, nearest first, a page at a time. The next page starts after the last salon's exact
- * distance and id (keyset paging), so a dense area with hundreds of salons is never loaded at once.
+ * distance and id (keyset paging), so a dense area with hundreds of salons is never loaded at once. With `q` (from
+ * searchQuery: 2 to 60 characters, or '' for all), only the salons whose name or one of whose services matches it,
+ * in the same order and pages; every page carries the same q.
  */
-export function useNearbySalons(lat: number | null, lng: number | null) {
+export function useNearbySalons(lat: number | null, lng: number | null, q = '') {
   return useInfiniteQuery({
-    queryKey: salonKeys.near(lat ?? 0, lng ?? 0),
+    queryKey: salonKeys.near(lat ?? 0, lng ?? 0, q),
     initialPageParam: null as SalonSummary | null,
     queryFn: ({ pageParam }) => {
       const after = pageParam
         ? `&afterDistance=${encodeURIComponent(String(pageParam.distanceMetres))}&afterId=${encodeURIComponent(pageParam.id)}`
         : ''
       // Each card's openNow is as of when its page was read: keep that moment with it ("Opens at …" is told from it)
-      return api<SalonSummary[]>('GET', `/api/v1/salons?lat=${round6(lat!)}&lng=${round6(lng!)}${after}`).then((list) => {
+      const search = q ? `&q=${encodeURIComponent(q)}` : ''
+      return api<SalonSummary[]>('GET', `/api/v1/salons?lat=${round6(lat!)}&lng=${round6(lng!)}${search}${after}`).then((list) => {
         const readAt = Date.now()
         return list.map((s) => ({ ...s, readAt }))
       })
@@ -44,7 +49,24 @@ export function useNearbySalons(lat: number | null, lng: number | null) {
     getNextPageParam: (last: SalonSummary[]) => (last.length < SALONS_PAGE ? undefined : last[last.length - 1]),
     enabled: lat !== null && lng !== null,
     staleTime: 60_000,
+    // A search past the per-person limit is tried once more by itself, when Retry-After says (the words stay typed);
+    // anything else as every read. A search changed meanwhile drops the wait (no screen watches it any more)
+    retry: (count, e) => (q && isSearchLimited(e) ? count < 1 : retryRead(count, e)),
+    retryDelay: (attempt, e) =>
+      q && isSearchLimited(e) ? Math.min(e.retryAfterSeconds ?? SEARCH_WAIT_S, SEARCH_WAIT_MAX_S) * 1000 : retryDelay(attempt, e),
   })
+}
+
+/** Without a Retry-After, a limited search waits this long before its one more try; never longer than the max. */
+const SEARCH_WAIT_S = 5
+const SEARCH_WAIT_MAX_S = 60
+
+/**
+ * The backend limits searches (GET /salons with q) per person: past it, 429 TOO_MANY_REQUESTS with Retry-After
+ * (seconds), as the salon pages' limit. The list without q has no limit.
+ */
+export function isSearchLimited(e: unknown): e is ApiError {
+  return e instanceof ApiError && e.status === 429 && e.code === 'TOO_MANY_REQUESTS'
 }
 
 export function useSalon(id: string) {

@@ -3,7 +3,7 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router'
 import { refreshSession, whenSessionEnds } from './api/client'
-import { ApiError, retryDelay } from './api/errors'
+import { retryDelay, retryRead } from './api/errors'
 import { claimSubscription, closeShownNotifications, dropBrowserSubscription, registerWorker } from './api/push'
 import { isSlotsKey } from './api/salons'
 import { App } from './app/App'
@@ -17,6 +17,7 @@ import { followAccountLanguage } from './lib/accountLanguage'
 import { useDraft } from './store/bookingDraft'
 import { followOtherTabs, useSession } from './store/session'
 import { useLocation } from './store/location'
+import { useSalonSearch } from './store/salonSearch'
 import '@fontsource/poppins/600.css'
 import '@fontsource/poppins/700.css'
 import './index.css'
@@ -25,7 +26,7 @@ const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       // Retry network blips, never answers the backend meant (a 4xx is final).
-      retry: (count, error) => count < 2 && (!(error instanceof ApiError) || error.status === 0 || error.status >= 500),
+      retry: retryRead,
       // Waits as long as the backend's Retry-After asks (SERVICE_BUSY), else 1 s, 2 s
       retryDelay,
       refetchOnWindowFocus: true,
@@ -42,6 +43,8 @@ whenSessionEnds(() => {
   useDraft.getState().clear()
   // A shared phone: the next person mustn't see this one's saved address or last GPS point
   useLocation.getState().clear()
+  // Nor what this one searched for (the store's own sign-out watch may not be running yet at start-up)
+  useSalonSearch.getState().clear()
   queryClient.clear()
 })
 
@@ -52,7 +55,14 @@ useSession.subscribe((now, before) => {
   if (now.status === 'signedOut' && before.status === 'signedIn') useLocation.getState().clear()
 })
 
-followOtherTabs()
+// Signed out in another tab (or someone else signed in there): this tab forgets the last person too, as a sign-out
+// here does: their cached bookings, requests and salons, help drafts, where they were going, what they searched for
+followOtherTabs(() => {
+  forgetReturn()
+  forgetHelpDrafts()
+  useSalonSearch.getState().clear()
+  queryClient.clear()
+})
 
 /** Start-up: pick up a saved session by swapping its refresh token for a fresh access token. */
 async function start() {
