@@ -27,6 +27,19 @@ export function useMyRequests() {
   return useQuery({ queryKey: helpKeys.mine, queryFn: helpApi.mine })
 }
 
+/** How long the Help button's "we replied" dot trusts the list it read (it is read again after that, on focus). */
+export const GLANCE_STALE_MS = 2 * 60_000
+
+/**
+ * The same list as My requests (one cache entry, one request), read for the Help button's dot and Need help's counts.
+ * Never polled: read when a screen with the button opens and the copy is over 2 minutes old, or the app comes back
+ * to the front (the default refetch on focus, which also honours the 2 minutes). Off while signed out or with the
+ * email pending (no requests can exist then), so those screens never ask.
+ */
+export function useMyRequestsGlance(enabled: boolean) {
+  return useQuery({ queryKey: helpKeys.mine, queryFn: helpApi.mine, enabled, staleTime: GLANCE_STALE_MS })
+}
+
 /**
  * Re-read every 30 s while open and not resolved, so support's reply shows without leaving the page. A resolved one
  * isn't polled (thousands of open pages would otherwise keep asking); it is read again when you come back to the tab.

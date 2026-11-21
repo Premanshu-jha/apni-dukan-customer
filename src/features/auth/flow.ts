@@ -1,15 +1,69 @@
 import type { User } from '../../api/types'
-import { signUpSteps } from '../../store/session'
+import { signUpSteps, useSession } from '../../store/session'
 import { storage } from '../../lib/storage'
 
 const RETURN_KEY = 'ad.returnTo'
 /** Where the person was going when they were asked to verify their email (see EmailVerifiedOnly). */
 const EMAIL_RETURN_KEY = 'ad.afterEmail'
 
-/** Remember where the person was going, so sign-in can bring them back there. */
+/**
+ * How long a remembered return is kept. A shared phone: someone opens a salon's link signed out, never signs in, and
+ * puts the phone down; the next person to sign in, an hour later, must start at Home, not at that salon. Half an hour
+ * is plenty to get a code and sign in (or give the name), so a return older than that is forgotten.
+ */
+export const RETURN_FOR_MS = 30 * 60_000
+
+/** Remember where the person was going, so sign-in can bring them back there (for RETURN_FOR_MS). */
 export function rememberReturn(path: string) {
   if (path.startsWith('/signin') || path.startsWith('/welcome')) return
-  storage.set(RETURN_KEY, path)
+  storage.setJson(RETURN_KEY, { path, at: Date.now() })
+}
+
+/** The return remembered, if it is still fresh (an older one is forgotten here; an old plain path too). */
+function savedReturn(): string | null {
+  const saved = storage.getJson<{ path?: unknown; at?: unknown }>(RETURN_KEY)
+  const fresh = saved && typeof saved.path === 'string' && typeof saved.at === 'number' && Date.now() - saved.at < RETURN_FOR_MS
+  if (!fresh) {
+    if (storage.get(RETURN_KEY) !== null) storage.remove(RETURN_KEY)
+    return null
+  }
+  return saved.path as string
+}
+
+/**
+ * Whether sign-in will bring this person back to a salon's page: they opened a salon's link (one a salon shared,
+ * clozest.in/salons/<id>) while signed out. The sign-in screen then says why they are asked to sign in. The salon's
+ * name isn't known here: the backend shows a salon only to someone signed in.
+ */
+export function returningToSalon(): boolean {
+  const back = savedReturn()
+  return back !== null && /^\/salons\/[^/?#]+(\/(book|confirm))?\/?([?#].*)?$/.test(back)
+}
+
+/**
+ * A salon's own page (the link a salon shares, clozest.in/salons/<id>). Its booking steps (/book, /confirm) are not:
+ * they belong to the person who was booking.
+ */
+export function isSalonLink(path: string): boolean {
+  return /^\/salons\/[^/?#]+\/?$/.test(path)
+}
+
+/** The screen this tab opened on (the link tapped, or the address typed), before the app moved anywhere. */
+const FIRST_PATH = typeof window === 'undefined' ? '' : window.location.pathname
+/** Whether anyone was signed in while this tab was open (a page they had open is theirs, not a link for the next). */
+let signedInHere = useSession.getState().status === 'signedIn'
+useSession.subscribe((s) => {
+  if (s.status === 'signedIn') signedInHere = true
+})
+
+/**
+ * A salon's link opened just now: the first screen of this tab, which nobody had open signed in. Sign-in still lands
+ * there even though the session ended in this tab (a saved session refused at start-up: the link tapped is what this
+ * person wants). Not the salon page the last person had open when their session ended (signed out in another tab,
+ * the backend ending it): the next person starts at Home (see SignedIn in app/guards).
+ */
+export function isFreshSalonLink(path: string): boolean {
+  return isSalonLink(path) && path.replace(/\/$/, '') === FIRST_PATH.replace(/\/$/, '') && !signedInHere
 }
 
 /** Forget the saved place once the person has arrived in the app. */
@@ -79,6 +133,6 @@ export function cameFromBooking(userId: string | undefined): boolean {
 export function nextAfterSignIn(user: User): string {
   const missing = signUpSteps(user)
   if (missing[0] === 'name') return '/welcome/name'
-  const back = storage.get(RETURN_KEY)
+  const back = savedReturn()
   return back && back.startsWith('/') && !back.startsWith('//') ? back : '/'
 }
