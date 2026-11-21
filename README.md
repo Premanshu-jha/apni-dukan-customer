@@ -368,6 +368,12 @@ language saved in the app (`offline.js` reads `localStorage.language`; English w
 version of `sw.js` waits after installing; the app shows "New version available — Reload" and only that button
 switches over. Change `OFFLINE_CACHE` in `sw.js` when the offline page changes.
 
+### Kirana switch
+
+`VITE_KIRANA_ENABLED` (build-time, off unless `true`) is the app's kirana switch; keep it the same as the backend's
+`KIRANA_ENABLED`. The customer app has no kirana screens yet, so off and on look the same today; when kirana screens
+are built they show only while it is on. There is one app branch, `main` (the `kirana-customer` branch is gone).
+
 ## Languages
 
 The app is in English, Hindi, Telugu, Marathi, Tamil and Kannada (about 960 texts per language, 253 of them the
@@ -423,6 +429,10 @@ applies at once and keeps whatever was typed. The language code is the partner a
   should be read once by a native speaker of each language.
 
 ## Changelog
+
+### 0.26.1 — 2026-11-21
+
+- One app branch: `main`. A kirana switch, `VITE_KIRANA_ENABLED`, off by default (see Kirana switch).
 
 ### 0.26.0 — 2026-11-20
 
