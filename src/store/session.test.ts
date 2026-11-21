@@ -1,5 +1,5 @@
 import { forgetAfterEmail, nextAfterSignIn, rememberAfterEmail, rememberReturn, takeAfterEmail } from '../features/auth/flow'
-import { missingSteps, needsEmail, signUpSteps } from './session'
+import { followOtherTabs, missingSteps, needsEmail, signUpSteps, useSession } from './session'
 
 const base = { id: 'u', phone: '9848012345', admin: false }
 
@@ -45,5 +45,25 @@ describe('the email after sign-up', () => {
     rememberAfterEmail('/places/new', 'u1')
     forgetAfterEmail()   // Back on the email screen, or Verify now from Home
     expect(takeAfterEmail('u1')).toBe('/')
+  })
+})
+
+describe('another tab', () => {
+  it('signing out there, or someone else signing in there, makes this tab forget the person it showed', () => {
+    const gone = vi.fn()
+    followOtherTabs(gone)
+    const user = { ...base, id: 'u1', name: 'Riya', email: 'r@x.in', emailVerified: true }
+    useSession.setState({ status: 'signedIn', user, refreshToken: 'r1' })
+    const saved = (u: typeof user) => JSON.stringify({ refreshToken: 'r2', user: u })
+    // The same person refreshed there: nothing to forget
+    window.dispatchEvent(new StorageEvent('storage', { key: 'ad.session', newValue: saved(user) }))
+    expect(gone).not.toHaveBeenCalled()
+    // Someone else signed in there
+    window.dispatchEvent(new StorageEvent('storage', { key: 'ad.session', newValue: saved({ ...user, id: 'u2' }) }))
+    expect(gone).toHaveBeenCalledTimes(1)
+    // Signed out there
+    window.dispatchEvent(new StorageEvent('storage', { key: 'ad.session', newValue: null }))
+    expect(gone).toHaveBeenCalledTimes(2)
+    expect(useSession.getState().status).toBe('signedOut')
   })
 })
