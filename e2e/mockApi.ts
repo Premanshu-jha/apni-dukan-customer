@@ -161,12 +161,14 @@ export interface MockTicket {
   status: 'OPEN' | 'WAITING' | 'RESOLVED'
   createdAt: string
   lastMessageAt: string
+  /** When support last wrote on it (null: not yet), as TicketService.MyTicket's lastReplyAt. */
+  lastReplyAt: string | null
   messages: Array<{ seq: number; fromSupport: boolean; supportName: string | null; body: string; attachments: number; at: string; files?: ShownFile[] }>
 }
 
 /** TicketService.MyTicket */
 function myTicket(t: MockTicket) {
-  return { id: t.id, number: t.number, subject: t.subject, status: t.status, createdAt: t.createdAt, lastMessageAt: t.lastMessageAt }
+  return { id: t.id, number: t.number, subject: t.subject, status: t.status, createdAt: t.createdAt, lastMessageAt: t.lastMessageAt, lastReplyAt: t.lastReplyAt }
 }
 
 export class MockApi {
@@ -178,12 +180,18 @@ export class MockApi {
   /** Messages of theirs in the last hour, new questions included (TicketService: 429 TOO_MANY_MESSAGES past 20). */
   addedThisHour = 0
   /** A support reply on a ticket, as the admin website would add it (it then waits on the customer). */
-  supportReplies(ticket: MockTicket, body: string, name = 'Neha') {
-    ticket.messages.push({ seq: ticket.messages.length + 1, fromSupport: true, supportName: name, body, attachments: 0, at: new Date().toISOString() })
-    ticket.status = 'WAITING'
-    ticket.lastMessageAt = new Date().toISOString()
+  supportReplies(ticket: MockTicket, body: string, name = 'Neha', status: 'WAITING' | 'RESOLVED' = 'WAITING') {
+    const at = new Date().toISOString()
+    ticket.messages.push({ seq: ticket.messages.length + 1, fromSupport: true, supportName: name, body, attachments: 0, at })
+    ticket.status = status
+    ticket.lastMessageAt = at
+    ticket.lastReplyAt = at
     // TicketService.notifyReplied: "Support replied" in this app's list (never the reply's words)
     this.inbox.unshift({ id: `n${this.inbox.length + 1}`, type: 'CUSTOMERHELP_REPLIED', title: `Support replied on ${ticket.number}`, body: 'We replied to your question. Tap to read it.', url: `/help/requests/${ticket.id}`, sentAt: new Date().toISOString(), read: false })
+  }
+  /** Support replies and resolves it in one go (the admin website's "Reply and resolve"): RESOLVED, lastReplyAt set. */
+  supportRepliesAndResolves(ticket: MockTicket, body: string, name = 'Neha') {
+    this.supportReplies(ticket, body, name, 'RESOLVED')
   }
   /** Someone else's ticket (to check it is never shown). */
   addOthersTicket(): MockTicket {
@@ -194,7 +202,7 @@ export class MockApi {
     const n = 1001 + this.tickets.length
     const at = new Date().toISOString()
     const t: MockTicket = {
-      id: `t${n}`, number: `CLZ-${n}`, owner, app, subject, message, status: 'OPEN', createdAt: at, lastMessageAt: at,
+      id: `t${n}`, number: `CLZ-${n}`, owner, app, subject, message, status: 'OPEN', createdAt: at, lastMessageAt: at, lastReplyAt: null,
       messages: [{ seq: 1, fromSupport: false, supportName: null, body: message, attachments: 0, at }],
     }
     this.tickets.push(t)
@@ -292,12 +300,16 @@ export class MockApi {
   loseNextPhoneChange = false
   /** How many refreshes sent a token that had already been swapped (the backend would sign out everywhere). */
   reused = 0
+  /** Online booking paused for strikes until this instant (POST /bookings: 403 BOOKING_BLOCKED with details.until). */
+  blockedUntil: string | null = null
   /** The next booking is refused with PROFILE_INCOMPLETE (the saved profile in the app was out of date). */
   profileIncompleteOnce = false
   /** Move targets (ISO) that answer SLOT_TAKEN once. */
   moveTakenOnce = new Set<string>()
   /** How many next-page requests fail (the earlier pages must stay on screen). */
   failSalonPages = 0
+  /** The salon's name on its page (a long one, to check the title bar on a small phone). */
+  salonName = SALON.name
   /** The salon was suspended: its pages answer 404 SALON_NOT_FOUND. */
   salonGone = false
   /** Paths (by suffix) answered 503 SERVICE_BUSY with Retry-After this many times. */
@@ -609,7 +621,7 @@ export class MockApi {
       return ok(200, { on: body.on })
     }
     if (p === '/salons/s1') {
-      return ok(200, { ...SALON, maxDaysAhead: this.maxDaysAhead, closedDates: this.closedDates, offers: this.offers, offerMessages: this.visitedS1 ? !this.mutedS1 : null, licensedUntil: this.licensedUntil, notTakingBookings: this.notTakingBookings })
+      return ok(200, { ...SALON, name: this.salonName, maxDaysAhead: this.maxDaysAhead, closedDates: this.closedDates, offers: this.offers, offerMessages: this.visitedS1 ? !this.mutedS1 : null, licensedUntil: this.licensedUntil, notTakingBookings: this.notTakingBookings })
     }
     if (p === '/salons/s1/services') {
       // BookingService.salonServices: each service's price in its best offer (running or to come)
@@ -661,6 +673,10 @@ export class MockApi {
         this.profileIncompleteOnce = false
         this.user = { ...this.user, name: null }
         return fail(403, 'PROFILE_INCOMPLETE', 'Add your name first.', { missing: ['name'] })
+      }
+      // BookingService.requireNotBlocked: 3 missed or late-cancelled within 60 days pause online booking for 30 days
+      if (this.blockedUntil) {
+        return fail(403, 'BOOKING_BLOCKED', 'Online booking is paused for you after 3 missed or late-cancelled bookings. You can still walk in.', { until: this.blockedUntil })
       }
       // BookingService.book: a salon whose subscription lapsed takes no new bookings (moves stay allowed)
       if (this.notTakingBookings) return fail(409, 'SALON_NOT_BOOKABLE', "This salon isn't taking online bookings right now. Try again later.")

@@ -3,6 +3,7 @@ import { expect, signedIn, test } from './helpers'
 test('after sending, the request opens in My requests; support replies show; adding to it sends it back to support', async ({ page, context, api }) => {
   await signedIn(context, api)
   await page.goto('/help')
+  await page.getByRole('button', { name: 'Write to us' }).click()
   await page.getByLabel("What's it about? (optional)").fill('Booking refund')
   await page.getByLabel('Your message').fill('My booking SB12 was cancelled by the salon.')
   await page.getByRole('button', { name: 'Send to support' }).click()
@@ -57,7 +58,7 @@ test("no requests yet says how to ask; someone else's request is never shown", a
   await expect(page.getByText('Request not found')).toBeVisible()
   await expect(page.getByText('Another account asked this.')).toBeHidden()
   await page.goto('/help')
-  await page.getByRole('link', { name: 'Asked before? See My requests and our replies' }).click()
+  await page.getByRole('link', { name: /^My requests/ }).click()
   await expect(page).toHaveURL(/\/help\/requests$/)
 })
 
@@ -156,7 +157,7 @@ test('a file that fails can be tried again or removed; any kind of file goes, to
 
 test('a new question goes with a photo; signing out forgets what was typed', async ({ page, context, api }) => {
   await signedIn(context, api)
-  await page.goto('/help')
+  await page.goto('/help?write=1')
   await page.getByLabel('Your message').fill('The salon was closed when I arrived.')
   await page.locator('#help-files').setInputFiles({ name: 'door.jpg', mimeType: 'image/jpeg', buffer: Buffer.from([0xff, 0xd8, 0xff, 0xe0]) })
   await expect(page.getByText(/Attached/)).toBeVisible()
