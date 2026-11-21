@@ -120,6 +120,67 @@ function card(over: Record<string, unknown>) {
   }
 }
 
+/**
+ * The backend's salon search (GET /salons?q=, SalonSearch and ShopDirectoryService), for the fake list: q trimmed
+ * with runs of spaces made one, 2 to 60 characters (else 400 VALIDATION_FAILED on q), blank for all. A salon
+ * matches when its name, or one of its services a working barber does (`searchServices`; else the card's
+ * topServices), contains the text in any case, or shows a picture the text starts a word of, or (the text letters and
+ * spaces only, from 4 letters) every word of the text matches on its own: the name contains it, or from 4 letters it is
+ * a slip of one of the name's words (split at spaces and punctuation): about as long (1 letter more or fewer, 2 from 7)
+ * and pg_trgm similarity from 0.35, as ShopDirectory.Search.textMatches. % _ and \ are just characters.
+ */
+export const SEARCH_ICON_WORDS: Record<string, string[]> = {
+  HAIRCUT: ['haircut', 'hair cut', 'cutting'], TRIM: ['trim'], BEARD: ['beard'], MOUSTACHE: ['moustache', 'mustache', 'mooch', 'mooche'],
+  SHAVE: ['shave', 'shaving'], HAIR_WASH: ['hair wash'], HAIR_SPA: ['hair spa'], HEAD_MASSAGE: ['head massage', 'champi', 'maalish', 'malish', 'oil massage'],
+  HAIR_COLOUR: ['hair colour', 'hair color', 'color', 'dye', 'henna'], STYLING: ['styling'], STRAIGHTENING: ['straightening'], CURLS: ['curls'],
+  BRAIDS: ['braids'], FACIAL: ['facial', 'face', 'clean up', 'cleanup', 'clean-up'], THREADING: ['threading', 'eyebrow'], WAXING: ['waxing', 'wax'],
+  EYELASH: ['eyelash'], MAKEUP: ['makeup', 'make up', 'make-up'], BRIDAL: ['bridal', 'bride', 'dulhan', 'wedding'],
+  MEHENDI: ['mehendi', 'mehndi', 'mehandi', 'henna'], MANICURE: ['manicure', 'nail'], PEDICURE: ['pedicure', 'feet', 'foot'], MASSAGE: ['massage'],
+  BODY_SPA: ['body spa'], PIERCING: ['piercing'], KIDS: ['kids', 'kid', 'child', 'children', 'baby'], PACKAGE: ['package'],
+}
+
+/** pg_trgm's trigrams of each word ("  f", " fa", "fac", …, "al "), in order. */
+function trigrams(text: string): string[] {
+  const out: string[] = []
+  for (const word of text.toLowerCase().split(/[^\p{L}\p{N}\p{M}]+/u).filter(Boolean)) {
+    const padded = [...`  ${word} `]
+    for (let i = 0; i + 3 <= padded.length; i++) out.push(padded.slice(i, i + 3).join(''))
+  }
+  return out
+}
+
+/** pg_trgm's similarity(a, b): the trigrams the two share, of all of theirs. */
+export function similarity(a: string, b: string): number {
+  const x = new Set(trigrams(a))
+  const y = new Set(trigrams(b))
+  const all = new Set([...x, ...y]).size
+  return all === 0 ? 0 : [...x].filter((g) => y.has(g)).length / all
+}
+
+/** Whether a salon card matches q as the backend reads it (q already checked: 2 to 60 characters, tidied). */
+export function salonMatches(salon: Record<string, any>, q: string): boolean {
+  const text = q.toLowerCase()
+  const typos = [...q].length >= 4 && /^[\p{L}\p{M} ]+$/u.test(q)
+  const icons = Object.entries(SEARCH_ICON_WORDS)
+    .filter(([, words]) => words.some((w) => w.startsWith(text) || w.includes(` ${text}`) || w.includes(`-${text}`)))
+    .map(([icon]) => icon)
+  const like = (name: string) => name.toLowerCase().includes(text)
+  // Word by word (one common word shared is never enough: "haircut" doesn't find "Raju Hair Salon")
+  const near = (name: string) => {
+    if (!typos) return false
+    const lower = name.toLowerCase()
+    const nameWords = lower.split(/[\s\p{P}\p{S}]+/u).filter(Boolean)
+    return text.split(' ').every((w) => {
+      const n = [...w].length
+      return lower.includes(w) || (n >= 4 && nameWords.some((nw) =>
+        Math.abs([...nw].length - n) <= (n >= 7 ? 2 : 1) && similarity(w, nw) >= 0.35))
+    })
+  }
+  const services: Array<{ name: string; icon?: string | null }> = salon.searchServices ?? salon.topServices ?? []
+  return like(salon.name) || near(salon.name)
+    || services.some((v) => like(v.name) || near(v.name) || (v.icon != null && icons.includes(v.icon)))
+}
+
 export const SERVICES = [
   { id: 'v1', name: 'Haircut', durationMinutes: 30, pricePaise: 20000, priceIsFrom: false, icon: 'HAIRCUT' },
   { id: 'v2', name: 'Beard trim', durationMinutes: 15, pricePaise: 10000, priceIsFrom: false },
@@ -310,6 +371,21 @@ export class MockApi {
   failSalonPages = 0
   /** The salon's name on its page (a long one, to check the title bar on a small phone). */
   salonName = SALON.name
+  /** Each q the salon list was asked with, in order (tidied, as the backend reads it). */
+  salonSearches: string[] = []
+  /** How many searches (requests with a q) fail with a 500. */
+  failSalonSearches = 0
+  /**
+   * Searches (GET /salons with q, every page) one person may make in a minute; past it, 429 TOO_MANY_REQUESTS with
+   * Retry-After until the minute is over, the same error as the salon pages' limit. Without q: no limit.
+   */
+  searchesPerMinute = 30
+  /** The searches counted in the current minute (when each was made). */
+  searchTimes: number[] = []
+  /** The next this many searches answer 429 at once, with this Retry-After (a test needn't wait a whole minute). */
+  limitSearches = { times: 0, retryAfter: 2 }
+  /** Searches answered 429 (the limit), in order. */
+  limitedSearches: string[] = []
   /** The salon was suspended: its pages answer 404 SALON_NOT_FOUND. */
   salonGone = false
   /** Paths (by suffix) answered 503 SERVICE_BUSY with Retry-After this many times. */
@@ -597,9 +673,38 @@ export class MockApi {
         this.failSalonPages -= 1
         return fail(500, 'INTERNAL_ERROR', 'Something went wrong on our side.')
       }
-      const rest = afterId === null ? this.salons : this.salons.filter((s) =>
+      // BookingController/SalonSearch: q trimmed, 2 to 60 characters, blank for all; then the same pages of the matches
+      const q = (url.searchParams.get('q') ?? '').trim().replace(/\s+/g, ' ')
+      if (q !== '' && ([...q].length < 2 || [...q].length > 60)) {
+        return fail(400, 'VALIDATION_FAILED', 'Some fields are not valid', { q: [...q].length < 2 ? 'type at least 2 letters' : 'at most 60 letters' })
+      }
+      // SalonSearch's per-person limit, counted on every request with q (before the search runs)
+      if (q !== '') {
+        const now = Date.now()
+        this.searchTimes = this.searchTimes.filter((t) => now - t < 60_000)
+        const forced = this.limitSearches.times > 0
+        if (forced || this.searchTimes.length >= this.searchesPerMinute) {
+          if (forced) this.limitSearches.times -= 1
+          const wait = forced ? this.limitSearches.retryAfter : Math.max(1, Math.ceil((this.searchTimes[0] + 60_000 - now) / 1000))
+          this.limitedSearches.push(q)
+          return ok(
+            429,
+            { code: 'TOO_MANY_REQUESTS', message: 'Too many searches at once. Wait a few seconds and try again.', details: {} },
+            { 'Retry-After': String(wait) },
+          )
+        }
+        this.searchTimes.push(now)
+      }
+      if (q !== '') this.salonSearches.push(q)
+      if (q !== '' && this.failSalonSearches > 0) {
+        this.failSalonSearches -= 1
+        return fail(500, 'INTERNAL_ERROR', 'Something went wrong on our side.')
+      }
+      const found = q === '' ? this.salons : this.salons.filter((s) => salonMatches(s, q))
+      const rest = afterId === null ? found : found.filter((s) =>
         s.distanceMetres > Number(afterDistance) || (s.distanceMetres === Number(afterDistance) && s.id > afterId))
-      return ok(200, rest.slice(0, 30))
+      // searchServices is the fake's own (the backend's services table), never part of a card
+      return ok(200, rest.slice(0, 30).map(({ searchServices: _services, ...c }) => c))
     }
     // BookingService.requireReadsLeft: a salon page, its services and its free times count together, per person
     if (/^\/salons\/[^/]+(\/services|\/availability)?$/.test(p)) {
