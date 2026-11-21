@@ -1,18 +1,21 @@
 {
   "spinnerLoading": "लोड होत आहे",
-
   "errorTitle": "या स्क्रीनवर काहीतरी चुकले",
   "errorBody": "तुमची बुकिंग सुरक्षित आहेत. पुढे चालू ठेवण्यासाठी पुन्हा सुरुवात करा.",
   "errorStartAgain": "पुन्हा सुरुवात करा",
-
   "updateAvailable": "नवीन व्हर्जन आले आहे",
   "updateReload": "रिलोड करा",
-
   "mapAttribution": "© OpenStreetMap contributors",
   "mapPinTitle": "तुमची जागा",
   "mapPinMovedNorth": "पिन उत्तरेकडे सरकवली.",
   "mapPinMovedSouth": "पिन दक्षिणेकडे सरकवली.",
   "mapPinMovedWest": "पिन पश्चिमेकडे सरकवली.",
   "mapPinMovedEast": "पिन पूर्वेकडे सरकवली.",
-  "mapAria": "नकाशा: पिन ओढून तुमच्या बिल्डिंगवर ठेवा, किंवा Tab ने पिनवर जा आणि ॲरो कीज वापरा"
+  "mapAria": "नकाशा: पिन ओढून तुमच्या बिल्डिंगवर ठेवा, किंवा Tab ने पिनवर जा आणि ॲरो कीज वापरा",
+  "help": "मदत",
+  "helpReplied": "सपोर्टने तुम्हाला उत्तर दिले आहे",
+  "errorHelpAbout": "काहीतरी चालत नाही",
+  "errorHelpText": "{screen} या स्क्रीनवर हे दिसते: \"{message}\"\nमी हे करत होतो/होते: ",
+  "errorStillBefore": "अजूनही चालत नाही?",
+  "errorWriteToUs": "आम्हाला लिहा"
 }
