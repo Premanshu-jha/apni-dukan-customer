@@ -1,6 +1,6 @@
 import { useQueryClient } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
-import { Navigate, useNavigate, useParams } from 'react-router'
+import { Link, Navigate, useNavigate, useParams } from 'react-router'
 import { useBook } from '../../api/bookings'
 import { isApiError, messageOf, salonReadMessage } from '../../api/errors'
 import { useSalon, useSalonServices, useSlots } from '../../api/salons'
@@ -15,6 +15,7 @@ import { ServiceIcon } from '../../components/ServiceIcon'
 import { lateCancelSoon, termsFor } from '../bookings/lateCancel'
 import { useT } from '../../i18n'
 import { serviceName } from '../../lib/serviceName'
+import { BOOKING_RULES } from '../guide/rules'
 
 /** A booking can't be moved within this many minutes of its start (the backend's LATE_CANCEL). */
 const LATE_CANCEL_MIN = 60
@@ -42,7 +43,7 @@ export function ConfirmBooking() {
   const book = useBook()
   const qc = useQueryClient()
   const setUser = useSession((s) => s.setUser)
-  const [error, setError] = useState<{ code: string; message: string } | null>(null)
+  const [error, setError] = useState<{ code: string; message: string; until?: string | null } | null>(null)
   // Set when leaving this screen, so changing the draft on the way out doesn't bounce it back to the salon.
   const [leaving, setLeaving] = useState(false)
   // The late-cancel warning depends on the clock: look again every 15 seconds while the screen is open
@@ -158,6 +159,7 @@ export function ConfirmBooking() {
           setError({
             code: isApiError(e) ? e.code : 'UNKNOWN',
             message: until ? t('salon.blockedUntil', { message: messageOf(e), time: dateTimeIst(until) }) : messageOf(e),
+            until,
           })
         },
       },
@@ -168,10 +170,15 @@ export function ConfirmBooking() {
     <Page
       back={`/salons/${id}/book`}
       title={t('salon.confirmTitle')}
+      help={salon.data ? { about: t('guide.aboutConfirm', { salon: salon.data.name }) } : undefined}
       footer={
-        <Button className="w-full" busy={book.isPending} disabled={sendIds.length === 0} onClick={submit}>
-          {t('salon.bookNow')}
-        </Button>
+        <>
+          <Button className="w-full" busy={book.isPending} disabled={sendIds.length === 0} onClick={submit}>
+            {t('salon.bookNow')}
+          </Button>
+          {/* The rules, for everyone: someone who came from a salon's link never saw Home's How booking works */}
+          <p className="mt-2 text-xs text-muted">{t('salon.bookRules', BOOKING_RULES)}</p>
+        </>
       }
     >
       {timeGone && (
@@ -247,6 +254,21 @@ export function ConfirmBooking() {
       {error && (
         <Banner tone="bad">
           {error.message}
+          {/* Paused for missed bookings: one marked missed by mistake is put right by our support team */}
+          {error.code === 'BOOKING_BLOCKED' && (
+            <>
+              {' '}
+              <Link
+                className="underline"
+                to={`/help?${new URLSearchParams({
+                  about: t('howto.missedSubject'),
+                  text: error.until ? t('salon.blockedHelpText', { time: dateTimeIst(error.until) }) : t('salon.blockedHelpTextNoTime'),
+                })}`}
+              >
+                {t('salon.blockedWriteToUs')}
+              </Link>
+            </>
+          )}
           {(error.code === 'TOO_MANY_BOOKINGS' || error.code === 'IDEMPOTENCY_KEY_REUSED') && (
             <>
               {' '}

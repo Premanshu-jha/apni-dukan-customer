@@ -12,6 +12,7 @@ import { SalonPhoto } from './SalonList'
 import { useT } from '../../i18n'
 import { serviceName } from '../../lib/serviceName'
 import { tagText } from '../../lib/ratings'
+import { Hint } from '../guide/Hint'
 
 export function SalonPage() {
   const t = useT()
@@ -96,6 +97,7 @@ export function SalonPage() {
     <Page
       back="/"
       title={s.name}
+      help={{ about: t('guide.aboutSalon', { name: s.name }) }}
       footer={
         <div className="flex items-center gap-3">
           <div className="flex-1">
@@ -121,6 +123,8 @@ export function SalonPage() {
       {(salon.isRefetchError || services.isRefetchError) && (
         <Banner tone="warn">{t('salon.refreshSalonFailed', { message: salonReadMessage(salon.error ?? services.error) })}</Banner>
       )}
+      {/* First visit to a salon's page: how to go on (once per account) */}
+      {!off && !paused && services.data.length > 0 && <Hint name="hint.salon">{t('guide.hintSalon')}</Hint>}
       <SalonPhoto url={s.photoUrl} name={s.name} large />
       <div className="flex flex-col gap-1">
         {s.rating && (

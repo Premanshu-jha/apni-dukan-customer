@@ -11,6 +11,8 @@ import { VerifyEmailBanner } from '../auth/VerifyEmailBanner'
 import { type CategoryId, shownCategories } from './categories'
 import { greeting } from '../../lib/ist'
 import { YourBooking } from './YourBooking'
+import { HomeVisitTip, HowItWorks, PlacesHint } from '../guide/HomeGuide'
+import { HelpButton } from '../help/HelpButton'
 import { useT } from '../../i18n'
 
 /**
@@ -34,10 +36,17 @@ export function Home() {
           <h1 className="font-display text-2xl font-bold">{first ? t('home.greetingWithName', { greeting: hello, name: first }) : hello}</h1>
           <p className="text-muted">{t('home.subtitle')}</p>
         </div>
-        <Bell />
+        {/* Help beside the bell (Home has no title bar to carry it) */}
+        <div className="flex shrink-0 items-center gap-2">
+          <HelpButton />
+          <Bell />
+        </div>
       </div>
-      <VerifyEmailBanner />
+      <VerifyEmailBanner compact />
       <YourBooking />
+      {/* First-time guide: how booking works (never booked), or the salon messages after a first visit */}
+      <HowItWorks />
+      <HomeVisitTip />
       {/* Tabs only once a second category is open */}
       {shown.length > 1 && (
       <div role="tablist" aria-label={t('home.categoriesLabel')} className="grid grid-cols-3 gap-2">
@@ -69,6 +78,7 @@ export function Home() {
           {(place) => (
             <>
               <LocationBar />
+              <PlacesHint />
               {place.accuracy > ROUGH_METRES && (
                 <Banner tone="warn">
                   {t('home.roughLocation', { km: Math.round(place.accuracy / 1000) })}

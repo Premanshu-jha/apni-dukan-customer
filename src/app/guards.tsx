@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { Navigate, Outlet, useLocation } from 'react-router'
 import { Loading } from '../components/ui'
-import { forgetReturn, nextAfterSignIn, rememberAfterEmail, rememberReturn } from '../features/auth/flow'
+import { forgetReturn, isFreshSalonLink, nextAfterSignIn, rememberAfterEmail, rememberReturn } from '../features/auth/flow'
 import { needsEmail, signedInHereBefore, signUpSteps, useSession } from '../store/session'
 
 /** Screens for signed-out people only (sign-in); a signed-in person goes on to the app. */
@@ -46,8 +46,10 @@ export function SignedIn() {
       forgetReturn()
       return <Navigate to="/about" replace />
     }
-    // Coming from a link: come back here after sign-in. Just signed out here: the next person starts at Home.
-    if (!endedHere) rememberReturn(location.pathname + location.search)
+    // Coming from a link: come back here after sign-in. The session ended in this tab: the next person starts at
+    // Home (the screen the last person was on isn't theirs, a salon's page included), except a salon's link this tab
+    // was just opened with, nobody signed in on it yet (a saved session refused at start-up): that is where they go
+    if (!endedHere || isFreshSalonLink(location.pathname)) rememberReturn(location.pathname + location.search)
     return <Navigate to="/signin" replace />
   }
   const missing = signUpSteps(user)
