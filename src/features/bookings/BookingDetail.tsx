@@ -13,6 +13,8 @@ import { cancelIsLate, lateCancelFromOf } from './lateCancel'
 import { earlierOffer, isEarlier } from './status'
 import { serviceName } from '../../lib/serviceName'
 import { ServiceIcon } from '../../components/ServiceIcon'
+import { Hint } from '../guide/Hint'
+import { VisitTip } from '../guide/HomeGuide'
 
 /** Bookings can't be moved within this many minutes of the start (the backend's TOO_LATE_TO_MOVE). */
 const NO_MOVE_MIN = 60
@@ -68,7 +70,7 @@ export function BookingDetail() {
   const late = cancelIsLate(b)
 
   return (
-    <Page back="/bookings" title={t('bookings.bookingNo', { no: b.bookingNo })}>
+    <Page back="/bookings" title={t('bookings.bookingNo', { no: b.bookingNo })} help={{ about: t('bookings.helpAbout', { no: b.bookingNo }) }}>
       {justBooked && b.status === 'CONFIRMED' && <Banner tone="good">{t('bookings.justBooked', { time: timeIst(b.startsAt) })}</Banner>}
       {note && (
         <div ref={noteRef} tabIndex={-1} role="status" className="outline-none">
@@ -144,6 +146,8 @@ export function BookingDetail() {
         )}
       </Card>
 
+      {/* A first booking's page: what it is for (once per account) */}
+      {b.status === 'CONFIRMED' && b.startCode && <Hint name="hint.booking">{t('guide.hintBooking')}</Hint>}
       {b.status === 'CONFIRMED' && b.startCode && (
         <Card className="flex flex-col items-center gap-2 text-center">
           <p className="text-sm text-muted">{t('bookings.showCode')}</p>
@@ -190,6 +194,8 @@ export function BookingDetail() {
       </Card>
 
       {b.status === 'COMPLETED' && <RateVisit booking={b} focus={toRate} />}
+      {/* After a finished visit, once: come-back reminders and offer messages, switched right here */}
+      {b.status === 'COMPLETED' && <VisitTip />}
 
       {justBooked && <NotificationsPrompt />}
 

@@ -1,18 +1,21 @@
 {
   "spinnerLoading": "लोड हो रहा है",
-
   "errorTitle": "इस स्क्रीन पर कुछ गड़बड़ हो गई",
   "errorBody": "आपकी बुकिंग सुरक्षित हैं। आगे बढ़ने के लिए फिर से शुरू करें।",
   "errorStartAgain": "फिर से शुरू करें",
-
   "updateAvailable": "नया वर्ज़न आ गया है",
   "updateReload": "रीलोड करें",
-
   "mapAttribution": "© OpenStreetMap के योगदानकर्ता",
   "mapPinTitle": "आपकी जगह",
   "mapPinMovedNorth": "पिन उत्तर की ओर खिसका।",
   "mapPinMovedSouth": "पिन दक्षिण की ओर खिसका।",
   "mapPinMovedWest": "पिन पश्चिम की ओर खिसका।",
   "mapPinMovedEast": "पिन पूरब की ओर खिसका।",
-  "mapAria": "मैप: पिन को खींचकर अपनी बिल्डिंग पर रखें, या टैब से पिन पर जाकर तीर वाली कुंजियाँ (arrow keys) इस्तेमाल करें"
+  "mapAria": "मैप: पिन को खींचकर अपनी बिल्डिंग पर रखें, या टैब से पिन पर जाकर तीर वाली कुंजियाँ (arrow keys) इस्तेमाल करें",
+  "help": "मदद",
+  "helpReplied": "सपोर्ट ने आपको जवाब दिया है",
+  "errorHelpAbout": "कुछ काम नहीं कर रहा",
+  "errorHelpText": "स्क्रीन {screen} पर यह दिख रहा है: \"{message}\"\nमैं यह कर रहा/रही था/थी: ",
+  "errorStillBefore": "अब भी ठीक नहीं हुआ?",
+  "errorWriteToUs": "हमें लिखें"
 }

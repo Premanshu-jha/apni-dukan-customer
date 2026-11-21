@@ -90,6 +90,38 @@ anyone who has signed in on this browser before goes straight to sign-in.
 
 ## Flows
 
+### The app guides itself
+
+No customer should need anyone to explain the app:
+
+- **Help on every screen.** `Page` puts "? Help" at the top right of every screen (Home: beside the bell). Signed
+  out it opens Contact. A dot says support replied and the reply hasn't been opened yet (the request's `lastReplyAt`
+  newer than when it was last opened, whatever its status: a reply that also resolved it counts): the same cached
+  read as My requests (2-minute stale time, on opening and on coming back to the app, no polling, never while signed
+  out or before the email is verified).
+- **The help page answers first:** "Write to us" (the existing form), My requests with counts, and 18 how-to answers
+  you can search (in the screen's language and English), each with "Take me there". The rules quoted are the
+  backend's own (free to cancel until 1 hour before and for 10 minutes after booking; 3 missed or late cancels in 60
+  days pause online booking for 30 days; 2 upcoming bookings at most). The answers can be read before the email is
+  verified; writing still asks for it first. Opened from a screen, a question is already about it (`?about=…&keep=1`
+  never replaces a draft with a message).
+- **Every error offers support:** `ErrorState` adds "Still not working? Write to us", the error filled in.
+- **How booking works** on Home until the first booking: one line ("How booking works ›", with Got it) that opens to
+  the 3 steps and the rules line, so on a 360×640 phone a new customer still sees the search box and the first salon
+  (Home's Verify email banner is a one-line box there too, and the save-a-place hint waits until How booking works is
+  put away). A one-time tip after the first finished visit (come-back reminders, offer messages), and one-line hints
+  the first time on a salon, Pick a time and a booking.
+- **The rules before booking:** Confirm booking says them under Book now, for everyone (someone from a salon's link
+  never saw Home). Paused for missed bookings (403 `BOOKING_BLOCKED`): "Missed by mistake? Write to us" opens the
+  form with the subject and until when.
+- **A shared salon link** (`/salons/<id>`, e.g. from a salon's poster) opened signed out: the sign-in screen says why,
+  and the person comes straight back to that salon after sign-in, also when the saved session turned out to have
+  ended. Not the salon page the last person had open when their session ended: the next person starts at Home. A
+  place to come back to is kept 30 minutes, so a link opened on a shared phone by someone who never signed in doesn't
+  take the next person there later.
+- **A shared phone:** a sign-out anywhere (this tab, another tab, the backend ending the session) forgets the last
+  person's cached data, help drafts, where they were going and what they searched for.
+
 ### Sign-up and sign-in
 
 Who goes where: the route guards (`src/app/guards.tsx`) and `nextAfterSignIn` (`src/features/auth/flow.ts`).
@@ -227,6 +259,20 @@ public/         sw.js (push notifications), manifest, icon, offline.html and off
 - A device name ("Chrome on Android · 4f2a") is made once and sent with sign-in and refresh.
 - Known trade-off for now: a refresh token in `localStorage` can be read by a script injected into the page. Before
   launch it can move to an HttpOnly cookie (needs a small backend change).
+
+### Searching nearby salons
+
+A box above the list on Home: "Salon or service (haircut, facial…)", plus chips for common services (their own
+pictures). `GET /salons?lat&lng&q=` (backend V85) matches the salon's name or a service an active barber does,
+in part, ignoring case, a small spelling slip forgiven word by word, and a service's picture ("facial" finds "Face clean-up"); same
+2 km, same order and paging. Requests wait for a 300 ms pause in typing, none below 2 letters; chips are sent as
+their English word, whatever the language (the chip tapped is kept, so switching the language keeps the search). A
+word in Hindi or another script that the app itself uses for a service ("फेशियल" without its nukta, "हेयर", "बियर्ड",
+"मसाज") is sent as the English word (`englishSearch`, matched against every language's `service.json`); Latin text
+and other words go as typed. The text is kept for the tab (sessionStorage), so opening a salon and coming back keeps
+the search; it is cleared on sign-out. Nothing found offers "Show all salons near you" and "Let us know". Too many
+searches (the backend's per-person limit, 429 `TOO_MANY_REQUESTS` with `Retry-After`): "Too many searches. Wait a
+moment…", then one more try by itself after `Retry-After`, the words kept.
 
 ### Location and nearby salons
 
@@ -429,6 +475,24 @@ applies at once and keeps whatever was typed. The language code is the partner a
   should be read once by a native speaker of each language.
 
 ## Changelog
+
+### 0.27.0 — 2026-11-21
+
+Uses the backend with V85 (the salon search), `lastReplyAt` on My requests and the search limit; deploy the backend
+first. An older backend ignores `q`, so a search would show every nearby salon under "matching"; without `lastReplyAt`
+the Help dot falls back to "We replied" requests only.
+
+- **Help on every screen** (beside the bell on Home), with a dot when support replied; signed out it opens Contact.
+- **The help page answers first:** Write to us, My requests with counts, 18 searchable how-to answers with "Take me
+  there"; readable before the email is verified. Help from a screen fills in what it is about; Profile has Need help
+  first.
+- **Errors offer support:** "Still not working? Write to us" under every error.
+- **How booking works** for first-timers, tips at the right moment (after a first visit, saving a place), and
+  one-line hints on the salon page, Pick a time and a booking.
+- **Shared salon links** bring a signed-out person back to that salon after sign-in.
+- **Search nearby salons by name or service**, with service chips; Hindi and other scripts' service words searched
+  as the English word salons use; a limited search says so and tries again by itself.
+- **The rules on Confirm booking** under Book now; "Missed by mistake? Write to us" when online booking is paused.
 
 ### 0.26.1 — 2026-11-21
 

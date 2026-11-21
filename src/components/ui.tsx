@@ -1,5 +1,7 @@
 import { useEffect, useId, useRef, type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactNode } from 'react'
-import { useNavigate } from 'react-router'
+import { Link, useLocation, useNavigate } from 'react-router'
+import { HelpButton } from '../features/help/HelpButton'
+import { isHelpScreen, useHelpLink } from '../features/help/helpLink'
 import { useT } from '../i18n'
 
 type Variant = 'primary' | 'secondary' | 'danger' | 'ghost'
@@ -107,6 +109,9 @@ export function Banner({ tone = 'info', children, live = true }: { tone?: Tone; 
 
 export function ErrorState({ message, onRetry }: { message: string; onRetry?: () => void }) {
   const t = useT()
+  const { pathname } = useLocation()
+  // Still failing after Try again: a way to tell us, with what went wrong already written in (signed out: Contact)
+  const help = useHelpLink(t('ui.errorHelpAbout'), t('ui.errorHelpText', { message, screen: pathname }))
   return (
     <div className="flex flex-col items-center gap-4 py-10 text-center">
       <p className="text-muted">{message}</p>
@@ -114,6 +119,14 @@ export function ErrorState({ message, onRetry }: { message: string; onRetry?: ()
         <Button variant="secondary" onClick={onRetry}>
           {t('common.retry')}
         </Button>
+      )}
+      {!isHelpScreen(pathname) && (
+        <p className="text-sm text-muted">
+          {t('ui.errorStillBefore')}{' '}
+          <Link to={help} className="inline-flex min-h-11 items-center font-semibold text-link underline">
+            {t('ui.errorWriteToUs')}
+          </Link>
+        </p>
       )}
     </div>
   )
@@ -129,12 +142,17 @@ export function EmptyState({ title, body, action }: { title: string; body?: stri
   )
 }
 
-/** A screen with a title bar; `back` shows a back arrow (`onBack` runs first, e.g. to forget something). */
+/**
+ * A screen with a title bar; `back` shows a back arrow (`onBack` runs first, e.g. to forget something). The bar also
+ * has Help at the right (not on the help screens themselves); `help` says what this screen is about, to start Need
+ * help's subject with (a salon's name, a booking's number), or false for none.
+ */
 export function Page({
   title,
   back,
   backReplace,
   onBack,
+  help,
   children,
   footer,
 }: {
@@ -143,11 +161,14 @@ export function Page({
   /** With a string `back`: go there in place of this screen (no history entry), so Back can't loop */
   backReplace?: boolean
   onBack?: () => void
+  help?: false | { about?: string; text?: string }
   children: ReactNode
   footer?: ReactNode
 }) {
   const navigate = useNavigate()
   const t = useT()
+  const { pathname } = useLocation()
+  const withHelp = help !== false && !isHelpScreen(pathname)
   return (
     <div className="flex flex-1 flex-col">
       {(title || back) && (
@@ -166,7 +187,15 @@ export function Page({
               ←
             </button>
           )}
-          {title && <h1 className={`font-display text-lg font-semibold ${back ? '' : 'px-2'}`}>{title}</h1>}
+          {/* A long salon name wraps to two lines (then ends in …) instead of pushing Help off the screen */}
+          {title && (
+            <h1 className={`line-clamp-2 min-w-0 flex-1 font-display text-lg font-semibold break-words ${back ? '' : 'px-2'}`}>{title}</h1>
+          )}
+          {withHelp && (
+            <span className="ml-auto shrink-0 pr-1">
+              <HelpButton about={help ? help.about : undefined} text={help ? help.text : undefined} />
+            </span>
+          )}
         </header>
       )}
       <main className="flex flex-1 flex-col gap-4 px-4 py-4">{children}</main>

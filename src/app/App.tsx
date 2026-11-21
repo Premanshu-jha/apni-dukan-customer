@@ -73,8 +73,10 @@ export function App() {
             <Route path="/salons/:id/confirm" element={<ConfirmBooking />} />
             <Route path="/places/new" element={<EditPlace />} />
             <Route path="/places/:id" element={<EditPlace />} />
-            <Route path="/help" element={<NeedHelp />} />
           </Route>
+          {/* Need help's answers are for everyone signed in; writing to us still waits for the email (NeedHelp sends
+              to the email screen first, as this guard did) */}
+          <Route path="/help" element={<NeedHelp />} />
           <Route path="/bookings/:id" element={<BookingDetail />} />
           <Route path="/bookings/:id/move" element={<MoveBooking />} />
           <Route path="/notifications" element={<Inbox />} />

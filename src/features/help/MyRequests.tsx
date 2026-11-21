@@ -9,6 +9,7 @@ import { dateTimeIst } from '../../lib/ist'
 import { storage } from '../../lib/storage'
 import { useSession } from '../../store/session'
 import { AttachmentPicker, MessageFiles, useAttachments } from './Attach'
+import { markReplySeen } from './replied'
 import { cleanedLength, sendError } from './text'
 import { useT } from '../../i18n'
 
@@ -125,6 +126,12 @@ export function RequestDetail() {
     if (text.trim()) storage.setJson(key, text)
     else storage.remove(key)
   }, [text, key])
+
+  // Our reply is on screen now: the Help button's dot for it goes (see ./replied)
+  const seenAt = detail.data?.ticket.lastMessageAt
+  useEffect(() => {
+    if (seenAt) markReplySeen(user.id, id, seenAt)
+  }, [seenAt, user.id, id])
 
   if (detail.isPending) {
     return (

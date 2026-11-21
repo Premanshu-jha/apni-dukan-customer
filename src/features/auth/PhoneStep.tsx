@@ -11,6 +11,8 @@ import { formatPhone, normalizePhone } from '../../lib/phone'
 import { takePhoneMove } from '../../lib/phoneMoved'
 import { LegalLinks } from '../legal/LegalPage'
 import { Brand } from './Brand'
+import { returningToSalon } from './flow'
+import { HelpButton } from '../help/HelpButton'
 
 export function PhoneStep() {
   const t = useT()
@@ -18,6 +20,8 @@ export function PhoneStep() {
   const deleted = Boolean((useLocation().state as { deleted?: boolean } | null)?.deleted)
   // A phone change whose answer was lost and which ended the session: it most likely went through
   const [movedTo] = useState(takePhoneMove)
+  // Opened a salon's shared link while signed out: say why sign-in comes first (sign-in then opens that salon)
+  const [forSalon] = useState(returningToSalon)
   const [phone, setPhone] = useState(movedTo ?? '')
   const [captcha, setCaptcha] = useState<string | null>(null)
   const [resetKey, setResetKey] = useState(0)
@@ -51,7 +55,12 @@ export function PhoneStep() {
 
   return (
     <Page>
+      {/* No title bar here: Help (to Contact) sits at the top right by itself */}
+      <div className="-mb-2 flex justify-end">
+        <HelpButton />
+      </div>
       <Brand subtitle={t('auth.phoneSubtitle')} />
+      {forSalon && <Banner tone="info">{t('guide.signInForSalon')}</Banner>}
       {/* Before anything is typed: each language in its own script, for someone who can't read the one showing */}
       <LanguagePicker heading />
       {deleted && <Banner tone="info">{t('auth.phoneDeleted')}</Banner>}
