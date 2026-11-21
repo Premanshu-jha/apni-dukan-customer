@@ -82,5 +82,22 @@
   "evening": "ಸಂಜೆ",
   "offerMarkNote": "{mark} ಗುರುತು ಇರುವ ಸಮಯಗಳಿಗೆ ಸಲೂನ್‌ನ ಆಫರ್ ಬೆಲೆ ಇದೆ.",
   "slotEnds": "{time} ವರೆಗೆ",
-  "offerPriceSr": "ಆಫರ್ ಬೆಲೆ"
+  "offerPriceSr": "ಆಫರ್ ಬೆಲೆ",
+  "searchLabel": "ಸಲೂನ್ ಹುಡುಕಿ",
+  "searchPlaceholder": "ಸಲೂನ್ ಅಥವಾ ಸೇವೆ (ಹೇರ್‌ಕಟ್, ಫೇಶಿಯಲ್…)",
+  "clearSearch": "ಹುಡುಕಾಟ ಅಳಿಸಿ",
+  "clearSearchButton": "ಹತ್ತಿರದ ಎಲ್ಲ ಸಲೂನ್‌ಗಳನ್ನು ತೋರಿಸಿ",
+  "searchTypeMore": "ಹುಡುಕಲು ಕನಿಷ್ಠ 2 ಅಕ್ಷರ ಟೈಪ್ ಮಾಡಿ",
+  "searchChipsLabel": "ಜನರು ಹೆಚ್ಚು ಹುಡುಕುವ ಸೇವೆಗಳು",
+  "searching": "ನಿಮ್ಮ ಹತ್ತಿರ ‘{q}’ ಹುಡುಕುತ್ತಿದೆ…",
+  "searchOffline": "ನೀವು ಆಫ್‌ಲೈನ್‌ನಲ್ಲಿದ್ದೀರಿ. ಹುಡುಕಲು ಇಂಟರ್ನೆಟ್ ಆನ್ ಮಾಡಿ.",
+  "searchLimitedWaiting": "ತುಂಬಾ ಸಲ ಹುಡುಕಿದ್ದೀರಿ. ಸ್ವಲ್ಪ ಕಾಯಿರಿ: ನಾವೇ ಮತ್ತೆ ಹುಡುಕುತ್ತೇವೆ.",
+  "searchLimited": "ತುಂಬಾ ಸಲ ಹುಡುಕಿದ್ದೀರಿ. ಸ್ವಲ್ಪ ಕಾಯಿರಿ, ನಂತರ ‘ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ’ ಒತ್ತಿ.",
+  "searchNoneTitle": "{km} km ಒಳಗೆ ಇನ್ನೂ ಯಾವ ಸಲೂನ್‌ನಲ್ಲೂ ‘{q}’ ಇಲ್ಲ",
+  "searchNoneBody": "ಸ್ಪೆಲ್ಲಿಂಗ್ ನೋಡಿ, ಅಥವಾ ಚಿಕ್ಕ ಪದದಲ್ಲಿ ಹುಡುಕಿ. ಸಲೂನ್ ಹೆಸರಿನಿಂದಲೂ ಹುಡುಕಬಹುದು.",
+  "searchHelpAbout": "ನನ್ನ ಹತ್ತಿರ ‘{q}’ ಸಿಗಲಿಲ್ಲ",
+  "searchHelpText": "ನಾನು ಹುಡುಕಿದ್ದು: {q}\nನನ್ನ ಏರಿಯಾ: \nಲೊಕೇಶನ್: {lat}, {lng}",
+  "searchResultsLabel": "‘{q}’ ಇರುವ ಸಲೂನ್‌ಗಳು",
+  "searchHeadingMore": "{km} km ಒಳಗೆ ‘{q}’ ಇರುವ ಸಲೂನ್‌ಗಳು, ಹತ್ತಿರದ್ದು ಮೊದಲು",
+  "searchHeadingCount": { "one": "{km} km ಒಳಗೆ ‘{q}’ ಇರುವ {count} ಸಲೂನ್", "other": "{km} km ಒಳಗೆ ‘{q}’ ಇರುವ {count} ಸಲೂನ್‌ಗಳು" }
 }
