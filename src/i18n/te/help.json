@@ -106,5 +106,15 @@
   "wordsOptional": "ఫైల్ ఉంటే ఏమీ రాయకపోయినా పర్వాలేదు.",
   "addSent": "పంపాము. మా సపోర్ట్ టీమ్ చదివి జవాబు ఇస్తుంది.",
   "orEmail": "లేదా ఈమెయిల్ చేయండి:",
-  "withNumberInSubject": "(సబ్జెక్ట్‌లో {number} రాయండి)."
+  "withNumberInSubject": "(సబ్జెక్ట్‌లో {number} రాయండి).",
+  "writeToUs": "మాకు రాయండి",
+  "requestsReplied": {
+    "one": "మా నుంచి {count} జవాబు",
+    "other": "మా నుంచి {count} జవాబులు"
+  },
+  "requestsOpen": {
+    "one": "{count} మా టీమ్ దగ్గర ఉంది",
+    "other": "{count} మా టీమ్ దగ్గర ఉన్నాయి"
+  },
+  "requestsNone": "మీరు మమ్మల్ని అడిగిన ప్రశ్నలు, మా జవాబులు"
 }

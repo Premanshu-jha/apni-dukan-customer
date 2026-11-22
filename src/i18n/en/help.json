@@ -33,7 +33,10 @@
   "videoKindUnplayable": "{name}: this kind of video can't be played here. Send an MP4 or MOV (the phone camera's own), or one under 10 MB as a file.",
   "fileTooBig": "{name} is {size}, over 10 MB. Send a smaller one (a video can be up to 100 MB).",
   "fileEmpty": "{name} is empty.",
-  "tooManyFiles": { "one": "At most {max} files in one message, so {names} wasn't added: send it in the next one.", "other": "At most {max} files in one message, so {names} weren't added: send them in the next one." },
+  "tooManyFiles": {
+    "one": "At most {max} files in one message, so {names} wasn't added: send it in the next one.",
+    "other": "At most {max} files in one message, so {names} weren't added: send them in the next one."
+  },
   "didntGoUp": "It didn't go up.",
   "uploadingPercent": "Uploading… {percent}% of {size}",
   "uploading": "Uploading… {size}",
@@ -83,8 +86,14 @@
   "support": "Clozest support",
   "supportNamed": "Clozest support · {name}",
   "you": "You",
-  "emailedFiles": { "one": "{count} file sent by email (only in that email: we see it there)", "other": "{count} files sent by email (only in that email: we see them there)" },
-  "emailedMoreFiles": { "one": "{count} more file sent by email (only in that email: we see it there)", "other": "{count} more files sent by email (only in that email: we see them there)" },
+  "emailedFiles": {
+    "one": "{count} file sent by email (only in that email: we see it there)",
+    "other": "{count} files sent by email (only in that email: we see them there)"
+  },
+  "emailedMoreFiles": {
+    "one": "{count} more file sent by email (only in that email: we see it there)",
+    "other": "{count} more files sent by email (only in that email: we see them there)"
+  },
   "myRequestTitle": "My request",
   "notFound": "Request not found",
   "notFoundBody": "It may belong to another account.",
@@ -97,5 +106,15 @@
   "wordsOptional": "Words are optional with a file.",
   "addSent": "Sent. Our support team will read it and reply.",
   "orEmail": "Or email",
-  "withNumberInSubject": "with {number} in the subject."
+  "withNumberInSubject": "with {number} in the subject.",
+  "writeToUs": "Write to us",
+  "requestsReplied": {
+    "one": "{count} reply from us",
+    "other": "{count} replies from us"
+  },
+  "requestsOpen": {
+    "one": "{count} with our team",
+    "other": "{count} with our team"
+  },
+  "requestsNone": "Your questions to us and our replies"
 }

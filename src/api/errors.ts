@@ -32,6 +32,11 @@ export function retryDelay(attempt: number, error: unknown): number {
   return Math.min(1000 * 2 ** attempt, 30_000)
 }
 
+/** Whether TanStack Query tries a failed read again: network blips and 5xx, at most twice; a 4xx is final. */
+export function retryRead(count: number, error: unknown): boolean {
+  return count < 2 && (!(error instanceof ApiError) || error.status === 0 || error.status >= 500)
+}
+
 export function isApiError(e: unknown, code?: string): e is ApiError {
   return e instanceof ApiError && (code === undefined || e.code === code)
 }

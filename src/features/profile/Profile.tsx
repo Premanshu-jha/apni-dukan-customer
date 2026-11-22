@@ -1,6 +1,6 @@
 import { useQueryClient } from '@tanstack/react-query'
-import { useState } from 'react'
-import { Link, useNavigate } from 'react-router'
+import { useEffect, useState } from 'react'
+import { Link, useLocation, useNavigate } from 'react-router'
 import { authApi } from '../../api/auth'
 import { fieldError, messageOf } from '../../api/errors'
 import { Banner, Button, Card, Field, Page, Sheet } from '../../components/ui'
@@ -32,6 +32,12 @@ export function Profile() {
   const [busy, setBusy] = useState(false)
   const [confirmAll, setConfirmAll] = useState(false)
   const emailPending = needsEmail(user)
+  // Opened from an answer in Need help ("Take me there"): straight to that part (#messages, #language)
+  const { hash } = useLocation()
+  useEffect(() => {
+    if (!hash) return
+    document.getElementById(hash.slice(1))?.scrollIntoView({ block: 'start' })
+  }, [hash])
 
   /** Changing the name needs a verified email first (as every other change): verify, then back here. */
   function startEditing() {
@@ -94,6 +100,30 @@ export function Profile() {
           {t('profile.phoneChanged', { phone: formatPhone(phoneChanged) })}
         </Banner>
       )}
+      {/* Help first: someone stuck shouldn't have to scroll past their own details to find it */}
+      <Card className="flex flex-col gap-1">
+        <p className="font-medium">{t('profile.needHelp')}</p>
+        <p className="text-sm text-muted">
+          {t('profile.needHelpBody')}
+        </p>
+        {/* Straight to the form (the answers are one tap away under Help) */}
+        <Link to="/help?write=1" className="text-sm text-link underline">
+          {t('profile.writeToSupport')}
+        </Link>
+        <Link to="/help" className="text-sm text-link underline">
+          {t('profile.howToAnswers')}
+        </Link>
+        <Link to="/help/requests" state={{ from: true }} className="text-sm text-link underline">
+          {t('profile.myRequests')}
+        </Link>
+        <p className="text-sm text-muted">
+          {t('profile.orEmail')}{' '}
+          <a href={`mailto:${SUPPORT_EMAIL}`} className="text-link underline [overflow-wrap:anywhere]">
+            {SUPPORT_EMAIL}
+          </a>
+        </p>
+      </Card>
+
       <Card className="flex flex-col gap-4">
         {editing ? (
           <div className="flex flex-col gap-3">
@@ -144,7 +174,7 @@ export function Profile() {
         />
       </Card>
 
-      <Card className="flex flex-col gap-4">
+      <Card id="messages" className="flex scroll-mt-20 flex-col gap-4">
         <NotificationsRow />
         <SalonMessageSwitches />
       </Card>
@@ -153,25 +183,6 @@ export function Profile() {
         <p className="font-medium">{t('language.title')}</p>
         <LanguagePicker />
         <p className="text-sm text-muted">{t('language.profileHint')}</p>
-      </Card>
-
-      <Card className="flex flex-col gap-1">
-        <p className="font-medium">{t('profile.needHelp')}</p>
-        <p className="text-sm text-muted">
-          {t('profile.needHelpBody')}
-        </p>
-        <Link to="/help" className="text-sm text-link underline">
-          {t('profile.writeToSupport')}
-        </Link>
-        <Link to="/help/requests" state={{ from: true }} className="text-sm text-link underline">
-          {t('profile.myRequests')}
-        </Link>
-        <p className="text-sm text-muted">
-          {t('profile.orEmail')}{' '}
-          <a href={`mailto:${SUPPORT_EMAIL}`} className="text-link underline [overflow-wrap:anywhere]">
-            {SUPPORT_EMAIL}
-          </a>
-        </p>
       </Card>
 
       <Card className="flex flex-col gap-1">

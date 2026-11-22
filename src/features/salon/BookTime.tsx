@@ -7,6 +7,7 @@ import { duration } from '../../lib/money'
 import { useDraft } from '../../store/bookingDraft'
 import { DateChips, SlotGrid } from './SlotGrid'
 import { useT } from '../../i18n'
+import { Hint } from '../guide/Hint'
 
 export function BookTime() {
   const t = useT()
@@ -39,6 +40,7 @@ export function BookTime() {
     <Page
       back={`/salons/${id}`}
       title={t('salon.pickTimeTitle')}
+      help={salon.data ? { about: t('guide.aboutPickTime', { salon: salon.data.name }) } : undefined}
       footer={
         <Button className="w-full" disabled={!draft.startAt} onClick={() => navigate(`/salons/${id}/confirm`)}>
           {draft.startAt ? t('salon.continueWith', { time: timeIst(draft.startAt) }) : t('salon.pickTime')}
@@ -49,6 +51,7 @@ export function BookTime() {
         {salon.data?.name}
         {minutes > 0 && ` · ${t('salon.aboutDuration', { duration: duration(minutes) })}`}
       </p>
+      <Hint name="hint.pickTime">{t('guide.hintPickTime')}</Hint>
       {slotTaken && !taken && !draft.startAt && (
         <Banner tone="warn">{t('salon.slotTaken')}</Banner>
       )}

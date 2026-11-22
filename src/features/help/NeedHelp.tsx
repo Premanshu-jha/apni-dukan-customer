@@ -1,13 +1,15 @@
 import { useEffect, useRef, useState } from 'react'
-import { Link, useLocation, useNavigate, useSearchParams } from 'react-router'
+import { Link, Navigate, useLocation, useNavigate, useSearchParams } from 'react-router'
 import { authApi } from '../../api/auth'
-import { useSession } from '../../store/session'
+import { needsEmail, useSession } from '../../store/session'
+import { HowToList } from './HowToList'
+import { hasUnreadReply, repliedCount } from './replied'
 import { AttachmentPicker, useAttachments } from './Attach'
 import { cleanedLength, sendError } from './text'
-import { helpApi, helpKeys } from '../../api/help'
+import { helpApi, helpKeys, useMyRequestsGlance } from '../../api/help'
 import { useQueryClient } from '@tanstack/react-query'
 import { isApiError, messageOf } from '../../api/errors'
-import type { HelpTicket } from '../../api/types'
+import type { HelpTicket, MyRequest } from '../../api/types'
 import { Banner, Button, Field, Page } from '../../components/ui'
 import { SUPPORT_EMAIL } from '../../lib/config'
 import { storage } from '../../lib/storage'
@@ -22,9 +24,13 @@ const SUBJECT_MAX = 100
 const draftKey = (userId: string) => `ad.helpDraft.${userId}`
 
 /**
- * /help: "Need help" — the customer writes to support; it becomes a ticket (CLZ-1042) and our reply comes by email.
- * Opened from Profile and from "Let us know" when no salon is near (`?about=` fills the subject, `?text=` the
- * message). Behind EmailVerifiedOnly: the reply needs a verified email.
+ * /help: "Need help" — first "Write to us" (the customer writes to support; it becomes a ticket (CLZ-1042) and our
+ * reply comes by email), then My requests with what is new there, then short answers to look up ("How do I…?").
+ * Opened from every screen's Help button, from Profile and from "Let us know" when no salon is near (`?about=` fills
+ * the subject, `?text=` the message). `keep=1` (the Help buttons, an error's "Write to us"): they only fill what is
+ * still empty, so a draft typed earlier is never replaced. The answers are open to everyone signed in; writing needs
+ * a verified email (the reply goes there): with it pending, Write to us goes to the email screen first and back here
+ * with the form open (`write=1`), as a link that opens the form does at once.
  */
 /** Set when leaving for the email check with files picked (they can't come along). */
 const FILES_DROPPED = 'ad.helpFilesDropped'
@@ -42,9 +48,21 @@ export function NeedHelp() {
   // A link that says what it's about ("Let us know", a booking) wins over an older, different draft (the same one,
   // back from a detour, stays)
   const draft = storage.getJson<{ subject: string; message: string }>(DRAFT_KEY)
-  const saved = !params.has('about') || draft?.subject === params.get('about') ? draft : null
+  // keep=1 (a Help button): a draft with a message always stays, the link only fills what it left empty (a subject
+  // alone, with nothing written under it, is most likely the last Help button's and gives way to this one's)
+  const keep = params.get('keep') === '1'
+  const saved = keep
+    ? draft?.message.trim() ? draft : null
+    : !params.has('about') || draft?.subject === params.get('about') ? draft : null
   const [subject, setSubject] = useState(saved?.subject || params.get('about') || '')
   const [message, setMessage] = useState(saved?.message || params.get('text') || '')
+  const hasDraft = Boolean(saved && (saved.subject.trim() || saved.message.trim()))
+  // The form shows at once for a link that asks to write (a message to send, "Let us know") or a draft to finish;
+  // a Help button's subject alone waits for Write to us, so the answers below are seen first
+  const asksToWrite = params.get('write') === '1' || params.has('text') || (params.has('about') && !keep)
+  const [writing, setWriting] = useState(asksToWrite || hasDraft)
+  const emailPending = needsEmail(user)
+  const requests = useMyRequestsGlance(!emailPending)
   const heading = useRef<HTMLHeadingElement | null>(null)
   const [busy, setBusy] = useState(false)
   // Back from verifying the email: the words were kept, the files couldn't be (they go with the page)
@@ -61,6 +79,32 @@ export function NeedHelp() {
   })
   const [done, setDone] = useState<HelpTicket | null>(null)
   const sending = useRef(false)
+  // Opened by tapping Write to us (not on arrival): the form's first box gets the focus
+  const focusForm = useRef(false)
+  useEffect(() => {
+    if (writing && focusForm.current) {
+      focusForm.current = false
+      const box = document.getElementById('help-subject')
+      box?.focus()
+      box?.scrollIntoView({ block: 'center' })
+    }
+  }, [writing])
+
+  /** Write to us (or an answer's "Tell us"): the form, starting with this subject if none was typed yet. */
+  function startWriting(about?: string) {
+    if (emailPending) {
+      // The reply needs a verified email: verify, then straight back here with the form open
+      const next = new URLSearchParams(params)
+      next.set('write', '1')
+      if (about && !subject.trim()) next.set('about', about)
+      rememberAfterEmail(`${location.pathname}?${next}`, user.id)
+      navigate('/verify-email')
+      return
+    }
+    if (about && !subject.trim()) setSubject(about)
+    focusForm.current = true
+    setWriting(true)
+  }
 
   useEffect(() => {
     if (done) return
@@ -118,6 +162,13 @@ export function NeedHelp() {
     }
   }
 
+  // A link that opens the form (Profile's Write to support, Let us know, a typed address) with the email pending:
+  // the email screen first, then back here (as before, when all of /help waited for the email)
+  if (emailPending && asksToWrite) {
+    rememberAfterEmail(location.pathname + location.search, user.id)
+    return <Navigate to="/verify-email" replace />
+  }
+
   if (done) {
     return (
       <Page title={t('help.needHelpTitle')} back="/">
@@ -149,9 +200,15 @@ export function NeedHelp() {
 
   return (
     <Page title={t('help.needHelpTitle')} back>
-      <Link to="/help/requests" state={{ from: true }} className="self-start text-sm text-link underline">
-        {t('help.askedBefore')}
-      </Link>
+      {!writing && (
+        <Button className="min-h-14 w-full text-lg" onClick={() => startWriting()}>
+          <WriteIcon />
+          {t('help.writeToUs')}
+        </Button>
+      )}
+      {writing && (
+      <>
+      <h2 className="font-display text-lg font-semibold">{t('help.writeToUs')}</h2>
       <p className="text-muted">
         {t('help.intro')}
       </p>
@@ -189,6 +246,10 @@ export function NeedHelp() {
           {t('help.sendToSupport')}
         </Button>
       </form>
+      </>
+      )}
+      {!emailPending && <RequestsCard userId={user.id} list={requests.data} />}
+      <HowToList onWrite={startWriting} />
       <p className="text-center text-sm text-muted">
         {t('help.orEmailUsAt')}{' '}
         <a href={`mailto:${SUPPORT_EMAIL}`} className="text-link underline [overflow-wrap:anywhere]">
@@ -196,5 +257,41 @@ export function NeedHelp() {
         </a>
       </p>
     </Page>
+  )
+}
+
+function WriteIcon() {
+  return (
+    <svg aria-hidden viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 6.5A1.5 1.5 0 0 1 5.5 5h13A1.5 1.5 0 0 1 20 6.5v9a1.5 1.5 0 0 1-1.5 1.5H10l-4 3v-3H5.5A1.5 1.5 0 0 1 4 15.5z" />
+    </svg>
+  )
+}
+
+/** My requests, with what is new there: our replies not opened yet, and those still with our support team. */
+function RequestsCard({ userId, list }: { userId: string; list: MyRequest[] | undefined }) {
+  const t = useT()
+  const replied = repliedCount(userId, list)
+  const open = (list ?? []).filter((r) => r.status === 'OPEN').length
+  const unread = hasUnreadReply(userId, list)
+  const parts = [
+    replied > 0 ? t('help.requestsReplied', { count: replied }) : null,
+    open > 0 ? t('help.requestsOpen', { count: open }) : null,
+  ].filter(Boolean)
+  return (
+    <Link
+      to="/help/requests"
+      state={{ from: true }}
+      className="flex min-h-14 items-center justify-between gap-3 rounded-2xl border border-line bg-surface px-4 py-3 hover:bg-raised"
+    >
+      <span className="min-w-0">
+        <span className="flex items-center gap-2 font-semibold">
+          {t('help.myRequestsTitle')}
+          {unread && <span aria-hidden className="h-2.5 w-2.5 rounded-full bg-accent" />}
+        </span>
+        <span className="block text-sm text-muted">{parts.length ? parts.join(' · ') : t('help.requestsNone')}</span>
+      </span>
+      <span aria-hidden className="text-link">→</span>
+    </Link>
   )
 }

@@ -48,7 +48,7 @@ test('Need help with the email pending: verify first, then the form, and what wa
   await page.getByLabel('Email', { exact: true }).fill('riya@example.com')
   await page.getByRole('button', { name: 'Send code' }).click()
   await page.getByLabel('Code').fill('654321')
-  await expect(page).toHaveURL(/\/help$/)
+  await expect(page).toHaveURL(/\/help\?write=1$/)
   await page.getByLabel('Your message').fill('short')
   await expect(page.getByText('Tell us a little more (at least 10 characters).')).toBeVisible()
   await expect(page.getByRole('button', { name: 'Send to support' })).toBeDisabled()
@@ -66,10 +66,16 @@ test('changing the name, adding a place or deleting the account wait for the ema
   await page.goto('/profile')
   await page.getByRole('button', { name: 'Edit' }).click()
   await expect(page).toHaveURL(/\/verify-email$/)
-  for (const path of ['/places/new', '/salons/s1/confirm', '/help']) {
+  for (const path of ['/places/new', '/salons/s1/confirm', '/help?write=1']) {
     await page.goto(path)
     await expect(page).toHaveURL(/\/verify-email$/)
   }
+  // Need help's answers don't: only writing to us does (Write to us goes to the email screen first)
+  await page.goto('/help')
+  await expect(page.getByRole('heading', { name: 'How do I…?' })).toBeVisible()
+  await expect(page.getByRole('link', { name: /^My requests/ })).toBeHidden()
+  await page.getByRole('button', { name: 'Write to us' }).click()
+  await expect(page).toHaveURL(/\/verify-email$/)
   // Browsing doesn't
   await page.goto('/salons/s1')
   await expect(page.getByText('Shine Unisex Salon')).toBeVisible()

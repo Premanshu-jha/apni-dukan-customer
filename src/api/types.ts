@@ -279,6 +279,11 @@ export interface MyRequest {
   status: 'OPEN' | 'WAITING' | 'RESOLVED'
   createdAt: string
   lastMessageAt: string
+  /**
+   * When support last wrote on it (null: not yet). Set also by a reply that resolves the request (then RESOLVED, not
+   * WAITING), so "We replied" is told from this, not from the status. Missing from a backend before this round.
+   */
+  lastReplyAt?: string | null
 }
 
 /** A message on my request: mine, or support's reply (with the support person's first name when known). */

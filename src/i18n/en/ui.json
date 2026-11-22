@@ -1,18 +1,21 @@
 {
   "spinnerLoading": "Loading",
-
   "errorTitle": "Something went wrong on this screen",
   "errorBody": "Your bookings are safe. Start again to carry on.",
   "errorStartAgain": "Start again",
-
   "updateAvailable": "New version available",
   "updateReload": "Reload",
-
   "mapAttribution": "© OpenStreetMap contributors",
   "mapPinTitle": "Your place",
   "mapPinMovedNorth": "Pin moved north.",
   "mapPinMovedSouth": "Pin moved south.",
   "mapPinMovedWest": "Pin moved west.",
   "mapPinMovedEast": "Pin moved east.",
-  "mapAria": "Map: drag the pin onto your building, or tab to the pin and use the arrow keys"
+  "mapAria": "Map: drag the pin onto your building, or tab to the pin and use the arrow keys",
+  "help": "Help",
+  "helpReplied": "Support replied to you",
+  "errorHelpAbout": "Something isn't working",
+  "errorHelpText": "On the screen {screen} I see: \"{message}\"\nWhat I was doing: ",
+  "errorStillBefore": "Still not working?",
+  "errorWriteToUs": "Write to us"
 }

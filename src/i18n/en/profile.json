@@ -39,7 +39,10 @@
   "phoneChangeUnknown": "No answer from Clozest, so we can't tell yet whether your number changed. Check your connection, then open this screen again.",
   "sendCodesAgainHint": "{reason} Tap \"Send the codes again\".",
   "phoneTakenMeanwhile": "This number got its own Clozest account meanwhile. Use another number.",
-  "wrongCode": { "one": "One of the codes isn't right. {count} try left.", "other": "One of the codes isn't right. {count} tries left." },
+  "wrongCode": {
+    "one": "One of the codes isn't right. {count} try left.",
+    "other": "One of the codes isn't right. {count} tries left."
+  },
   "codeSentToEmail": "Code sent to your email ({email})",
   "codeSentToCurrentNumber": "Code sent to your current number ({number})",
   "newMobile": "New mobile number",
@@ -75,5 +78,6 @@
   "comeBackReminders": "Come-back reminders",
   "comeBackRemindersHint": "A message when it's time for your next haircut or other service",
   "salonOffers": "Offers from salons I've visited",
-  "salonOffersHint": "A message when a salon you've been to has a discount"
+  "salonOffersHint": "A message when a salon you've been to has a discount",
+  "howToAnswers": "Quick answers: how booking, cancelling and the rest work"
 }

@@ -106,5 +106,15 @@
   "wordsOptional": "फ़ाइल के साथ कुछ लिखना ज़रूरी नहीं।",
   "addSent": "भेज दिया। हमारी सपोर्ट टीम इसे पढ़कर जवाब देगी।",
   "orEmail": "या ईमेल करें:",
-  "withNumberInSubject": "और सब्जेक्ट में {number} लिखें।"
+  "withNumberInSubject": "और सब्जेक्ट में {number} लिखें।",
+  "writeToUs": "हमें लिखें",
+  "requestsReplied": {
+    "one": "हमारा {count} जवाब",
+    "other": "हमारे {count} जवाब"
+  },
+  "requestsOpen": {
+    "one": "{count} हमारी टीम के पास",
+    "other": "{count} हमारी टीम के पास"
+  },
+  "requestsNone": "हमसे पूछे आपके सवाल और हमारे जवाब"
 }
