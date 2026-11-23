@@ -5,5 +5,8 @@
   "tabHome": "ಹೋಮ್",
   "tabBookings": "ಬುಕಿಂಗ್‌ಗಳು",
   "tabProfile": "ಪ್ರೊಫೈಲ್",
-  "emailVerified": "ಇಮೇಲ್ ಪರಿಶೀಲನೆ ಆಯಿತು. ನಿಮ್ಮ ಅಕೌಂಟ್ ಈಗ ಸುರಕ್ಷಿತ."
+  "emailVerified": "ಇಮೇಲ್ ಪರಿಶೀಲನೆ ಆಯಿತು. ನಿಮ್ಮ ಅಕೌಂಟ್ ಈಗ ಸುರಕ್ಷಿತ.",
+  "webViewOldTitle": "ಮುಂದುವರಿಯಲು ಒಂದು ಆ್ಯಪ್ ಅಪ್‌ಡೇಟ್ ಮಾಡಿ",
+  "webViewOldBody": "ಈ ಫೋನ್‌ನ \"Android System WebView\" ಈ ಆ್ಯಪ್‌ಗೆ ತುಂಬಾ ಹಳೆಯದು. Play Store ನಲ್ಲಿ ಅದನ್ನು ಅಪ್‌ಡೇಟ್ ಮಾಡಿ (ಉಚಿತ), ನಂತರ ಆ್ಯಪ್ ಮತ್ತೆ ತೆರೆಯಿರಿ.",
+  "webViewOldButton": "Play Store ನಲ್ಲಿ ಅಪ್‌ಡೇಟ್ ಮಾಡಿ"
 }

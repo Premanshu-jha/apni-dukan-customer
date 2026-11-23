@@ -4,9 +4,11 @@ import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router'
 import { refreshSession, whenSessionEnds } from './api/client'
 import { retryDelay, retryRead } from './api/errors'
+import { finishUnregister, listenForAppMessages } from './api/appPush'
 import { claimSubscription, closeShownNotifications, dropBrowserSubscription, registerWorker } from './api/push'
 import { isSlotsKey } from './api/salons'
 import { App } from './app/App'
+import { NativeBridge } from './app/NativeBridge'
 import { forgetHelpDrafts } from './features/help/drafts'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { UpdatePrompt } from './components/UpdatePrompt'
@@ -14,6 +16,11 @@ import { forgetReturn } from './features/auth/flow'
 import { restoreLanguage } from './i18n'
 import { LanguageToast } from './i18n/LanguageToast'
 import { followAccountLanguage } from './lib/accountLanguage'
+import { linkTarget, notificationTarget, openInApp } from './lib/appEvents'
+import { BUSINESS } from './lib/business'
+import { appShellWithoutBridge, isApp } from './lib/platform'
+import { UpdateWebView } from './app/UpdateWebView'
+import { App as CapApp } from '@capacitor/app'
 import { useDraft } from './store/bookingDraft'
 import { followOtherTabs, useSession } from './store/session'
 import { useLocation } from './store/location'
@@ -74,32 +81,61 @@ async function start() {
     if (!ok && useSession.getState().refreshToken) useSession.setState({ status: 'signedIn' })
   }
   void registerWorker()
-  // A message arrived while the app is open: refresh the bell, the list and the bookings it may be about, and any free
-  // times on screen (a cancel or a move just changed them).
+  // A message arrived while the app is open (the website: from the service worker; the Play Store app: from Firebase)
   navigator.serviceWorker?.addEventListener('message', (e: MessageEvent<{ kind?: string }>) => {
     if (e.data?.kind !== 'push') return
-    void queryClient.invalidateQueries({ queryKey: ['inbox'] })
-    void queryClient.invalidateQueries({ queryKey: ['bookings'] })
-    void queryClient.invalidateQueries({ predicate: (q) => isSlotsKey(q.queryKey) })
+    refreshForMessage()
   })
+  if (isApp()) {
+    // A sign-out that couldn't tell Firebase (offline) finishes now
+    void finishUnregister()
+    // A tap on a notification opens its screen (by the service worker's rule); a salon's link opens in the app
+    listenForAppMessages(
+      () => refreshForMessage(),
+      (m) => openInApp(notificationTarget(m.url)),
+    )
+    void CapApp.addListener('appUrlOpen', ({ url }) => {
+      const path = linkTarget(url, new URL(BUSINESS.website).host)
+      if (path) openInApp(path)
+    })
+  }
+}
+
+/**
+ * A message arrived while the app is open: refresh the bell, the list and the bookings it may be about, and any free
+ * times on screen (a cancel or a move just changed them).
+ */
+function refreshForMessage() {
+  void queryClient.invalidateQueries({ queryKey: ['inbox'] })
+  void queryClient.invalidateQueries({ queryKey: ['bookings'] })
+  void queryClient.invalidateQueries({ predicate: (q) => isSlotsKey(q.queryKey) })
 }
 
 // The language chosen on this phone before (shown at once from the texts kept on the phone)
 void restoreLanguage()
 // Then each account's own language, saved on the account too
 followAccountLanguage()
-void start()
+if (appShellWithoutBridge()) {
+  // The Play Store app on a too-old Android System WebView: only the screen asking for its update
+  createRoot(document.getElementById('root')!).render(<UpdateWebView />)
+} else {
+  void start()
+  createRoot(document.getElementById('root')!).render(<Root />)
+}
 
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
-        <ErrorBoundary>
-          <App />
-        </ErrorBoundary>
-        <UpdatePrompt />
-        <LanguageToast />
-      </BrowserRouter>
-    </QueryClientProvider>
-  </StrictMode>,
-)
+function Root() {
+  return (
+    <StrictMode>
+      <QueryClientProvider client={queryClient}>
+        <BrowserRouter>
+          <ErrorBoundary>
+            <App />
+          </ErrorBoundary>
+          <UpdatePrompt />
+          <NativeBridge />
+          <LanguageToast />
+        </BrowserRouter>
+      </QueryClientProvider>
+    </StrictMode>
+  )
+}

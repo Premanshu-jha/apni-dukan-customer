@@ -5,5 +5,8 @@
   "tabHome": "హోమ్",
   "tabBookings": "బుకింగ్‌లు",
   "tabProfile": "ప్రొఫైల్",
-  "emailVerified": "ఈమెయిల్ వెరిఫై అయింది. మీ అకౌంట్ సురక్షితంగా ఉంది."
+  "emailVerified": "ఈమెయిల్ వెరిఫై అయింది. మీ అకౌంట్ సురక్షితంగా ఉంది.",
+  "webViewOldTitle": "కొనసాగడానికి ఒక యాప్‌ను అప్‌డేట్ చేయండి",
+  "webViewOldBody": "ఈ ఫోన్‌లోని \"Android System WebView\" ఈ యాప్‌కి చాలా పాతది. Play Store లో దాన్ని అప్‌డేట్ చేయండి (ఉచితం), తర్వాత యాప్‌ను మళ్లీ తెరవండి.",
+  "webViewOldButton": "Play Store లో అప్‌డేట్ చేయండి"
 }
