@@ -579,3 +579,30 @@ Added in the self-guided round: Help on every screen with a dot when support rep
 | 561 | App: the search box (Home) | "You're offline" under Show more, then a new search | — | The note goes with the new search (the results start afresh) | — | unit SalonList `"You're offline" under Show more goes…` | GAP fixed (OK-tested) |
 | 562 | Home: hints | The booking page's first-time hint | — | Only "Move or cancel with the buttons further down." in all 6 languages | — | G "first-time hints…" | OK-tested |
 | 563 | App: the search box (Home) | A salon's name typed in Hindi with a service word in it ("हेयर सैलून", "राजू हेयर") | Sent as typed (the backend needs every word; "hair सैलून" would find nothing) | Finds "राजू हेयर सैलून"; only text whose every Hindi word is a service word goes in English ("बियर्ड ट्रिम" → beard trim) | — | unit salonSearch "leaves Latin words, and words that are no service name, as typed" | OK-tested |
+
+## The Play Store app (Android) — 2026-11-23
+
+The same app inside Capacitor's Android shell; everything that differs asks `isApp()`. Backend rows: apni-dukan-backend
+`docs/scenarios.md` §8. Tests: **AP** = src/api/appPush.test.ts, **PA** = src/api/push.app.test.ts, **NB** =
+src/app/NativeBridge.test.tsx, **AE** = src/lib/appEvents.test.ts, **PP** = src/features/profile/pushProblem.test.tsx, **UW**
+= src/app/UpdateWebView.test.tsx, **CI** = the `android` job.
+
+| # | Journey | Scenario | API behaviour (status + code) | App behaviour (screen) | Backend test | App test | Verdict |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| 600 | Notifications (app) | Turn on after a booking or on Profile | `appPush: true`; `POST /me/push-devices` 204 | Android asks once; reminders arrive through Firebase | BookIT `theAndroidAppSavesItsToken…` | AP | OK-tested |
+| 601 | Notifications (app) | Refused, or off in Android's settings | — | "Notifications are turned off for Clozest on this phone…" with an **Open settings** button straight to the app's notification settings | — | AP, PP | OK-tested |
+| 601a | Notifications (app) | Firebase gives no token (a phone without Google services, Firebase not answering in 20 s) | — | "This phone couldn't connect for notifications. Try again later; your bookings and messages still show in the app." | — | AP, PP | OK-tested |
+| 602 | Notifications (app) | Firebase not on the server / not in the build | `appPush: false` | "not set up on the server yet" / "not available in this version"; never crashes | BookIT `withoutFirebase…` | AP | OK-tested |
+| 603 | Notifications (app) | A reminder tapped | — | Opens its booking (the website's rule: this app's page, else My bookings) | — | AE, NB | OK-tested |
+| 604 | Notifications (app) | A message while the app is open | — | The bell, bookings and free times on screen refresh | — | main.tsx `refreshForMessage` (shared with the website) | OK-tested |
+| 605 | Notifications (app) | Sign out | DELETE 204 | Token removed at the backend and dropped at Firebase, also when the backend call fails; tray cleared. The next person on the phone gets nothing of theirs and turns notifications on themselves (then the token is theirs) | BookIT `theAppsTokenMovesToWhoever…` | AP | OK-tested |
+| 605a | Notifications (app) | Sign out offline on a shared phone | DELETE never arrives | Firebase is told at the next start (online): nothing of the earlier person's arrives after that | — | AP "signed out offline on a shared phone…" | OK-tested |
+| 605b | Notifications (app) | Session ended elsewhere (signed out everywhere: rows deleted by the backend), or just expired (the row stays) | — | When the app is next opened it drops the token at Firebase | existing sign-out tests | AP "a session ended elsewhere…" | OK-tested |
+| 606 | Links (app) | A salon's link shared on WhatsApp (`https://clozest.in/salons/…`) | — | Opens that salon in the app once assetlinks.json is live; other sites never | — | AE | OK-tested |
+| 607 | Back button (app) | A sheet open / a screen opened from another / the first screen | — | Closes the sheet / goes back / the app goes to the background | — | NB | OK-tested |
+| 608 | Location (app) | Use my location | — | Android asks location permission the first time; then as on the website | — | — | OK-untested (device) |
+| 609 | Screen (app) | Android 15/16 phone | — | Below the status bar, above the navigation bar | — | — | OK-untested (device) |
+| 609a | Start (app) | A phone whose Android System WebView is too old for the app | — | One screen: "Update one app to continue" with **Update in Play Store** (never the website inside the app) | — | UW | OK-tested |
+| 610 | Build | Every CI run | — | Test APK kept 30 days; signed bundle with the upload key | — | CI `android` | OK-tested |
+| 611 | Website | Everything on the website | — | Unchanged | — | the e2e suite; PA | OK-tested |
+| 612 | Home (fix found along the way) | New customer at 2 PM on a 360 px phone | — | "Good afternoon, Riya" stays on one line (smaller greeting under 400 px), so the search box and the first salon show above the tab bar; before, the afternoon greeting wrapped and pushed the first salon down (the e2e test failed only after noon) | — | e2e `guide` first screen at 360×640, clock fixed at 2 PM | OK-tested |

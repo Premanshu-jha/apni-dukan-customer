@@ -420,6 +420,34 @@ switches over. Change `OFFLINE_CACHE` in `sw.js` when the offline page changes.
 `KIRANA_ENABLED`. The customer app has no kirana screens yet, so off and on look the same today; when kirana screens
 are built they show only while it is on. There is one app branch, `main` (the `kirana-customer` branch is gone).
 
+## The Play Store app (Android)
+
+The same app is also an Android app for the Play Store ("Clozest", `com.clozest.customer`), made with
+[Capacitor](https://capacitorjs.com): the website's build runs inside an Android web view from the app's own files,
+under the website's own address (`https://clozest.in`, `capacitor.config.ts` › `server.hostname`), so the backend's
+CORS list and Turnstile see the same site. The Android project is in `android/`. The website is built and served
+exactly as before. It works as the partner app's does (see its README, "The Play Store app"); in short:
+
+| | Website | Play Store app |
+| --- | --- | --- |
+| Notifications | Web Push (`sw.js`) | Firebase Cloud Messaging (`src/api/appPush.ts`, `POST /me/push-devices`), through the same functions in `push.ts` |
+| A notification tapped | `sw.js` opens its page of this app, else My bookings | the same rule (`notificationTarget`, `src/lib/appEvents.ts`) |
+| Service worker, offline page, "New version — Reload" | yes | none (updates come from the Play Store) |
+| Phone's Back button | the browser's | closes an open sheet, else goes back, else puts the app in the background (`src/app/NativeBridge.tsx`) |
+| A salon's link (`https://clozest.in/salons/...`, shared on WhatsApp) | opens the website | opens that salon in the app once `assetlinks.json` is live |
+| Notifications turned off for the app | the browser's settings | "Open settings" goes straight to the app's notification settings (`AppSettingsPlugin.java`); a phone that gets no token from Firebase is told so plainly; a sign-out offline drops the token at the next start |
+| An old Android System WebView | — | one screen asking to update it in the Play Store (`appShellWithoutBridge`, the app's user agent mark `ClozestAndroidApp`), never the website inside the app |
+
+`isApp()` (`src/lib/platform.ts`) is the one question. `npm run android` builds for the app (`APP_BUILD=true`: no
+`viewport-fit=cover`, no web manifest, the Content-Security-Policy as a meta tag) and copies it into `android/`; CI's
+`android` job builds the test APK (`app-debug.apk`) on every run and the signed Play Store bundle (`app-release.aab`)
+once the upload key is set. CI's variables and secrets are the partner app's, with this app's own
+`GOOGLE_SERVICES_JSON` (Firebase's file for `com.clozest.customer`) and upload key. Links open in the app once the
+website's build has `ANDROID_CERT_SHA256` (Railway; it writes `/.well-known/assetlinks.json`). Permissions, each asked
+when first needed: location (salons near you) and notifications; `allowBackup="false"`. Icons and start screens:
+`npm run android-icons`. For the store listing: the privacy policy (`https://clozest.in/privacy`), account deletion
+(Profile › Delete account), the data safety form (phone, name, email, location, bookings).
+
 ## Languages
 
 The app is in English, Hindi, Telugu, Marathi, Tamil and Kannada (about 960 texts per language, 253 of them the
@@ -475,6 +503,23 @@ applies at once and keeps whatever was typed. The language code is the partner a
   should be read once by a native speaker of each language.
 
 ## Changelog
+
+### Unreleased — the Play Store app (Android)
+
+Needs apni-dukan-backend's FCM round (V89) for notifications in the app; the website works with the old backend too.
+
+- **An Android app for the Play Store** from the same code (Capacitor, `android/`), built by CI as a test APK and, with
+  the upload key, a signed Play Store bundle. See [The Play Store app](#the-play-store-app-android).
+- **Notifications in the app through Firebase**, with the same switch and prompt as on the website; a tap opens the
+  booking, as on the website.
+- **The phone's Back button** closes a sheet, goes back, or puts the app in the background; a salon's shared link
+  opens it in the app.
+- **Notifications blocked:** Open settings goes straight there; a phone without Google services is told why; signing
+  out offline on a shared phone still stops the earlier person's messages (at the next start). An old Android System
+  WebView gets one screen asking for its update.
+- **Fix (website too):** on a phone narrower than 400 px, the afternoon greeting ("Good afternoon, Riya") stays on one
+  line, so the search box and the first salon show without scrolling.
+- The website is otherwise unchanged.
 
 ### 0.27.0 — 2026-11-21
 
