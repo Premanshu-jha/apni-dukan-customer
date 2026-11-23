@@ -464,6 +464,8 @@ async function newCustomer(context: import('@playwright/test').BrowserContext, a
 
 for (const lang of ['en', 'hi'] as const) {
   test(`a new customer's first screen at 360×640 (${lang}): the search box and the first salon, under the greeting, banner and How booking works`, async ({ page, context, api }) => {
+    // Afternoon: "Good afternoon, Riya" is the longest greeting, so the screen is checked at its fullest
+    await page.clock.setFixedTime(new Date(istInstant(todayIst(), '14:00')))
     await newCustomer(context, api)
     if (lang === 'hi') await context.addInitScript(() => localStorage.setItem('language', 'hi'))
     await page.setViewportSize({ width: 360, height: 640 })
