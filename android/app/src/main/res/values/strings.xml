@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Clozest</string>
+    <string name="title_activity_main">Clozest</string>
+    <string name="package_name">com.clozest.customer</string>
+    <string name="custom_url_scheme">com.clozest.customer</string>
+</resources>

@@ -5,5 +5,8 @@
   "tabHome": "होम",
   "tabBookings": "बुकिंग",
   "tabProfile": "प्रोफ़ाइल",
-  "emailVerified": "ईमेल वेरिफ़ाई हो गया। आपका अकाउंट सुरक्षित है।"
+  "emailVerified": "ईमेल वेरिफ़ाई हो गया। आपका अकाउंट सुरक्षित है।",
+  "webViewOldTitle": "आगे बढ़ने के लिए एक ऐप अपडेट करें",
+  "webViewOldBody": "इस फ़ोन का \"Android System WebView\" इस ऐप के लिए बहुत पुराना है। इसे Play Store में अपडेट करें (मुफ़्त है), फिर ऐप दोबारा खोलें।",
+  "webViewOldButton": "Play Store में अपडेट करें"
 }

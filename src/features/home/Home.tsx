@@ -33,7 +33,7 @@ export function Home() {
     <Page>
       <div className="flex items-start justify-between gap-3">
         <div className="flex flex-col gap-1">
-          <h1 className="font-display text-2xl font-bold">{first ? t('home.greetingWithName', { greeting: hello, name: first }) : hello}</h1>
+          <h1 className="font-display text-xl font-bold min-[400px]:text-2xl">{first ? t('home.greetingWithName', { greeting: hello, name: first }) : hello}</h1>
           <p className="text-muted">{t('home.subtitle')}</p>
         </div>
         {/* Help beside the bell (Home has no title bar to carry it) */}

@@ -65,6 +65,7 @@
   "sendDeleteCode": "Send code to +91 {phone}",
   "keepAccount": "Keep my account",
   "pushDenied": "Notifications are blocked for this site. Allow them in your browser settings, then try again.",
+  "pushDeniedApp": "Notifications are turned off for Clozest on this phone. Turn them on in your phone's Settings › Apps › Clozest › Notifications, then try again.",
   "pushUnsupported": "This browser can't show notifications. On iPhone, add Clozest to your Home Screen first.",
   "pushNotConfigured": "Notifications aren't set up on the server yet.",
   "remindersQuestion": "Get reminders for this booking?",
@@ -73,11 +74,14 @@
   "notNow": "Not now",
   "pushHomeScreen": "To get booking notifications on iPhone, tap Share, then \"Add to Home Screen\", and open Clozest from there.",
   "pushNoBrowser": "This browser can't show notifications. You'll still see every message under the bell.",
+  "pushNoBrowserApp": "Notifications aren't available in this version of the app yet. You'll still see every message under the bell.",
   "bookingNotifications": "Booking notifications",
   "bookingNotificationsHint": "Reminders and changes, on this device",
   "comeBackReminders": "Come-back reminders",
   "comeBackRemindersHint": "A message when it's time for your next haircut or other service",
   "salonOffers": "Offers from salons I've visited",
   "salonOffersHint": "A message when a salon you've been to has a discount",
-  "howToAnswers": "Quick answers: how booking, cancelling and the rest work"
+  "howToAnswers": "Quick answers: how booking, cancelling and the rest work",
+  "pushNoToken": "This phone couldn't connect for notifications. Try again later; your bookings and messages still show in the app.",
+  "openSettings": "Open settings"
 }
