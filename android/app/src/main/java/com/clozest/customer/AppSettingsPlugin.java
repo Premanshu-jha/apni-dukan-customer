@@ -4,6 +4,7 @@ import android.content.Intent;
 import android.net.Uri;
 import android.os.Build;
 import android.provider.Settings;
+import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
@@ -16,6 +17,24 @@ import com.google.firebase.messaging.FirebaseMessaging;
  */
 @CapacitorPlugin(name = "AppSettings")
 public class AppSettingsPlugin extends Plugin {
+
+    /**
+     * What the update check tells the backend about this app (src/lib/appUpdates.ts): its native part's level
+     * (android/native-level), its versionCode (the CI run that built it; the screens it came with are that run's) and
+     * whether it is a test APK (debug build) rather than the Play Store's.
+     */
+    @PluginMethod
+    public void nativeInfo(PluginCall call) {
+        JSObject info = new JSObject();
+        info.put("nativeLevel", BuildConfig.NATIVE_LEVEL);
+        info.put("versionCode", BuildConfig.VERSION_CODE);
+        info.put("debug", BuildConfig.DEBUG);
+        // Built with the public key screen updates are checked against (capacitor.config.ts, CAPGO_PUBLIC_KEY): only
+        // then does the updater refuse a bundle not signed with our key, so only then are updates downloaded at all
+        String key = getBridge().getConfig().getPluginConfiguration("CapacitorUpdater").getString("publicKey", "");
+        info.put("updatesSigned", key != null && key.startsWith("-----BEGIN RSA PUBLIC KEY-----"));
+        call.resolve(info);
+    }
 
     @PluginMethod
     public void openNotifications(PluginCall call) {
