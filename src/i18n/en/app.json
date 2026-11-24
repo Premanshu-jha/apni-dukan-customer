@@ -8,5 +8,17 @@
   "emailVerified": "Email verified. Your account is secured.",
   "webViewOldTitle": "Update one app to continue",
   "webViewOldBody": "This phone's \"Android System WebView\" is too old for the app. Update it in the Play Store (it's free), then open the app again.",
-  "webViewOldButton": "Update in Play Store"
+  "webViewOldButton": "Update in Play Store",
+  "updateRequiredTitle": "Please update the app to continue",
+  "updateRequiredBody": "This version of Clozest is too old. Update it from the Play Store (it's free). Your bookings and saved salons stay as they are.",
+  "updateRequiredButton": "Update now",
+  "playUpdateAvailable": "A new version of the app is available.",
+  "playUpdateButton": "Update",
+  "playUpdateDownloading": "Getting the new version. You can keep using the app.",
+  "playUpdateReady": "The new version is downloaded. Tap Restart to install it (it takes a few seconds).",
+  "playUpdateRestart": "Restart",
+  "playUpdateLater": "Later",
+  "updateRequiredHint": "If the Play Store shows no update yet, close the app and try again in a few hours, or tap Check again.",
+  "updateRequiredCheck": "Check again",
+  "updateRequiredChecking": "Checking…"
 }
