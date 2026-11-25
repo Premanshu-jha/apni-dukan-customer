@@ -167,6 +167,9 @@ jobs:
         env:
           APP_RELEASE_TOKEN: ${{ secrets.APP_RELEASE_TOKEN }}
           CAPGO_PRIVATE_KEY: ${{ secrets.CAPGO_PRIVATE_KEY }}
+          # A PR titled "[urgent] …" makes this release urgent (scripts/urgent-note.mjs); passed as a variable, never
+          # pasted into the command, so a title can't run anything
+          RELEASE_MESSAGE: ${{ github.event.head_commit.message }}
         run: node scripts/release-screens.mjs
       - name: Forget the upload key
         if: always()
