@@ -1,4 +1,5 @@
 import { Component, type ReactNode } from 'react'
+import { CallUs } from '../features/help/CallUs'
 import { useT } from '../i18n'
 
 /**
@@ -33,6 +34,9 @@ function Failed() {
       >
         {t('ui.errorStartAgain')}
       </button>
+      {/* If starting again ends here again: a person, one tap away (plain links: no router needed here) */}
+      <p className="mt-4 text-sm text-muted">{t('ui.errorStillStuck')}</p>
+      <CallUs about={t('ui.errorTitle')} className="w-full" />
     </div>
   )
 }
