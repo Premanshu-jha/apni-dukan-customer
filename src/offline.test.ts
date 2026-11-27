@@ -22,8 +22,15 @@ describe('the offline page', () => {
     for (const lang of ['te', 'mr', 'ta', 'kn']) {
       localStorage.setItem('language', lang)
       openOfflinePage()
-      for (const el of ['h1', 'p', 'a']) expect(document.querySelector(el)!.textContent!.replace('Clozest', ''), `${lang} ${el}`).not.toMatch(/[A-Za-z]{2,}/)
+      for (const el of document.querySelectorAll('h1, p, a')) expect(el.textContent!.replace('Clozest', ''), `${lang} ${el.id}`).not.toMatch(/[A-Za-z]{2,}/)
     }
+  })
+
+  it('offers a phone call, which works without the internet', () => {
+    openOfflinePage()
+    const call = document.getElementById('offline-call') as HTMLAnchorElement
+    expect(call.getAttribute('href')).toBe('tel:+919381251613')
+    expect(call.textContent).toBe('Call us')
   })
 
   it('stays English when nothing (or English) was chosen', () => {

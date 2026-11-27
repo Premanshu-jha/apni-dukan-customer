@@ -1,4 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react'
+import { CallUs } from '../features/help/CallUs'
 import { useT } from '../i18n'
 import {
   check,
@@ -63,6 +64,8 @@ function UpdateRequired() {
       >
         {checking ? t('app.updateRequiredChecking') : t('app.updateRequiredCheck')}
       </button>
+      <p className="mt-4 text-sm text-muted">{t('app.updateStuck')}</p>
+      <CallUs about={t('app.updateRequiredTitle')} />
     </main>
   )
 }

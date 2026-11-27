@@ -1,3 +1,4 @@
+import { CallUs } from '../features/help/CallUs'
 import { useT } from '../i18n'
 
 /** The Play Store app on a phone whose Android System WebView is too old for it: one screen, one button to fix it. */
@@ -14,6 +15,8 @@ export function UpdateWebView() {
       >
         {t('app.webViewOldButton')}
       </a>
+      <p className="mt-4 text-sm text-muted">{t('app.updateStuck')}</p>
+      <CallUs about={t('app.webViewOldTitle')} />
     </main>
   )
 }

@@ -28,5 +28,15 @@ describe('the app on a too-old Android System WebView', () => {
       'href',
       'https://play.google.com/store/apps/details?id=com.google.android.webview',
     )
+    // Stuck anyway (no Play Store update yet): a person, one tap away
+    expect(screen.getByText("Can't update? Talk to us:")).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Call us' })).toHaveAttribute('href', 'tel:+919381251613')
+  })
+
+  it('in the app, WhatsApp opens as a plain link (the app hands it to WhatsApp; a new tab would do nothing)', () => {
+    ua.native = true
+    render(<UpdateWebView />)
+    expect(screen.getByRole('link', { name: 'WhatsApp us' })).not.toHaveAttribute('target')
+    ua.native = false
   })
 })
