@@ -129,6 +129,24 @@ export function cameFromBooking(userId: string | undefined): boolean {
   }
 }
 
+/**
+ * Why this person was sent to the email screen, for it to say so ("One step before you write to us… then you come
+ * straight back"): a booking, writing to us, or changing the name; null when they opened it themselves.
+ */
+export function emailReason(userId: string | undefined): 'booking' | 'help' | 'name' | null {
+  if (cameFromBooking(userId)) return 'booking'
+  try {
+    const saved = JSON.parse(tabStorage()?.getItem(EMAIL_RETURN_KEY) ?? 'null') as { userId?: string; path?: string } | null
+    if (!saved || !userId || saved.userId !== userId) return null
+    const path = saved.path ?? ''
+    if (path === '/help' || path.startsWith('/help?') || path.startsWith('/help/')) return 'help'
+    if (path.startsWith('/profile?edit=name')) return 'name'
+    return null
+  } catch {
+    return null
+  }
+}
+
 /** Where to go after a sign-in step: the name if it's missing, else back to where they started (or Home). */
 export function nextAfterSignIn(user: User): string {
   const missing = signUpSteps(user)
