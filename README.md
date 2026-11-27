@@ -103,12 +103,12 @@ No customer should need anyone to explain the app:
   you can search (in the screen's language and English), each with "Take me there". The rules quoted are the
   backend's own (free to cancel until 1 hour before and for 10 minutes after booking; 3 missed or late cancels in 60
   days pause online booking for 30 days; 2 upcoming bookings at most). The answers can be read before the email is
-  verified; writing still asks for it first. Opened from a screen, a question is already about it (`?about=…&keep=1`
+  verified; writing still asks for it first (said on the page, with Call us and WhatsApp us there). Opened from a screen, a question is already about it (`?about=…&keep=1`
   never replaces a draft with a message).
 - **Every error offers support:** `ErrorState` adds "Still not working? Write to us", the error filled in.
 - **How booking works** on Home until the first booking: one line ("How booking works ›", with Got it) that opens to
   the 3 steps and the rules line, so on a 360×640 phone a new customer still sees the search box and the first salon
-  (Home's Verify email banner is a one-line box there too, and the save-a-place hint waits until How booking works is
+  (Home's Verify email banner is a one-line box there too, and "At home right now? Save as Home" waits until How booking works is
   put away). A one-time tip after the first finished visit (come-back reminders, offer messages), and one-line hints
   the first time on a salon, Pick a time and a booking.
 - **The rules before booking:** Confirm booking says them under Book now, for everyone (someone from a salon's link
@@ -565,6 +565,40 @@ applies at once and keeps whatever was typed. The language code is the partner a
 
 ## Changelog
 
+### Unreleased — help one tap away, and switching where to find salons
+
+No backend change needed. Every text is in all six languages (Hindi, Telugu, Kannada, Tamil and Marathi to be
+checked by native speakers).
+
+- **Call us and WhatsApp us, everywhere help is:** Need help (under Write to us, and under the form), Profile's help
+  card, a booking's page, the email screen, the SMS-code and recovery screens, Contact (a new first section, "Can't
+  sign in?"), the crash screen, "Please update the app", the old-WebView screen, and the offline page (a call needs
+  no internet). Plain links (`tel:`, `wa.me` with the first words typed and the screen named), so they work outside
+  the router and without an email. In the Play Store app WhatsApp opens as a plain link (the app hands it over). Under them: "Calls 10 AM–7 PM · WhatsApp anytime" (`help.callHours`).
+- **No loop to the email screen:** writing to us still needs a verified email, but Need help now says so on the page
+  ("Verify your email to write here", one tap to verify and come back with the form and the words) instead of sending
+  people there; Help from the email screen lands on Need help with Call and WhatsApp in sight. The email screen says
+  why it opened ("One step before you write to us / change your name").
+- **Saving a place needs no email** (`/places/new` and `/places/:id` left the email guard): browsing salons near an
+  address works from the first day; booking still asks for the email.
+- **Switching where to find salons, in one tap:** a row of chips on Home once a place is saved (Current location,
+  Home, Work, the others, ＋ Add place / ＋ Add Home), the picked one filled in; "Showing salons near Work" for a few
+  seconds after a switch (a chip, the list, a place just saved). Both location bars end in a button-shaped
+  "Change ▾". "At home right now? Save as Home" (once, on a good GPS fix, with no Home saved) opens a new Home already
+  taking the location. "Drag the pin onto your exact building" is said above the map every time.
+- **Find on map from the area, city and pincode** (the house or flat line isn't needed to search; saving still
+  asks for it).
+- **Dead ends opened up:** a failed Book now says why right above the button, with the next step (See my bookings,
+  Back to the salon, Pick another time, or Write to us with what happened filled in); "No free times" offers the next
+  day; "No salons near you" and "only in India" offer "Look near another place"; a booking marked missed has "Tell
+  us" under it; one cancelled by the salon has "Book another time"; Move booking ends with "Moved to …" in focus;
+  "Cancelled" is brought into sight; a 1–2 star rating says Clozest can act ("Tell Clozest"); "Running late? Move it"
+  on an upcoming booking.
+- **Plain words:** "accurate to 30 m" (not "±30 m"), "Find me again" (not "Update"); the Play Store app's
+  location steps are the phone's Settings (it has no address bar); Pick a time lists the services picked; recovery
+  says the email code comes only to a verified email; the SMS-code screen says what to check.
+- **New answers** in How do I…?: the SMS code, the email code, why an email, a salon that let you down, running late.
+
 ### Unreleased — analytics
 
 Needs apni-dukan-backend's analytics round first (V93: the backend must allow the `X-Clozest-Client` header, or the
@@ -781,9 +815,10 @@ Fixes from a salon customer trying the app:
 
 - **The email after sign-up, not during it.** Sign-up is the phone code, then the name, then Home. While the email
   isn't verified, Home (and Profile) show "🔒 Verify your email to secure your account" with **Verify now**, and
-  anything that does something asks for it first: booking (Pick a time), Need help, adding or editing a saved place,
-  changing the name or phone, deleting the account (`EmailVerifiedOnly` in `src/app/guards.tsx`, typed addresses
-  too). Once verified the app goes straight on to where the person was going, with what they picked still there (a
+  anything that does something asks for it first: booking (Pick a time), writing to us (Need help says so on the
+  page; Call us and WhatsApp us need no email), changing the name (`EmailVerifiedOnly` in `src/app/guards.tsx`).
+  Saving a place doesn't (browsing salons near an address works from the first day), nor do changing the phone and
+  deleting the account. Once verified the app goes straight on to where the person was going, with what they picked still there (a
   booking's salon, services and time). Browsing (salons, bookings, messages) never asks. The email screen is now
   `/verify-email` (an old `/welcome/email` link goes there); Back leaves it for later.
 - **Need help** (`/help`, needs backend V46): the customer writes to support in the app; it becomes a ticket (CLZ-1001)
