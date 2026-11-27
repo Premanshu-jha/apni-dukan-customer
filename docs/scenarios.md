@@ -723,3 +723,26 @@ audit's findings, now fixed. No backend change.
 | 717 | Help | Verify my email from the How do I…? answers | — | Comes back to Need help (an older detour's form forgotten); the button only while the email is pending | — | e2e:obvious-help "\"Verify my email\" from an answer…" | OK-tested |
 | 718 | Help | "OTP" (or ओटीपी, ఓటీపీ…) in the answers search | — | Finds the SMS-code answer by hidden search words, not shown in it | — | guideHelp.test "hidden search words" | OK-tested |
 | 719 | Profile | Sign out on this phone, offline | logout fails: ignored by design (the token expires on its own) | Signed out here anyway (audit F-15 was not a bug: only Sign out everywhere can fail, and says so in its sheet) | — | — | OK-untested |
+
+## Kirana by branch: which builds of the Play Store app have kirana — 2026-11-27
+
+Rule: `scripts/kirana-build.mjs` (android job). "Test build" = kirana on only because of the branch: no screen-update
+key, no Play Store bundle, never sent to phones, artifact `clozest-customer-android-kirana-test`. The app has no
+kirana screens yet: on and off look the same today.
+
+| # | Journey | Scenario | API behaviour (status + code) | App behaviour | Backend test | App test | Verdict |
+|---|---|---|---|---|---|---|---|
+| 720 | CI | Merge to `main`, variable not `true` (today) | Screens sent (`app-releases`) as before | Kirana off; phones get it as a screen update | — | unit `kiranaBuild.test` "off on main…", "the script as CI runs it" (push to main) | OK-tested |
+| 721 | CI | Push to `kirana-orders` (no PR) | Nothing sent | CI runs (push trigger `kirana**`); kirana-on test APK, no `.aab` | — | unit `kiranaBuild.test` "builds on pushes to kirana branches", "reads the pushed branch" | OK-tested |
+| 722 | CI | PR from a `kirana…` branch into `main` | Nothing sent (PR) | Kirana-on test APK (the PR's branch decides) | — | unit "reads the PR branch first" | OK-tested |
+| 723 | CI | PR from another branch into a kirana branch; `feature/kirana-x`, `Kirana-x` | Nothing sent | Kirana off (only lower-case `kirana` at the start of the build's own branch) | — | unit "a PR from another branch…", "off on main and every other branch…" | OK-tested |
+| 724 | Phone | Kirana test APK installed; `main` releases new screens | `GET /app-updates/customer` offers the bundle | Not downloaded (built without `CAPGO_PUBLIC_KEY`: `updatesSigned` false) | — | unit `kiranaBuild.test` "sets kirana and the update key only through the kirana step"; `appUpdates.test` "downloads nothing in an app built without the signing key" | OK-tested |
+| 725 | CI | Test build with the upload key in the secrets | — | Key never written, no signed bundle | — | unit "never signs, bundles or sends a kirana test build" | OK-tested |
+| 726 | Launch | Variable `true`, then a new run of `main` (a merge or an empty commit); or `TRUE` / ` true` | Screens sent | Exactly `true`: kirana on everywhere, ordinary builds; anything else: off on main (as `config.ts`) | — | unit "on everywhere once launched…" | OK-tested |
+| 727 | Many at once | Push to a kirana branch with its PR open | — | Two CI runs, each its own APK (public repo: free minutes) | — | (by reading the trigger) | OK-untested |
+| 728 | Inconvenience → fixed | Which APK is on my phone? | — | A kirana test build shows "Kirana test build" at the bottom left (taps go through); never in the website or a release | — | unit `TestBuildMark.test`; `kiranaBuild.test` (`VITE_KIRANA_TEST_BUILD` passed) | OK-tested |
+| 729 | Launch | Variable `true`, then "Re-run" of main's last run | Same build number, already sent: `RELEASE_EXISTS`, nothing sent | Phones keep the old screens. README says: start a new run, never Re-run | — | (release-screens.mjs, by reading) | OK-untested (documented) |
+| 730 | Phone | A newer test APK (kirana or not) over the last one | — | Installs over it, still signed in (same debug key from GitHub's cache) | — | unit "signs every test APK with the same debug key…" | OK-tested |
+| 731 | Phone | A test APK over the Play Store app, an APK from before this change, a newer one, or after the key was dropped | — | Android refuses: uninstall first, sign in again (README); back to the normal app the same way | — | — | INCONVENIENCE (documented) |
+| 732 | CI | Force-push to a kirana branch | — | The native level check skips the missing old commit with a warning; the APK is built | — | unit "skips a base commit that is not in the clone…" | OK-tested |
+| 733 | CI | An old kirana run re-run after launch; the branch deleted | — | Re-run: an ordinary build. Deleted: artifacts stay 30 days | — | unit "on everywhere once launched…" | OK-tested |
