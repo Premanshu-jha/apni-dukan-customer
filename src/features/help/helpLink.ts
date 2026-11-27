@@ -11,6 +11,7 @@ export function isHelpScreen(pathname: string): boolean {
  * already typed in Need help is never replaced (see NeedHelp's `keep`).
  */
 export function screenSubject(pathname: string, t: (key: string) => string): string | undefined {
+  if (pathname === '/') return t('guide.aboutHome')
   if (pathname === '/bookings') return t('guide.aboutBookings')
   if (pathname === '/places' || pathname.startsWith('/places/')) return t('guide.aboutPlaces')
   if (pathname === '/profile/phone') return t('guide.aboutPhone')

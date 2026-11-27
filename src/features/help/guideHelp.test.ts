@@ -87,6 +87,15 @@ describe('Help button', () => {
   it('names the screen it was opened from', () => {
     expect(screenSubject('/places/new', t)).toBe('Saved addresses')
     expect(screenSubject('/profile/phone', t)).toBe('Changing my mobile number')
-    expect(screenSubject('/', t)).toBeUndefined()
+    expect(screenSubject('/', t)).toBe('Finding a salon')
+    expect(screenSubject('/salons/s1', t)).toBeUndefined()
+  })
+})
+
+describe('hidden search words', () => {
+  it('"OTP" finds the SMS-code answer without the word being shown in it', () => {
+    expect(searchHowTos('OTP', t).map((h) => h.id)).toEqual(['smsCode'])
+    expect(t('howto.smsCodeA')).not.toContain('OTP')
+    expect(searchHowTos('zzzz', t)).toEqual([])
   })
 })

@@ -1,6 +1,7 @@
 import { Link } from 'react-router'
 import { spaceBefore, useT } from '../../i18n'
 import { BUSINESS } from '../../lib/business'
+import { CallUs } from '../help/CallUs'
 import { LegalPage, Section } from './LegalPage'
 
 /**
@@ -13,6 +14,11 @@ export function Contact() {
   const profile = t('app.tabProfile')
   return (
     <LegalPage path="/contact" title={t('legal.contactTitle')}>
+      {/* First, for someone who can't sign in (the usual reason a signed-out person is here): a person, one tap away */}
+      <Section title={t('legal.contactCantSignInTitle')}>
+        <p>{t('legal.contactCantSignInBody')}</p>
+        <CallUs about={t('legal.contactCantSignInTitle')} className="mt-3" />
+      </Section>
       <Section title={t('legal.contactWriteTitle')}>
         <dl className="flex flex-col gap-3">
           <div>

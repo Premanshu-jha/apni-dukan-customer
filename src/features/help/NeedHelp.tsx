@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Link, Navigate, useLocation, useNavigate, useSearchParams } from 'react-router'
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router'
 import { authApi } from '../../api/auth'
 import { needsEmail, useSession } from '../../store/session'
 import { HowToList } from './HowToList'
@@ -14,6 +14,7 @@ import { Banner, Button, Field, Page } from '../../components/ui'
 import { SUPPORT_EMAIL } from '../../lib/config'
 import { storage } from '../../lib/storage'
 import { rememberAfterEmail } from '../auth/flow'
+import { CallUs } from './CallUs'
 import { useT } from '../../i18n'
 
 /** The backend's limits (TicketService): a message of 10 to 5,000 characters, a subject of at most 100. */
@@ -29,8 +30,10 @@ const draftKey = (userId: string) => `ad.helpDraft.${userId}`
  * Opened from every screen's Help button, from Profile and from "Let us know" when no salon is near (`?about=` fills
  * the subject, `?text=` the message). `keep=1` (the Help buttons, an error's "Write to us"): they only fill what is
  * still empty, so a draft typed earlier is never replaced. The answers are open to everyone signed in; writing needs
- * a verified email (the reply goes there): with it pending, Write to us goes to the email screen first and back here
- * with the form open (`write=1`), as a link that opens the form does at once.
+ * a verified email (the reply goes there): with it pending, Write to us (or a link that opens the form) says so on
+ * this page, with one tap to verify and come back with the form open (`write=1`); it never sends anyone to the email
+ * screen on its own, so someone stuck on that screen is not sent back to it. "Call us" and "WhatsApp us" are always
+ * under Write to us, for everyone, email or not.
  */
 /** Set when leaving for the email check with files picked (they can't come along). */
 const FILES_DROPPED = 'ad.helpFilesDropped'
@@ -60,8 +63,10 @@ export function NeedHelp() {
   // The form shows at once for a link that asks to write (a message to send, "Let us know") or a draft to finish;
   // a Help button's subject alone waits for Write to us, so the answers below are seen first
   const asksToWrite = params.get('write') === '1' || params.has('text') || (params.has('about') && !keep)
-  const [writing, setWriting] = useState(asksToWrite || hasDraft)
   const emailPending = needsEmail(user)
+  const [writing, setWriting] = useState(!emailPending && (asksToWrite || hasDraft))
+  /** Write to us tapped (or a link asked for the form) with the email pending: what writing needs, said here. */
+  const [emailAsk, setEmailAsk] = useState(emailPending && asksToWrite)
   const requests = useMyRequestsGlance(!emailPending)
   const heading = useRef<HTMLHeadingElement | null>(null)
   const [busy, setBusy] = useState(false)
@@ -93,12 +98,10 @@ export function NeedHelp() {
   /** Write to us (or an answer's "Tell us"): the form, starting with this subject if none was typed yet. */
   function startWriting(about?: string) {
     if (emailPending) {
-      // The reply needs a verified email: verify, then straight back here with the form open
-      const next = new URLSearchParams(params)
-      next.set('write', '1')
-      if (about && !subject.trim()) next.set('about', about)
-      rememberAfterEmail(`${location.pathname}?${next}`, user.id)
-      navigate('/verify-email')
+      // The reply needs a verified email: said here first (the person chooses to verify, or calls us instead)
+      if (about && !subject.trim()) setSubject(about)
+      setEmailAsk(true)
+      requestAnimationFrame(() => document.getElementById('help-email-needed')?.focus())
       return
     }
     if (about && !subject.trim()) setSubject(about)
@@ -143,15 +146,10 @@ export function NeedHelp() {
         void authApi.me().then(setUser).catch(() => {})
         const missing = (err.details.missing as string[] | undefined) ?? []
         if (missing.includes('email')) {
-          rememberAfterEmail(location.pathname + location.search, user.id)
-          if (files.items.length > 0) {
-            try {
-              sessionStorage.setItem(FILES_DROPPED, '1')
-            } catch {
-              /* storage blocked */
-            }
-          }
-          navigate('/verify-email')
+          // Said here, as for Write to us (what was typed stays in the draft; Verify my email goes and comes back)
+          setWriting(false)
+          setEmailAsk(true)
+          requestAnimationFrame(() => document.getElementById('help-email-needed')?.focus())
           return
         }
       }
@@ -162,11 +160,26 @@ export function NeedHelp() {
     }
   }
 
-  // A link that opens the form (Profile's Write to support, Let us know, a typed address) with the email pending:
-  // the email screen first, then back here (as before, when all of /help waited for the email)
-  if (emailPending && asksToWrite) {
-    rememberAfterEmail(location.pathname + location.search, user.id)
-    return <Navigate to="/verify-email" replace />
+  /**
+   * Verify the email to write: there and back, with the form open. What is typed comes back from the draft kept on
+   * this phone (never put in the address, where the history would keep it).
+   */
+  function verifyToWrite() {
+    const next = new URLSearchParams(params)
+    next.set('write', '1')
+    next.delete('keep')
+    // As typed (the draft keeps it untrimmed, and comes back only for the same subject)
+    if (subject.trim()) next.set('about', subject)
+    else next.delete('about')
+    rememberAfterEmail(`${location.pathname}?${next}`, user.id)
+    if (files.items.length > 0) {
+      try {
+        sessionStorage.setItem(FILES_DROPPED, '1')
+      } catch {
+        /* storage blocked */
+      }
+    }
+    navigate('/verify-email')
   }
 
   if (done) {
@@ -182,6 +195,7 @@ export function NeedHelp() {
         <p className="text-sm text-muted">
           {t('help.emailedCopy', { number: done.number })}
         </p>
+        <p className="text-sm text-muted">{t('help.replyShowsHere')}</p>
         <Button
           onClick={() => {
             // Need help → My requests → the request: ← goes to the list, and its ← home (Need help is done)
@@ -200,12 +214,24 @@ export function NeedHelp() {
 
   return (
     <Page title={t('help.needHelpTitle')} back>
-      {!writing && (
+      {!writing && !emailAsk && (
         <Button className="min-h-14 w-full text-lg" onClick={() => startWriting()}>
           <WriteIcon />
           {t('help.writeToUs')}
         </Button>
       )}
+      {emailAsk && (
+        <section aria-labelledby="help-email-needed" className="flex flex-col gap-3 rounded-2xl border border-brand/40 bg-brand/10 p-4">
+          <h2 id="help-email-needed" tabIndex={-1} className="font-display text-lg font-semibold outline-none">
+            {t('help.emailNeededTitle')}
+          </h2>
+          <p className="text-sm">{t('help.emailNeededBody')}</p>
+          <Button onClick={verifyToWrite}>{t('help.verifyToWrite')}</Button>
+          <p className="text-sm text-muted">{t('help.emailNeededOr')}</p>
+        </section>
+      )}
+      {/* A person, one tap away, for everyone: no email, no typing */}
+      {!writing && <CallUs about={subject.trim() || undefined} />}
       {writing && (
       <>
       <h2 className="font-display text-lg font-semibold">{t('help.writeToUs')}</h2>
@@ -246,6 +272,8 @@ export function NeedHelp() {
           {t('help.sendToSupport')}
         </Button>
       </form>
+      <p className="text-sm text-muted">{t('help.ratherTalk')}</p>
+      <CallUs about={subject.trim() || undefined} />
       </>
       )}
       {!emailPending && <RequestsCard userId={user.id} list={requests.data} />}

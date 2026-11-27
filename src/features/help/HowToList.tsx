@@ -1,7 +1,10 @@
 import { useId, useState } from 'react'
 import { useNavigate } from 'react-router'
 import { useT } from '../../i18n'
+import { needsEmail, useSession } from '../../store/session'
+import { forgetAfterEmail, rememberAfterEmail } from '../auth/flow'
 import { HOWTOS, searchHowTos, type HowTo } from './howto'
+import { CallUs } from './CallUs'
 
 /**
  * "How do I…?": a search box and the short answers, each opened by tapping its question, with "Take me there". What
@@ -14,10 +17,18 @@ export function HowToList({ onWrite }: { onWrite: (subject?: string) => void }) 
   const [query, setQuery] = useState('')
   const [open, setOpen] = useState<string | null>(null)
   const shown = searchHowTos(query, t, HOWTOS)
+  const user = useSession((s) => s.user)
+  const emailPending = user !== null && needsEmail(user)
 
   function go(h: HowTo) {
+    if (h.to === 'call') return
     if (h.to === 'write') onWrite(h.subjectKey ? t(h.subjectKey) : undefined)
-    else navigate(h.to)
+    else if (h.to === '/verify-email') {
+      // Verifying from an answer comes back to Need help (not an older detour's form)
+      forgetAfterEmail()
+      rememberAfterEmail('/help', user?.id)
+      navigate(h.to)
+    } else navigate(h.to)
   }
 
   return (
@@ -67,6 +78,9 @@ export function HowToList({ onWrite }: { onWrite: (subject?: string) => void }) 
                 {expanded && (
                   <div id={`${id}-${h.id}`} className="flex flex-col gap-3 border-t border-line px-4 py-3">
                     <p className="text-sm text-muted">{t(`howto.${h.id}A`)}</p>
+                    {h.to === 'call' ? (
+                      <CallUs about={t(`howto.${h.id}Q`)} />
+                    ) : h.to === '/verify-email' && !emailPending ? null : (
                     <button
                       type="button"
                       onClick={() => go(h)}
@@ -74,6 +88,7 @@ export function HowToList({ onWrite }: { onWrite: (subject?: string) => void }) 
                     >
                       {t(h.buttonKey ?? 'howto.takeMeThere')} →
                     </button>
+                    )}
                   </div>
                 )}
               </li>
