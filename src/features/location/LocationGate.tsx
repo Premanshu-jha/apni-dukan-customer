@@ -3,6 +3,7 @@ import { Link } from 'react-router'
 import { SALONS_RADIUS_KM } from '../../api/salons'
 import { Banner, Button, Loading } from '../../components/ui'
 import { platform } from '../../lib/device'
+import { isApp } from '../../lib/platform'
 import { permissionState, STALE_MS, useLocation, type Place } from '../../store/location'
 import { useT } from '../../i18n'
 
@@ -74,12 +75,14 @@ function OrAnAddress() {
   )
 }
 
-/** Shown when the browser has blocked location for this site. */
+/** Shown when location is blocked (for this site, or for the Play Store app): the steps for this phone. */
 export function LocationGuide({ onRetry }: { onRetry: () => void }) {
   const t = useT()
   const p = platform()
-  const steps =
-    p === 'ios'
+  // The Play Store app has no address bar: the permission is the app's own, in the phone's Settings
+  const steps = isApp()
+    ? [t('places.guideApp1'), t('places.guideApp2'), t('places.guideApp3'), t('places.guideApp4')]
+    : p === 'ios'
       ? [
           t('places.guideIos1'),
           t('places.guideIos2'),

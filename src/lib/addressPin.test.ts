@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { ApiError } from '../api/errors'
 import { resetLanguageForTests, setLanguage, t } from '../i18n'
-import { waitEndsText, addressProblems, addressSearchOff, canSearchAddress, fillEmpty, insideIndia, metresBetween, precisionHint, resetAddressSearch, round6, searchFailure, searchMessageText, zoomFor } from './addressPin'
+import { waitEndsText, addressProblems, addressSearchOff, canSearchAddress, searchQuery, fillEmpty, insideIndia, metresBetween, precisionHint, resetAddressSearch, round6, searchFailure, searchMessageText, zoomFor } from './addressPin'
 
 /** A failure as the screen shows it: hidden, or its words. */
 function shown(e: unknown) {
@@ -16,7 +16,11 @@ describe('Find on map (a saved place)', () => {
 
   it('needs the address, area, city and a 6-digit pincode, as the backend checks them', () => {
     expect(canSearchAddress(address)).toBe(true)
-    expect(canSearchAddress({ ...address, addressLine: '4' })).toBe(false)
+    // The house or flat line isn't needed to search (the area stands in for it)
+    expect(canSearchAddress({ ...address, addressLine: '4' })).toBe(true)
+    expect(canSearchAddress({ ...address, addressLine: '' })).toBe(true)
+    expect(searchQuery({ ...address, addressLine: ' ' })).toEqual({ ...address, addressLine: address.area.trim(), area: address.area.trim(), city: address.city.trim(), pincode: address.pincode.trim() })
+    expect(searchQuery({ ...address, addressLine: ' 4B ' }).addressLine).toBe('4B')
     expect(canSearchAddress({ ...address, addressLine: '4B' })).toBe(true)
     expect(canSearchAddress({ ...address, area: ' ' })).toBe(false)
     expect(canSearchAddress({ ...address, city: 'N' })).toBe(false)

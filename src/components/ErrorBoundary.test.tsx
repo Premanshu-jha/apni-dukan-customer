@@ -29,6 +29,20 @@ describe('ErrorBoundary', () => {
     expect(assign).toHaveBeenCalledWith('/')
   })
 
+  it('offers a person if starting again ends here again: Call us and WhatsApp us, plain links outside any router', () => {
+    render(
+      <ErrorBoundary>
+        <Broken />
+      </ErrorBoundary>,
+    )
+    expect(screen.getByText('Still stuck? Talk to us:')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Call us' })).toHaveAttribute('href', 'tel:+919381251613')
+    const whatsApp = screen.getByRole('link', { name: 'WhatsApp us' })
+    expect(decodeURIComponent(whatsApp.getAttribute('href')!)).toBe('https://wa.me/919381251613?text=Hi Clozest, I need help with: Something went wrong on this screen')
+    // On the website a new tab keeps the app open
+    expect(whatsApp).toHaveAttribute('target', '_blank')
+  })
+
   it('around each screen: the bottom bar stays, and opening another screen clears it', async () => {
     render(
       <MemoryRouter initialEntries={['/bookings']}>

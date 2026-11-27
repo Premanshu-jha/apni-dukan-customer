@@ -22,5 +22,6 @@
   "switching": "ऐप अपडेट हो रहा है…",
   "updateRequiredHint": "अगर Play Store में अभी अपडेट नहीं दिखे, तो ऐप बंद करके कुछ घंटे बाद फिर कोशिश करें, या \"फिर से देखें\" दबाएँ।",
   "updateRequiredCheck": "फिर से देखें",
-  "updateRequiredChecking": "देख रहे हैं…"
+  "updateRequiredChecking": "देख रहे हैं…",
+  "updateStuck": "अपडेट नहीं हो रहा? हमसे बात करें:"
 }

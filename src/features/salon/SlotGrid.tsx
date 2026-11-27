@@ -1,18 +1,29 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { isApiError, salonReadMessage } from '../../api/errors'
 import { useUpcomingBookings } from '../../api/bookings'
 import { daysShown, useSlots } from '../../api/salons'
 import type { Slot } from '../../api/types'
 import { clashesWithMine } from './clash'
-import { Banner, Chip, EmptyState, ErrorState, Loading } from '../../components/ui'
+import { Banner, Button, Chip, EmptyState, ErrorState, Loading } from '../../components/ui'
 import { clock12, dayLabel, endTimeIst, nextDates } from '../../lib/ist'
 import type { CancelTerms, SlotPrice } from '../../store/bookingDraft'
 import { useT } from '../../i18n'
 
 export function DateChips({ value, onChange, maxDaysAhead }: { value: string; onChange: (d: string) => void; maxDaysAhead?: number }) {
   const t = useT()
+  // The picked day is kept in sight (a day picked by "Try Wed 3 Dec" can be past the edge of a small phone)
+  const row = useRef<HTMLDivElement>(null)
+  const picked = useRef(false)
+  useEffect(() => {
+    const chip = row.current?.querySelector<HTMLElement>('[aria-pressed="true"]')
+    chip?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' })
+    // Picked by a button that has now gone ("Try Wed 3 Dec"): focus goes to the day, so it is known which one shows
+    // (not when the screen opens: then the page starts from its title)
+    if (picked.current && document.activeElement === document.body) chip?.focus()
+    picked.current = true
+  }, [value])
   return (
-    <div role="group" aria-label={t('salon.dayLabel')} className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
+    <div ref={row} role="group" aria-label={t('salon.dayLabel')} className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
       {nextDates(daysShown(maxDaysAhead)).map((d) => (
         <Chip key={d} selected={d === value} onClick={() => onChange(d)}>
           {dayLabel(d)}
@@ -33,7 +44,16 @@ export function SlotGrid({
   moving,
   minutes,
   onSelectedGone,
+  onDate,
+  maxDaysAhead,
+  closedDates,
 }: {
+  /** The salon's closed days ahead: never offered as "Try …". */
+  closedDates?: string[]
+  /** No free times on this day: offers the next day shown, picked with this. */
+  onDate?: (d: string) => void
+  /** How far ahead the salon takes bookings (the days shown), for "Try the next day". */
+  maxDaysAhead?: number
   salonId: string
   serviceIds: string[]
   date: string
@@ -97,11 +117,18 @@ export function SlotGrid({
   const stale = slots.isError ? (
     <Banner tone="warn">{t('salon.timesStale')}</Banner>
   ) : null
+  // Only once the salon's own window is known (else a day it doesn't take could be offered); its closed days skipped
+  const days = maxDaysAhead === undefined ? [] : nextDates(daysShown(maxDaysAhead))
+  const next = days.slice(days.indexOf(date) + 1).find((d) => !closedDates?.includes(d))
   if (starts.length === 0) {
     return (
       <>
         {stale}
-        <EmptyState title={t('salon.noFreeTimes')} body={t('salon.noFreeTimesBody')} />
+        <EmptyState
+          title={t('salon.noFreeTimes')}
+          body={t('salon.noFreeTimesBody')}
+          action={next && onDate ? <Button variant="secondary" onClick={() => onDate(next)}>{t('salon.tryDay', { day: dayLabel(next) })}</Button> : undefined}
+        />
       </>
     )
   }

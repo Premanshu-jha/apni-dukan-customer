@@ -23,7 +23,10 @@
   "visitTipTitle": "Want a reminder for next time?",
   "visitTipBody": "We can message you when it's time for your next visit, and when a salon you've been to has an offer. Switch off what you don't want.",
   "visitTipProfile": "Change these later in Profile",
-  "placesHint": "Save Home or Work once, then find salons near them from anywhere.",
-  "placesHintLink": "Save a place",
-  "signInForSalon": "Sign in to book at the salon you opened. You'll come straight back to it."
+  "signInForSalon": "Sign in to book at the salon you opened. You'll come straight back to it.",
+  "aboutHome": "Finding a salon",
+  "saveHomeTitle": "At home right now?",
+  "saveHomeBody": "Save this spot as Home. Then one tap finds salons near home, wherever you are.",
+  "saveHomeButton": "Save as Home",
+  "notNow": "Not now"
 }

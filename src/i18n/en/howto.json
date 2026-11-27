@@ -42,5 +42,17 @@
   "deleteQ": "How do I delete my account?",
   "deleteA": "In Profile, tap Delete my account at the bottom and enter the code we send. Your upcoming bookings are cancelled and your name, phone and email are removed. It can't be undone.",
   "noSalonsQ": "There are no salons near me. What can I do?",
-  "noSalonsA": "We're adding salons area by area. Check near a saved place (like Work), or tell us your area and we'll come to you sooner."
+  "noSalonsA": "We're adding salons area by area. Check near a saved place (like Work), or tell us your area and we'll come to you sooner.",
+  "verifyEmail": "Verify my email",
+  "smsCodeQ": "The SMS code doesn't come. What can I do?",
+  "smsCodeA": "Codes can take a minute. Check the number and that your phone has signal, then tap Send a new code after 30 seconds. Still nothing? Call us or WhatsApp us below.",
+  "emailCodeQ": "The email code doesn't come. What can I do?",
+  "emailCodeA": "Look in Spam and Promotions too. Tap Send again after 30 seconds, or Change the email if it was typed wrong. Still nothing? Call us or WhatsApp us from Help.",
+  "whyEmailQ": "Why do I need to verify an email?",
+  "whyEmailA": "It's how you get your account back if you lose your phone number, and where our written replies go. You only do it once. You can book only after it, but Call us and WhatsApp work without it.",
+  "salonProblemQ": "The salon was closed, refused my booking or charged more. What can I do?",
+  "salonProblemA": "Tell us with the booking number (like SB7K3Q9X): we talk to the salon about it. If a missed mark was wrong, we take it off so it doesn't count.",
+  "runningLateQ": "I'm running late. What can I do?",
+  "runningLateA": "Open the booking in My bookings and tap Move to another time, until 1 hour before it starts. If it's later than that, go as soon as you can: the booking waits 10 minutes after its time.",
+  "smsCodeK": "OTP code SMS not received"
 }

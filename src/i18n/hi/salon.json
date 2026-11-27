@@ -99,5 +99,11 @@
   "searchHelpText": "मैंने खोजा: {q}\nमेरा इलाक़ा: \nलोकेशन: {lat}, {lng}",
   "searchResultsLabel": "‘{q}’ वाले सैलून",
   "searchHeadingMore": "{km} km के अंदर ‘{q}’ वाले सैलून, सबसे पास वाले पहले",
-  "searchHeadingCount": { "one": "{km} km के अंदर ‘{q}’ वाला {count} सैलून", "other": "{km} km के अंदर ‘{q}’ वाले {count} सैलून" }
+  "searchHeadingCount": { "one": "{km} km के अंदर ‘{q}’ वाला {count} सैलून", "other": "{km} km के अंदर ‘{q}’ वाले {count} सैलून" },
+  "backToSalon": "सैलून पर वापस जाएँ",
+  "bookFailedText": "मैंने बुक करने की कोशिश की और यह लिखा आया: {reason}",
+  "writeToUsAbout": "इसके बारे में हमें लिखें",
+  "lookNearAnotherPlace": "किसी दूसरी जगह के पास देखें",
+  "tryDay": "{day} देखें",
+  "findAnotherSalon": "दूसरा सैलून ढूँढें"
 }

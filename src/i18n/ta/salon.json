@@ -99,5 +99,11 @@
   "searchHelpText": "நான் தேடியது: {q}\nஎன் ஏரியா: \nலொகேஷன்: {lat}, {lng}",
   "searchResultsLabel": "‘{q}’ உள்ள சலூன்கள்",
   "searchHeadingMore": "{km} km-க்குள் ‘{q}’ உள்ள சலூன்கள், அருகில் உள்ளவை முதலில்",
-  "searchHeadingCount": { "one": "{km} km-க்குள் ‘{q}’ உள்ள {count} சலூன்", "other": "{km} km-க்குள் ‘{q}’ உள்ள {count} சலூன்கள்" }
+  "searchHeadingCount": { "one": "{km} km-க்குள் ‘{q}’ உள்ள {count} சலூன்", "other": "{km} km-க்குள் ‘{q}’ உள்ள {count} சலூன்கள்" },
+  "backToSalon": "சலூனுக்குத் திரும்புங்கள்",
+  "bookFailedText": "நான் புக் செய்ய முயன்றேன், இப்படி வந்தது: {reason}",
+  "writeToUsAbout": "இதைப் பற்றி எங்களுக்கு எழுதுங்கள்",
+  "lookNearAnotherPlace": "வேறு இடத்தின் அருகில் பாருங்கள்",
+  "tryDay": "{day} பாருங்கள்",
+  "findAnotherSalon": "வேறு சலூனைத் தேடுங்கள்"
 }

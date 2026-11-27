@@ -10,6 +10,7 @@ import { formatPhone } from '../../lib/phone'
 import { takePhoneChanged } from '../../lib/phoneMoved'
 import { SUPPORT_EMAIL } from '../../lib/config'
 import { LegalLinks } from '../legal/LegalPage'
+import { CallUs } from '../help/CallUs'
 import { needsEmail, useSession } from '../../store/session'
 import { forgetAfterEmail, rememberAfterEmail } from '../auth/flow'
 import { VerifyEmailBanner } from '../auth/VerifyEmailBanner'
@@ -122,6 +123,7 @@ export function Profile() {
             {SUPPORT_EMAIL}
           </a>
         </p>
+        <CallUs className="pt-2" />
       </Card>
 
       <Card className="flex flex-col gap-4">

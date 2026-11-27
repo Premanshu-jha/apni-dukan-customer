@@ -11,7 +11,7 @@
   "seeInMyRequests": "See it in My requests",
   "backToHome": "Back to Home",
   "askedBefore": "Asked before? See My requests and our replies",
-  "intro": "Tell us what happened. For a booking, add its number (like SB7K3Q9X). We reply by email.",
+  "intro": "Tell us what happened. For a booking, add its number (like SB7K3Q9X). Our reply comes by email and shows here in My requests.",
   "subjectLabel": "What's it about? (optional)",
   "subjectPlaceholder": "My booking, an offer, my account…",
   "messageLabel": "Your message",
@@ -116,5 +116,16 @@
     "one": "{count} with our team",
     "other": "{count} with our team"
   },
-  "requestsNone": "Your questions to us and our replies"
+  "requestsNone": "Your questions to us and our replies",
+  "callUs": "Call us",
+  "whatsAppUs": "WhatsApp us",
+  "whatsAppText": "Hi Clozest, I need help.",
+  "whatsAppTextAbout": "Hi Clozest, I need help with: {about}",
+  "emailNeededTitle": "Verify your email to write here",
+  "emailNeededBody": "Our written reply goes to your email, so it needs to be checked once. It takes a minute, and you come straight back here.",
+  "verifyToWrite": "Verify my email",
+  "emailNeededOr": "Can't do that now? Call us or WhatsApp us: no email needed.",
+  "ratherTalk": "Rather talk to someone?",
+  "replyShowsHere": "Our reply also shows in My requests and under the bell on Home.",
+  "callHours": "Calls 10 AM–7 PM · WhatsApp anytime"
 }

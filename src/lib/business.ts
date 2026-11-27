@@ -24,3 +24,14 @@ export const BUSINESS = {
 
 /** "Clozest is operated by Premanshu Jha, a sole proprietor" — the line every public page carries. */
 export const OPERATED_BY = `${BUSINESS.brand} is operated by ${BUSINESS.operator}, a ${BUSINESS.operatorKind}.`
+
+/** The support number as a phone link ("tel:+919381251613"): works on any screen, inside the router or not. */
+export const CALL_LINK = `tel:${BUSINESS.phone.replace(/[^\d+]/g, '')}`
+
+/**
+ * A WhatsApp chat with support, with the first words already typed ("Hi Clozest, I need help with: My booking"), so
+ * someone who can't find the words only has to tap Send. Opens WhatsApp on a phone (the app, or WhatsApp Web).
+ */
+export function whatsAppLink(text: string): string {
+  return `https://wa.me/${BUSINESS.phone.replace(/\D/g, '')}?text=${encodeURIComponent(text)}`
+}

@@ -9,15 +9,26 @@ import { inEnglish } from '../../i18n'
  */
 export interface HowTo {
   id: string
-  /** Where "Take me there" goes; 'write' opens Write to us here (with the topic's subject, if it has one). */
-  to: string | 'write'
+  /**
+   * Where "Take me there" goes; 'write' opens Write to us here (with the topic's subject, if it has one); 'call'
+   * shows Call us and WhatsApp us under the answer instead (for what a person sorts out faster than a form).
+   */
+  to: string | 'write' | 'call'
   /** For 'write': the subject the form starts with (an i18n key), unless the person already typed one. */
   subjectKey?: string
   /** The button's words (an i18n key), when not "Take me there". */
   buttonKey?: string
+  /** Has extra search words (`howto.<id>K`), not shown. */
+  searchWords?: boolean
 }
 
 export const HOWTOS: readonly HowTo[] = [
+  // What stops people first: a code that doesn't come, the email, a salon that let them down
+  { id: 'smsCode', to: 'call', searchWords: true },
+  { id: 'emailCode', to: '/verify-email', buttonKey: 'howto.verifyEmail' },
+  { id: 'whyEmail', to: '/verify-email', buttonKey: 'howto.verifyEmail' },
+  { id: 'salonProblem', to: 'call' },
+  { id: 'runningLate', to: '/bookings' },
   { id: 'booking', to: '/' },
   { id: 'services', to: '/' },
   { id: 'code', to: '/bookings' },
@@ -52,8 +63,10 @@ export function searchHowTos(query: string, t: (key: string) => string, list: re
   const words = fold(query).split(' ').filter(Boolean)
   if (words.length === 0) return [...list]
   return list.filter((h) => {
+    // An answer's extra search words (`<id>K`, e.g. "OTP"): found by them without showing them in the answer
+    const extra = h.searchWords ? [t(`howto.${h.id}K`), inEnglish(`howto.${h.id}K`)] : []
     const text = fold(
-      [t(`howto.${h.id}Q`), t(`howto.${h.id}A`), inEnglish(`howto.${h.id}Q`), inEnglish(`howto.${h.id}A`)].join(' '),
+      [t(`howto.${h.id}Q`), t(`howto.${h.id}A`), inEnglish(`howto.${h.id}Q`), inEnglish(`howto.${h.id}A`), ...extra].join(' '),
     )
     return words.every((w) => text.includes(w))
   })

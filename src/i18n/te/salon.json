@@ -108,5 +108,11 @@
   "searchHelpText": "నేను వెతికింది: {q}\nనా ఏరియా: \nలొకేషన్: {lat}, {lng}",
   "searchResultsLabel": "‘{q}’ ఉన్న సెలూన్‌లు",
   "searchHeadingMore": "{km} km లోపు ‘{q}’ ఉన్న సెలూన్‌లు, దగ్గరివి ముందు",
-  "searchHeadingCount": { "one": "{km} km లోపు ‘{q}’ ఉన్న {count} సెలూన్", "other": "{km} km లోపు ‘{q}’ ఉన్న {count} సెలూన్‌లు" }
+  "searchHeadingCount": { "one": "{km} km లోపు ‘{q}’ ఉన్న {count} సెలూన్", "other": "{km} km లోపు ‘{q}’ ఉన్న {count} సెలూన్‌లు" },
+  "backToSalon": "సెలూన్‌కి తిరిగి వెళ్లండి",
+  "bookFailedText": "నేను బుక్ చేయడానికి ప్రయత్నించాను, ఇలా వచ్చింది: {reason}",
+  "writeToUsAbout": "దీని గురించి మాకు రాయండి",
+  "lookNearAnotherPlace": "వేరే చోటు దగ్గర చూడండి",
+  "tryDay": "{day} చూడండి",
+  "findAnotherSalon": "వేరే సెలూన్ వెతకండి"
 }

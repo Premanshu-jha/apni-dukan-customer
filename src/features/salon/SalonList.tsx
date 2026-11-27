@@ -111,6 +111,7 @@ function SalonResults({ lat, lng, search, onClearSearch }: { lat: number; lng: n
         <EmptyState
           title={t('salon.outsideIndiaTitle')}
           body={t('salon.outsideIndiaBody')}
+          action={<AnotherPlace />}
         />
       )
     }
@@ -147,12 +148,15 @@ function SalonResults({ lat, lng, search, onClearSearch }: { lat: number; lng: n
         title={t('salon.noSalonsTitle')}
         body={t('salon.noSalonsBody')}
         action={
-          <Link
-            className="text-link underline"
-            to={`/help?${new URLSearchParams({ about: t('salon.addSalonsHelpAbout'), text: t('salon.addSalonsHelpText', { lat: lat.toFixed(4), lng: lng.toFixed(4) }) })}`}
-          >
-            {t('salon.letUsKnow')}
-          </Link>
+          <div className="flex flex-col items-center gap-3">
+            <AnotherPlace />
+            <Link
+              className="text-link underline"
+              to={`/help?${new URLSearchParams({ about: t('salon.addSalonsHelpAbout'), text: t('salon.addSalonsHelpText', { lat: lat.toFixed(4), lng: lng.toFixed(4) }) })}`}
+            >
+              {t('salon.letUsKnow')}
+            </Link>
+          </div>
         }
       />
     )
@@ -274,4 +278,14 @@ export function SalonPhoto({ url, name, large = false }: { url: string | null; n
     )
   }
   return <img src={url} alt={large ? `${name}` : ''} loading="lazy" className={`${size} shrink-0 object-cover`} />
+}
+
+/** No salons here (or a point outside India, usually a wrong GPS fix): look near Home, Work or an address instead. */
+function AnotherPlace() {
+  const t = useT()
+  return (
+    <Link to="/places" className="inline-flex min-h-12 items-center justify-center rounded-xl bg-brand px-5 font-semibold text-brand-ink">
+      {t('salon.lookNearAnotherPlace')}
+    </Link>
+  )
 }

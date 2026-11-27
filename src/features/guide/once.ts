@@ -10,7 +10,7 @@ import { useSession } from '../../store/session'
 export type GuideName =
   | 'howItWorks'
   | 'visitTip'
-  | 'placesHint'
+  | 'saveHome'
   | 'hint.salon'
   | 'hint.pickTime'
   | 'hint.booking'

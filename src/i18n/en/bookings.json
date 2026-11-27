@@ -73,5 +73,13 @@
   "keepIt": "Keep it",
   "helpAbout": "Booking {no}",
   "helpText": "About my booking {no}: ",
-  "needHelp": "Need help with this booking?"
+  "needHelp": "Need help with this booking?",
+  "runningLate": "Running late? Move it to a later time",
+  "missedByMistake": "Marked missed by mistake?",
+  "missedText": "My booking {no} at {salon} on {when} was marked missed, but I was there.",
+  "tellUs": "Tell us",
+  "bookAnotherTime": "Book another time",
+  "salonCancelledText": "{salon} cancelled my booking {no}.",
+  "tellUsWhatHappened": "Tell us what happened",
+  "runningLateSoon": "Running late? Go as soon as you can: the salon keeps it until {time}."
 }

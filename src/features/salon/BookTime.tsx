@@ -8,6 +8,7 @@ import { useDraft } from '../../store/bookingDraft'
 import { DateChips, SlotGrid } from './SlotGrid'
 import { useT } from '../../i18n'
 import { Hint } from '../guide/Hint'
+import { serviceName } from '../../lib/serviceName'
 
 export function BookTime() {
   const t = useT()
@@ -32,6 +33,7 @@ export function BookTime() {
 
   if (!ready) return <Navigate to={`/salons/${id}`} replace />
 
+  const picked = (services.data ?? []).filter((s) => draft.serviceIds.includes(s.id)).map((s) => serviceName(s.name))
   const minutes = (services.data ?? [])
     .filter((s) => draft.serviceIds.includes(s.id))
     .reduce((sum, s) => sum + s.durationMinutes, 0)
@@ -51,6 +53,8 @@ export function BookTime() {
         {salon.data?.name}
         {minutes > 0 && ` · ${t('salon.aboutDuration', { duration: duration(minutes) })}`}
       </p>
+      {/* What was picked, to check before choosing a time */}
+      {picked.length > 0 && <p className="text-sm">{picked.join(', ')}</p>}
       <Hint name="hint.pickTime">{t('guide.hintPickTime')}</Hint>
       {slotTaken && !taken && !draft.startAt && (
         <Banner tone="warn">{t('salon.slotTaken')}</Banner>
@@ -74,6 +78,12 @@ export function BookTime() {
           pickSlot(at, terms, price)
         }}
         onSelectedGone={selectedGone}
+        maxDaysAhead={salon.data?.maxDaysAhead}
+        closedDates={salon.data?.closedDates}
+        onDate={(d) => {
+          setTaken(false)
+          pickDate(d)
+        }}
       />
     </Page>
   )

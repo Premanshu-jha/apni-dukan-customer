@@ -8,6 +8,7 @@ import { TURNSTILE_SITE_KEY } from '../../lib/config'
 import { Banner, Button, Field, Page } from '../../components/ui'
 import { formatPhone, looksLikeEmail, normalizePhone } from '../../lib/phone'
 import { keepShownLanguage, useT } from '../../i18n'
+import { CallUs } from '../help/CallUs'
 import { useSession } from '../../store/session'
 import { nextAfterSignIn } from './flow'
 
@@ -72,6 +73,7 @@ export function RecoverStep() {
           <p className="text-muted">
             {t('auth.recoverIntro')}
           </p>
+          <p className="text-sm text-muted">{t('auth.recoverOnlyVerified')}</p>
           <Field
             id="recover-email"
             label={t('auth.recoverEmailLabel')}
@@ -114,8 +116,11 @@ export function RecoverStep() {
           <Button variant="ghost" onClick={() => setStarted(null)}>
             {t('auth.recoverStartAgain')}
           </Button>
+          {/* The email code only comes to an email verified on that account: say so, and who can help instead */}
+          <p className="text-sm text-muted">{t('auth.recoverNoEmailCode')}</p>
         </div>
       )}
+      <CallUs about={t('auth.recoverTitle')} />
     </Page>
   )
 }

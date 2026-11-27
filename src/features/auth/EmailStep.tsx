@@ -8,7 +8,8 @@ import { looksLikeEmail } from '../../lib/phone'
 import { useT } from '../../i18n'
 import { useSession } from '../../store/session'
 import { SUPPORT_EMAIL } from '../../lib/config'
-import { cameFromBooking, forgetAfterEmail, takeAfterEmail } from './flow'
+import { CallUs } from '../help/CallUs'
+import { emailReason, forgetAfterEmail, takeAfterEmail } from './flow'
 
 /**
  * /verify-email: an email we can reach, for support replies and for getting the account back if the phone is lost.
@@ -30,8 +31,8 @@ export function EmailStep() {
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [wait, setWait] = useState(0)
-  // Sent here by Pick a time / Confirm: say why the booking stopped, and that it carries on after
-  const [forBooking] = useState(() => cameFromBooking(userId))
+  // Sent here by Pick a time / Confirm, Write to us or Edit name: say why, and that it carries on after
+  const [reason] = useState(() => emailReason(userId))
 
   useEffect(() => {
     if (wait <= 0) return
@@ -79,9 +80,14 @@ export function EmailStep() {
 
   return (
     <Page title={t('auth.emailTitle')} back={first ? '/' : true} onBack={forgetAfterEmail}>
-      {forBooking ? (
+      {reason === 'booking' ? (
         <Banner tone="info">
           <span className="font-semibold">{t('auth.emailForBookingLead')}</span> {t('auth.emailForBookingBody')}
+        </Banner>
+      ) : reason === 'help' || reason === 'name' ? (
+        <Banner tone="info">
+          <span className="font-semibold">{t(reason === 'help' ? 'auth.emailForHelpLead' : 'auth.emailForNameLead')}</span>{' '}
+          {t('auth.emailComesBack')}
         </Banner>
       ) : (
         <p className="text-muted">
@@ -141,6 +147,9 @@ export function EmailStep() {
           </p>
         </div>
       )}
+      {/* Stuck here (no code, no email app): a person, without an email */}
+      <p className="pt-2 text-sm text-muted">{t('auth.emailStuck')}</p>
+      <CallUs about={t('guide.aboutVerifyEmail')} />
     </Page>
   )
 }

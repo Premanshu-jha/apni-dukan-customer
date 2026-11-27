@@ -22,5 +22,6 @@
   "switching": "Updating the app…",
   "updateRequiredHint": "If the Play Store shows no update yet, close the app and try again in a few hours, or tap Check again.",
   "updateRequiredCheck": "Check again",
-  "updateRequiredChecking": "Checking…"
+  "updateRequiredChecking": "Checking…",
+  "updateStuck": "Can't update? Talk to us:"
 }

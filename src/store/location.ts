@@ -6,6 +6,9 @@ const CHOSEN_KEY = 'ad.chosenPlace'
 /** The address near the last GPS point, as shown on Home ("Lake View Apartments, Kondapur"), kept on the phone. */
 export const NEAR_ADDRESS_KEY = 'ad.locationAddress'
 
+/** Whether this person had saved places last time (Home keeps room for the chips while the list loads). */
+export const HAS_PLACES_KEY = 'ad.hasPlaces'
+
 /** A new place's form as typed, kept in this tab only (sessionStorage). */
 export const PLACE_DRAFT_KEY = 'ad.placeDraft'
 
@@ -55,8 +58,17 @@ interface LocationState {
   finding: boolean
   error: LocateError | null
   locate: () => Promise<void>
-  /** Picks a saved place, or (null) goes back to the current location. */
+  /** Picks a saved place, or (null) goes back to the current location. Quiet: for keeping in step with the list. */
   choose: (p: ChosenPlace | null) => void
+  /**
+   * The customer switched where to find salons (a chip, the place list, a place just saved): picks it like `choose`
+   * and leaves a note for Home to say so once ("Showing salons near Work").
+   */
+  switchTo: (p: ChosenPlace | null) => void
+  /** What Home says once after a switch: the place's label, or '' for the current location; null when nothing. */
+  switched: string | null
+  /** Home has said it. */
+  clearSwitched: () => void
   clear: () => void
 }
 
@@ -71,6 +83,14 @@ export const useLocation = create<LocationState>((set) => ({
     else storage.remove(CHOSEN_KEY)
     set({ chosen })
   },
+
+  switched: null,
+  switchTo: (chosen) => {
+    if (chosen) storage.setJson(CHOSEN_KEY, chosen)
+    else storage.remove(CHOSEN_KEY)
+    set({ chosen, switched: chosen ? chosen.label : '' })
+  },
+  clearSwitched: () => set({ switched: null }),
 
   locate: () =>
     new Promise<void>((resolve) => {
@@ -107,8 +127,9 @@ export const useLocation = create<LocationState>((set) => ({
     storage.remove(KEY)
     storage.remove(CHOSEN_KEY)
     storage.remove(NEAR_ADDRESS_KEY)
+    storage.remove(HAS_PLACES_KEY)
     forgetPlaceDraft()
-    set({ place: null, chosen: null, error: null })
+    set({ place: null, chosen: null, error: null, switched: null })
   },
 }))
 

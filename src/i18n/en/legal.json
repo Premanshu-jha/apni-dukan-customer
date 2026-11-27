@@ -38,5 +38,7 @@
   "contactGrievanceAfter": ".",
   "termsTitle": "Terms of service",
   "privacyTitle": "Privacy policy",
-  "englishApplies": "The text below is in English. This English version is the one that applies."
+  "englishApplies": "The text below is in English. This English version is the one that applies.",
+  "contactCantSignInTitle": "Can't sign in?",
+  "contactCantSignInBody": "Not getting the SMS code, or lost your number? Call us or WhatsApp us with your mobile number and we will help."
 }

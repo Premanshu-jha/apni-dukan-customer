@@ -16,6 +16,7 @@ import { lateCancelSoon, termsFor } from '../bookings/lateCancel'
 import { useT } from '../../i18n'
 import { serviceName } from '../../lib/serviceName'
 import { BOOKING_RULES } from '../guide/rules'
+import { CallUs } from '../help/CallUs'
 
 /** A booking can't be moved within this many minutes of its start (the backend's LATE_CANCEL). */
 const LATE_CANCEL_MIN = 60
@@ -32,6 +33,26 @@ const FINAL = new Set([
   'TOO_MANY_CHANGES',
   'OVERLAPS_YOUR_BOOKING',
 ])
+
+/** Booking errors with their own next step on screen (any other gets "Write to us" with what happened filled in). */
+const HANDLED = new Set([
+  'BOOKING_BLOCKED',
+  'TOO_MANY_BOOKINGS',
+  'IDEMPOTENCY_KEY_REUSED',
+  'OVERLAPS_YOUR_BOOKING',
+  'NO_BARBER_FOR_SERVICES',
+  'SALON_NOT_BOOKABLE',
+  'OUTSIDE_WINDOW',
+  'VALIDATION_FAILED',
+  'SALON_NOT_FOUND',
+  'NETWORK',
+  'SERVICE_BUSY',
+  'INTERNAL_ERROR',
+  'TOO_MANY_CHANGES',
+])
+
+/** Worth just trying again (the same key: an earlier try whose answer was lost comes back as that booking). */
+const RETRY = new Set(['NETWORK', 'SERVICE_BUSY', 'INTERNAL_ERROR'])
 
 export function ConfirmBooking() {
   const t = useT()
@@ -173,6 +194,85 @@ export function ConfirmBooking() {
       help={salon.data ? { about: t('guide.aboutConfirm', { salon: salon.data.name }) } : undefined}
       footer={
         <>
+          {/* Said right above Book now, where the thumb is (below the fold it went unseen), with what to do next */}
+          {error && (
+            <div role="alert" className="mb-2">
+        <Banner tone="bad" live={false}>
+          {error.message}
+          {/* Paused for missed bookings: one marked missed by mistake is put right by our support team */}
+          {error.code === 'BOOKING_BLOCKED' && (
+            <>
+              {' '}
+              <Link
+                className="underline"
+                to={`/help?${new URLSearchParams({
+                  about: t('howto.missedSubject'),
+                  text: error.until ? t('salon.blockedHelpText', { time: dateTimeIst(error.until) }) : t('salon.blockedHelpTextNoTime'),
+                })}`}
+              >
+                {t('salon.blockedWriteToUs')}
+              </Link>
+            </>
+          )}
+          {(error.code === 'TOO_MANY_BOOKINGS' || error.code === 'IDEMPOTENCY_KEY_REUSED' || error.code === 'OVERLAPS_YOUR_BOOKING') && (
+            <>
+              {' '}
+              <button type="button" className="underline" onClick={() => navigate('/bookings')}>
+                {t('salon.seeMyBookings')}
+              </button>
+            </>
+          )}
+          {(error.code === 'NO_BARBER_FOR_SERVICES' || error.code === 'SALON_NOT_BOOKABLE' || error.code === 'VALIDATION_FAILED') && (
+            <>
+              {' '}
+              <button type="button" className="underline" onClick={() => navigate(`/salons/${id}`)}>
+                {t('salon.backToSalon')}
+              </button>
+            </>
+          )}
+          {error.code === 'SALON_NOT_FOUND' && (
+            <>
+              {' '}
+              <button type="button" className="underline" onClick={() => navigate('/')}>
+                {t('salon.findAnotherSalon')}
+              </button>
+            </>
+          )}
+          {RETRY.has(error.code) && (
+            <>
+              {' '}
+              <button type="button" className="underline" onClick={submit}>
+                {t('common.retry')}
+              </button>
+            </>
+          )}
+          {error.code === 'OUTSIDE_WINDOW' && (
+            <>
+              {' '}
+              <button type="button" className="underline" onClick={() => navigate(`/salons/${id}/book`)}>
+                {t('salon.pickAnotherTime')}
+              </button>
+            </>
+          )}
+          {!HANDLED.has(error.code) && (
+            <>
+              {' '}
+              <Link
+                className="underline"
+                to={`/help?${new URLSearchParams({
+                  about: salon.data ? t('guide.aboutConfirm', { salon: salon.data.name }) : t('salon.confirmTitle'),
+                  text: t('salon.bookFailedText', { reason: error.message }),
+                })}`}
+              >
+                {t('salon.writeToUsAbout')}
+              </Link>
+            </>
+          )}
+        </Banner>
+              {/* Nothing a form can sort out now (offline, a short problem, today's limit): a person to call */}
+              {(RETRY.has(error.code) || error.code === 'TOO_MANY_CHANGES') && <CallUs className="mt-2" />}
+            </div>
+          )}
           <Button className="w-full" busy={book.isPending} disabled={sendIds.length === 0} onClick={submit}>
             {t('salon.bookNow')}
           </Button>
@@ -251,34 +351,6 @@ export function ConfirmBooking() {
       <p className="text-sm text-muted">
         {t('salon.payAtSalon')}
       </p>
-      {error && (
-        <Banner tone="bad">
-          {error.message}
-          {/* Paused for missed bookings: one marked missed by mistake is put right by our support team */}
-          {error.code === 'BOOKING_BLOCKED' && (
-            <>
-              {' '}
-              <Link
-                className="underline"
-                to={`/help?${new URLSearchParams({
-                  about: t('howto.missedSubject'),
-                  text: error.until ? t('salon.blockedHelpText', { time: dateTimeIst(error.until) }) : t('salon.blockedHelpTextNoTime'),
-                })}`}
-              >
-                {t('salon.blockedWriteToUs')}
-              </Link>
-            </>
-          )}
-          {(error.code === 'TOO_MANY_BOOKINGS' || error.code === 'IDEMPOTENCY_KEY_REUSED') && (
-            <>
-              {' '}
-              <button type="button" className="underline" onClick={() => navigate('/bookings')}>
-                {t('salon.seeMyBookings')}
-              </button>
-            </>
-          )}
-        </Banner>
-      )}
     </Page>
   )
 }

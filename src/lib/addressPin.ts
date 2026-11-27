@@ -75,9 +75,19 @@ export function addressProblems(f: AddressIn): Partial<Record<keyof AddressIn, s
   return out
 }
 
-/** All four filled well enough to search. */
+/**
+ * Filled well enough to search: the area, city and pincode (the house or flat line is not needed to find the street,
+ * so someone who only wants salons near their area can find it on the map first; saving still needs it).
+ */
 export function canSearchAddress(f: AddressIn): boolean {
-  return Object.keys(addressProblems(f)).length === 0
+  const { addressLine: _house, ...rest } = addressProblems(f)
+  return Object.keys(rest).length === 0
+}
+
+/** What "Find on map" sends: with no house or flat line yet, the area stands in for it (the search needs one). */
+export function searchQuery(f: AddressIn): AddressIn {
+  const q = { addressLine: f.addressLine.trim(), area: f.area.trim(), city: f.city.trim(), pincode: f.pincode.trim() }
+  return q.addressLine.length >= 2 ? q : { ...q, addressLine: q.area }
 }
 
 /** What to tell the customer about a pin from the address. */

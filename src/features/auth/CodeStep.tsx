@@ -6,6 +6,7 @@ import { CodeInput } from '../../components/CodeInput'
 import { Turnstile } from '../../components/Turnstile'
 import { TURNSTILE_SITE_KEY } from '../../lib/config'
 import { useT } from '../../i18n'
+import { CallUs } from '../help/CallUs'
 import { Banner, Button, Page } from '../../components/ui'
 import { formatPhone } from '../../lib/phone'
 import { useSession } from '../../store/session'
@@ -104,6 +105,9 @@ export function CodeStep() {
           {t('auth.codeWrongNumber')}
         </button>
       </div>
+      {/* No SMS: what to check, and a person to call (no account needed) */}
+      <p className="text-sm text-muted">{t('auth.codeNoSms')}</p>
+      <CallUs about={t('auth.codeNoSmsAbout')} />
     </Page>
   )
 }
