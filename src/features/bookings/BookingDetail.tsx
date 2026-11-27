@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Link, useNavigate, useParams, useSearchParams } from 'react-router'
+import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router'
 import { useBooking, useCancelBooking, useEarlierAlert, useMoveBooking } from '../../api/bookings'
 import { isApiError, messageOf } from '../../api/errors'
 import { Banner, Button, Card, ErrorState, Loading, Page, Sheet, Switch } from '../../components/ui'
@@ -15,6 +15,10 @@ import { serviceName } from '../../lib/serviceName'
 import { ServiceIcon } from '../../components/ServiceIcon'
 import { Hint } from '../guide/Hint'
 import { VisitTip } from '../guide/HomeGuide'
+import { CallUs } from '../help/CallUs'
+
+/** The reason the backend gives a missed mark the salon took back (SalonDayService.undoNoShow). */
+const NO_SHOW_UNDONE = 'No-show undone'
 
 /** Bookings can't be moved within this many minutes of the start (the backend's TOO_LATE_TO_MOVE). */
 const NO_MOVE_MIN = 60
@@ -33,20 +37,29 @@ export function BookingDetail() {
   const earlierSwitch = useEarlierAlert()
   const move = useMoveBooking()
   const [asking, setAsking] = useState(false)
-  const [note, setNote] = useState<string | null>(null)
+  // Back from Move booking: say it worked, at the top, in focus
+  const here = useLocation()
+  const [movedTo] = useState(() => (here.state as { movedTo?: string } | null)?.movedTo)
+  const [note, setNote] = useState<string | null>(() => (movedTo ? t('bookings.movedTo', { when: dateTimeIst(movedTo) }) : null))
+  // Said once: the history entry forgets it (Back to here, or a reload, doesn't say it again)
+  useEffect(() => {
+    if (movedTo) void navigate(here.pathname + here.search, { replace: true, state: null })
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only when the screen opens
+  }, [])
   // Another offer opened on this same screen (from the bell): the last offer's answer no longer applies
   const resetMove = move.reset
   useEffect(() => resetMove(), [earlier, resetMove])
   // After a move from the offer card, focus goes to the result (the card it was in is gone)
   const offerRef = useRef<HTMLDivElement>(null)
   const noteRef = useRef<HTMLDivElement>(null)
-  const focusNote = useRef(false)
+  const focusNote = useRef(movedTo !== undefined)
   useEffect(() => {
-    if (note && focusNote.current) {
+    if (note && focusNote.current && noteRef.current) {
       focusNote.current = false
-      noteRef.current?.focus()
+      noteRef.current.focus()
+      noteRef.current.scrollIntoView?.({ block: 'center' })
     }
-  }, [note])
+  })
 
   if (booking.isPending) {
     return (
@@ -155,7 +168,47 @@ export function BookingDetail() {
             {b.startCode}
           </p>
           <p className="text-sm text-muted">{t('bookings.arriveBy', { time: timeIst(b.heldUntil) })}</p>
+          {b.canMove && !withinHour ? (
+            <Link to={`/bookings/${b.id}/move`} className="inline-flex min-h-11 items-center text-sm font-semibold text-link underline">
+              {t('bookings.runningLate')}
+            </Link>
+          ) : (
+            // Too late to move: what being late means here, and a person to tell
+            <p className="text-sm">{t('bookings.runningLateSoon', { time: timeIst(b.heldUntil) })}</p>
+          )}
         </Card>
+      )}
+      {/* Marked missed, or cancelled by the salon: "this is wrong" right here, with what happened already written */}
+      {b.status === 'NO_SHOW' && (
+        <Banner tone="warn">
+          {t('bookings.missedByMistake')}{' '}
+          <Link
+            to={`/help?${new URLSearchParams({
+              about: t('howto.missedSubject'),
+              text: t('bookings.missedText', { no: b.bookingNo, when: dateTimeIst(b.startsAt), salon: b.salonName }),
+            })}`}
+            className="font-semibold underline"
+          >
+            {t('bookings.tellUs')}
+          </Link>
+        </Banner>
+      )}
+      {/* Cancelled by the salon (not the salon taking back a missed mark: that is good news, nothing to do) */}
+      {b.status === 'CANCELLED_BY_SALON' && b.cancelReason !== NO_SHOW_UNDONE && (
+        <div className="flex flex-col gap-2">
+          <Link to={`/salons/${b.salonId}`} className="inline-flex min-h-12 items-center justify-center rounded-xl bg-brand px-5 font-semibold text-brand-ink">
+            {t('bookings.bookAnotherTime')}
+          </Link>
+          <Link
+            to={`/help?${new URLSearchParams({
+              about: t('bookings.helpAbout', { no: b.bookingNo }),
+              text: t('bookings.salonCancelledText', { no: b.bookingNo, salon: b.salonName }),
+            })}`}
+            className="py-1 text-center text-sm text-link underline"
+          >
+            {t('bookings.tellUsWhatHappened')}
+          </Link>
+        </div>
       )}
 
       {b.cancelReason && (b.status === 'CANCELLED_BY_SALON' || b.status === 'CANCELLED_BY_CUSTOMER') && (
@@ -265,6 +318,8 @@ export function BookingDetail() {
               cancel.mutate(b.id, {
                 onSuccess: (r) => {
                   setAsking(false)
+                  // The cancel button was far down the page: the answer is brought into sight
+                  focusNote.current = true
                   setNote(r.countedAsLate ? t('bookings.cancelledLate') : t('bookings.cancelled'))
                 },
               })
@@ -286,6 +341,7 @@ export function BookingDetail() {
       >
         {t('bookings.needHelp')}
       </Link>
+      <CallUs about={t('bookings.helpAbout', { no: b.bookingNo })} />
     </Page>
   )
 }

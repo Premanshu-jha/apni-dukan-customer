@@ -50,6 +50,7 @@ export function MoveBooking() {
     <Page
       back={`/bookings/${id}`}
       title={t('bookings.moveTitle')}
+      help={{ about: t('bookings.helpAbout', { no: b.bookingNo }) }}
       footer={
         <Button
           className="w-full"
@@ -60,7 +61,8 @@ export function MoveBooking() {
             move.mutate(
               { id, salonId: b.salonId, startAt },
               {
-                onSuccess: () => navigate(`/bookings/${id}`, { replace: true }),
+                // The booking page says it worked ("Moved to Tue 2 Dec, 5:30 PM"), at the top, in focus
+                onSuccess: (moved) => navigate(`/bookings/${id}`, { replace: true, state: { movedTo: moved.startsAt } }),
                 onError: (e) => {
                   if (isApiError(e, 'SLOT_TAKEN')) setStartAt(null)
                 },
@@ -119,6 +121,13 @@ export function MoveBooking() {
         // A move keeps the booking's own length, whatever the salon's services take now
         minutes={Math.round((Date.parse(b.endsAt) - Date.parse(b.startsAt)) / 60_000)}
         onSelectedGone={selectedGone}
+        maxDaysAhead={salon.data?.maxDaysAhead}
+        closedDates={salon.data?.closedDates}
+        onDate={(d) => {
+          setDate(d)
+          setStartAt(null)
+          setTaken(false)
+        }}
       />
     </Page>
   )

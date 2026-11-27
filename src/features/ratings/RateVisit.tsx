@@ -1,3 +1,4 @@
+import { Link } from 'react-router'
 import { useEffect, useRef, useState } from 'react'
 import { useRateVisit } from '../../api/bookings'
 import { fieldError, isApiError, messageOf } from '../../api/errors'
@@ -53,6 +54,22 @@ export function RateVisit({ booking, focus }: { booking: Booking; focus: boolean
         )}
         {mine.comment && <p className="break-words text-sm">“{mine.comment}”</p>}
         {saved && <Banner tone="good">{t('ratings.thanks')}</Banner>}
+        {/* A bad visit, saved: the comment went to the salon only, so say that Clozest can act too */}
+        {mine.stars <= 2 && (
+          <p className="rounded-xl bg-raised px-3 py-2 text-sm">
+            {t('ratings.badVisit')}{' '}
+            <Link
+              className="font-semibold text-link underline"
+              to={`/help?${new URLSearchParams({
+                about: t('ratings.badVisitAbout', { salon: booking.salonName }),
+                text: t('ratings.badVisitText', { no: booking.bookingNo, salon: booking.salonName }),
+              })}`}
+            >
+              {t('ratings.tellClozest')}
+            </Link>
+          </p>
+        )}
+
         {open && (
           <Button variant="secondary" onClick={() => setEditing(true)}>
             {t('ratings.changeRating')}
