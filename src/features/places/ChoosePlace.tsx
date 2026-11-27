@@ -18,9 +18,9 @@ export function ChoosePlace() {
   const navigate = useNavigate()
   const places = usePlaces()
   const chosen = useLocation((s) => s.chosen)
-  const choose = useLocation((s) => s.choose)
+  const switchTo = useLocation((s) => s.switchTo)
   const pick = (p: SavedPlace | null) => {
-    choose(p ? chosenOf(p) : null)
+    switchTo(p ? chosenOf(p) : null)
     goBack(navigate, '/')
   }
   const list = places.data ?? []

@@ -21,6 +21,7 @@ import {
   addressProblems,
   addressSearchOff,
   canSearchAddress,
+  searchQuery,
   filledText,
   fillEmpty,
   insideIndia,
@@ -38,6 +39,7 @@ import {
   type LocateError,
 } from '../../lib/addressPin'
 import { goBack, screensBehind } from '../../lib/nav'
+import { isApp } from '../../lib/platform'
 import { forgetPlaceDraft, PLACE_DRAFT_KEY, permissionState, useLocation } from '../../store/location'
 import { LocationGuide } from '../location/LocationGate'
 import { t as translate, useT } from '../../i18n'
@@ -187,14 +189,21 @@ function PlaceForm({ existing, all }: { existing: SavedPlace | null; all: SavedP
   const t = useT()
   const qc = useQueryClient()
   const navigate = useNavigate()
-  const from = (useRouterLocation().state as { from?: string } | null)?.from
+  const routerLocation = useRouterLocation()
+  // Read once: the history entry keeps its state through Back and a reload, where "Save as Home" must not start
+  // afresh again (the draft typed since comes back instead, and the GPS isn't asked for a second time)
+  const [opened] = useState(() => routerLocation.state as { from?: string; kind?: PlaceKind; useGps?: boolean } | null)
+  const from = opened?.from
+  /** Opened as "＋ Add Home" or "Save as Home": a fresh Home (not an older draft), while Home is still free. */
+  const asKind = !existing && opened?.kind && !all.some((p) => p.kind === opened.kind && p.kind !== 'OTHER') ? opened.kind : null
   const chosen = useLocation((s) => s.chosen)
   const choose = useLocation((s) => s.choose)
-  const [draft] = useState(() => (existing ? null : readDraft()))
+  const switchTo = useLocation((s) => s.switchTo)
+  const [draft] = useState(() => (existing || asKind ? null : readDraft()))
   const [form, setForm] = useState<Form>(() =>
     existing
       ? { kind: existing.kind, name: existing.name ?? '', addressLine: existing.addressLine, area: existing.area, city: existing.city, pincode: existing.pincode }
-      : (draft?.form ?? { kind: firstFreeKind(all), name: '', addressLine: '', area: '', city: '', pincode: '' }),
+      : (draft?.form ?? { kind: asKind ?? firstFreeKind(all), name: '', addressLine: '', area: '', city: '', pincode: '' }),
   )
   const [pin, setPin] = useState<Pin | null>(() =>
     existing ? { lat: existing.latitude, lng: existing.longitude, gps: null, zoom: 18, placement: 0 } : (draft?.pin ?? null),
@@ -239,6 +248,30 @@ function PlaceForm({ existing, all }: { existing: SavedPlace | null; all: SavedP
     }
   }, [existing, form, pin, startForm])
 
+  // "Save as Home" from Home: the phone's location is taken at once (as if "Use current location" was tapped), once
+  const gpsAsked = useRef(false)
+  useEffect(() => {
+    if (opened?.kind || opened?.useGps) {
+      // Forget the one-time ask on this history entry (its `from` stays, for where saving goes back to)
+      void navigate(routerLocation.pathname + routerLocation.search, { replace: true, state: opened.from ? { from: opened.from } : null })
+    }
+    if (gpsAsked.current || existing || !opened?.useGps || pin !== null) return
+    gpsAsked.current = true
+    void locate()
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only when the screen opens
+  }, [])
+  // Left the screen: an answer still on its way (GPS, the address at the point) is for nobody, and costs a lookup
+  // (set again on every mount: dev's StrictMode leaves and comes back once, and the answer is still wanted then)
+  const alive = useRef(true)
+  useEffect(() => {
+    alive.current = true
+    return () => {
+      alive.current = false
+    }
+  }, [])
+  /** The last Find on map went without a house line (the area stood in): typing it now doesn't move the pin. */
+  const searchedWithoutHouse = useRef(false)
+
   // Home and Work are one each: taken by another of this person's places
   const takenBy = (k: PlaceKind) => (k === 'OTHER' ? undefined : all.find((p) => p.kind === k && p.id !== existing?.id))
   const problems: Partial<Record<keyof Form, string>> = { ...addressProblems(form) }
@@ -252,7 +285,8 @@ function PlaceForm({ existing, all }: { existing: SavedPlace | null; all: SavedP
     if ((ADDRESS_FIELDS as readonly string[]).includes(k)) {
       setNeedFields(false)
       setSearchError(null)
-      if (found) {
+      // Adding the house line after a search by area doesn't need another search (nor another Google lookup)
+      if (found && !(k === 'addressLine' && searchedWithoutHouse.current)) {
         setFound(null)
         setAddressChanged(true)
       }
@@ -276,7 +310,7 @@ function PlaceForm({ existing, all }: { existing: SavedPlace | null; all: SavedP
     setLocError(null)
     try {
       const fix = await locateOnce()
-      if (tap !== latest.current) return
+      if (tap !== latest.current || !alive.current) return
       place(fix.lat, fix.lng, fix, 18)
       setFound(null)
       setSearchError(null)
@@ -296,7 +330,7 @@ function PlaceForm({ existing, all }: { existing: SavedPlace | null; all: SavedP
     if (addressSearchOff()) return
     try {
       const at = await placesApi.reverseGeocode(round6(fix.lat), round6(fix.lng))
-      if (tap !== latest.current) return
+      if (tap !== latest.current || !alive.current) return
       if (fillEmpty(formNow.current, at) === formNow.current) return
       setForm((f) => fillEmpty(f, at))
       setFilled(true)
@@ -320,15 +354,17 @@ function PlaceForm({ existing, all }: { existing: SavedPlace | null; all: SavedP
     setFilled(false)
     const sent = { addressLine: form.addressLine.trim(), area: form.area.trim(), city: form.city.trim(), pincode: form.pincode.trim() }
     try {
-      const at = await placesApi.geocode(sent)
-      if (tap !== latest.current) return
+      const asked = searchQuery(sent)
+      const at = await placesApi.geocode(asked)
+      if (tap !== latest.current || !alive.current) return
       place(at.latitude, at.longitude, null, zoomFor(at.precision))
-      const edited = ADDRESS_FIELDS.some((k) => formNow.current[k].trim() !== sent[k])
+      searchedWithoutHouse.current = asked.addressLine !== sent.addressLine
+      const edited = ADDRESS_FIELDS.some((k) => formNow.current[k].trim() !== sent[k] && !(k === 'addressLine' && searchedWithoutHouse.current))
       setFound(edited ? null : at.precision)
       setAddressChanged(edited)
       setLocError(null)
     } catch (e) {
-      if (tap !== latest.current) return
+      if (tap !== latest.current || !alive.current) return
       const failure = searchFailure(e)
       setFound(null)
       setAddressChanged(false)
@@ -361,7 +397,7 @@ function PlaceForm({ existing, all }: { existing: SavedPlace | null; all: SavedP
   /** A new place saved: it is picked, and the customer goes back to where the list was opened from (or Home). */
   function savedNew(saved: SavedPlace) {
     forgetPlaceDraft()
-    choose(chosenOf(saved))
+    switchTo(chosenOf(saved))
     if (from === 'places' && screensBehind() >= 2) goBack(navigate, '/', 2)
     else navigate('/', { replace: true })
   }
@@ -517,16 +553,23 @@ function PlaceForm({ existing, all }: { existing: SavedPlace | null; all: SavedP
         </div>
         {pin && (
           <>
+            {/* Said before the map, every time: the pin is the thing to get right */}
+            <p className="flex items-start gap-2 rounded-xl bg-raised px-3 py-2 text-sm font-semibold">
+              <span aria-hidden>📍</span>
+              {t('places.dragPinExact')}
+            </p>
             <MapBoundary onRetry={() => setPinMap(loadMap)}>
               <Suspense fallback={<Loading label={t('places.loadingMap')} />}>
                 <PinMap lat={pin.lat} lng={pin.lng} zoom={pin.zoom} placement={pin.placement} onMove={moveByHand} />
               </Suspense>
             </MapBoundary>
-            <p className="text-sm text-muted">
-              {t('places.dragPin')}
-              {pin.gps && ` ${t('places.gpsAccuracy', { metres: String(pin.gps.accuracy) })}`}
-              {moved > 0 && ` ${t('places.movedFromGps', { metres: String(moved) })}`}
-            </p>
+            {(pin.gps || moved > 0) && (
+              <p className="text-sm text-muted">
+                {pin.gps && t('places.gpsAccuracy', { metres: String(pin.gps.accuracy) })}
+                {pin.gps && moved > 0 && ' '}
+                {moved > 0 && t('places.movedFromGps', { metres: String(moved) })}
+              </p>
+            )}
             {pin.gps && pin.gps.accuracy > ROUGH_PIN_METRES && (
               <Banner tone="warn">{t('places.roughPin')}</Banner>
             )}
@@ -538,7 +581,7 @@ function PlaceForm({ existing, all }: { existing: SavedPlace | null; all: SavedP
           <LocationGuide onRetry={locate} />
         ) : locError === 'denied' || (!pin && blocked) ? (
           <>
-            <Banner tone="warn">{t('places.locBlocked')}</Banner>
+            <Banner tone="warn">{t(isApp() ? 'places.locBlockedApp' : 'places.locBlocked')}</Banner>
             <Button id="use-current-location" variant="secondary" disabled={searching} onClick={locate}>
               {t('places.tryLocationAgain')}
             </Button>

@@ -187,31 +187,46 @@ export function HomeVisitTip() {
 }
 
 /**
- * Under Home's location bar, for someone with no saved place yet: once, that Home or Work can be saved and salons
- * found near them from anywhere. Uses Home's own list of places (no extra request). Not while How booking works is
- * on Home (one tip at a time, so the search box and the salons stay on a small phone's first screen); nor before
- * it is known whether that shows (no tip that appears and then goes).
+ * Under Home's location bar, while salons are found near the phone's GPS point and nothing is saved yet: once, "At
+ * home right now?" with "Save as Home", which opens a new Home place already taking the phone's location (the
+ * address filled from it), so the Home chip is there next time. "Not now" hides it for this account. Uses Home's own
+ * list of places (no extra request). Not while How booking works is on Home (one tip at a time, so the search box and
+ * the salons stay on a small phone's first screen); nor before it is known whether that shows.
  */
-export function PlacesHint() {
+export function SaveHomeOffer() {
   const t = useT()
   const places = usePlaces()
-  const [shown, dismiss] = useOnce('placesHint')
+  const [shown, dismiss] = useOnce('saveHome')
   const howItWorks = useHowItWorksShown()
-  if (!shown || !places.isSuccess || places.data.length > 0 || !howItWorks.known || howItWorks.shown) return null
+  // Nothing saved yet (with any place saved, the chips' "＋ Add Home" asks the same: one ask at a time)
+  if (!shown || !places.isSuccess || places.data.length > 0 || !howItWorks.known || howItWorks.shown) {
+    return null
+  }
   return (
-    <div role="note" className="flex items-center gap-3 rounded-xl border border-brand/40 bg-brand/10 px-3 py-2 text-sm">
-      <span className="text-link">
-        <TipIcon />
-      </span>
-      <p className="min-w-0 flex-1">
-        {t('guide.placesHint')}{' '}
-        <Link to="/places" className="font-semibold text-link underline">
-          {t('guide.placesHintLink')}
+    <section aria-labelledby="save-home" className="flex flex-col gap-2 rounded-xl border border-brand/40 bg-brand/10 px-3 py-3">
+      <div className="flex items-start gap-2">
+        <span className="mt-0.5 text-link">
+          <TipIcon />
+        </span>
+        <div className="min-w-0">
+          <h2 id="save-home" className="font-semibold">
+            {t('guide.saveHomeTitle')}
+          </h2>
+          <p className="text-sm text-muted">{t('guide.saveHomeBody')}</p>
+        </div>
+      </div>
+      <div className="flex items-center justify-end gap-2">
+        <button type="button" onClick={dismiss} className="min-h-11 rounded-lg px-3 text-sm font-semibold text-muted hover:bg-raised hover:text-ink">
+          {t('guide.notNow')}
+        </button>
+        <Link
+          to="/places/new"
+          state={{ kind: 'HOME', useGps: true }}
+          className="inline-flex min-h-11 items-center rounded-xl bg-brand px-4 text-sm font-semibold text-brand-ink"
+        >
+          {t('guide.saveHomeButton')}
         </Link>
-      </p>
-      <button type="button" onClick={dismiss} className="min-h-11 shrink-0 rounded-lg px-2 font-semibold text-link hover:bg-raised">
-        {t('guide.gotIt')}
-      </button>
-    </div>
+      </div>
+    </section>
   )
 }

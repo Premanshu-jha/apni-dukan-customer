@@ -71,11 +71,12 @@ export function App() {
           <Route element={<EmailVerifiedOnly />}>
             <Route path="/salons/:id/book" element={<BookTime />} />
             <Route path="/salons/:id/confirm" element={<ConfirmBooking />} />
-            <Route path="/places/new" element={<EditPlace />} />
-            <Route path="/places/:id" element={<EditPlace />} />
           </Route>
-          {/* Need help's answers are for everyone signed in; writing to us still waits for the email (NeedHelp sends
-              to the email screen first, as this guard did) */}
+          {/* Saving a place needs no email: browsing salons near an address works from the first day (booking still does) */}
+          <Route path="/places/new" element={<EditPlace />} />
+          <Route path="/places/:id" element={<EditPlace />} />
+          {/* Need help's answers, Call us and WhatsApp are for everyone signed in; writing to us still waits for the
+              email (NeedHelp says so on the page, with one tap to verify) */}
           <Route path="/help" element={<NeedHelp />} />
           <Route path="/bookings/:id" element={<BookingDetail />} />
           <Route path="/bookings/:id/move" element={<MoveBooking />} />

@@ -11,9 +11,12 @@ import { VerifyEmailBanner } from '../auth/VerifyEmailBanner'
 import { type CategoryId, shownCategories } from './categories'
 import { greeting } from '../../lib/ist'
 import { YourBooking } from './YourBooking'
-import { HomeVisitTip, HowItWorks, PlacesHint } from '../guide/HomeGuide'
+import { HomeVisitTip, HowItWorks, SaveHomeOffer } from '../guide/HomeGuide'
+import { PlaceChips } from '../places/PlaceChips'
 import { HelpButton } from '../help/HelpButton'
 import { useT } from '../../i18n'
+import { isApp } from '../../lib/platform'
+import { ROUGH_PIN_METRES } from '../../lib/addressPin'
 
 /**
  * Home: a greeting by the time of day in India, the verify-your-email banner while the email is pending, the
@@ -68,6 +71,12 @@ export function Home() {
       </div>
       )}
       {/* Only Salon has screens yet; another category opened later brings its own here */}
+      {tab === 'salon' && (
+        <>
+          <PlaceChips />
+          <SwitchedNote />
+        </>
+      )}
       {tab === 'salon' && chosen ? (
         <>
           <PlaceBar chosen={chosen} />
@@ -78,7 +87,8 @@ export function Home() {
           {(place) => (
             <>
               <LocationBar />
-              <PlacesHint />
+              {/* Only for a fix close enough to be "home" (the pin's own bar, not the list's) */}
+              {place.accuracy <= ROUGH_PIN_METRES && <SaveHomeOffer />}
               {place.accuracy > ROUGH_METRES && (
                 <Banner tone="warn">
                   {t('home.roughLocation', { km: Math.round(place.accuracy / 1000) })}
@@ -90,6 +100,60 @@ export function Home() {
         </LocationGate>
       ) : null}
     </Page>
+  )
+}
+
+/**
+ * After the customer switched where to find salons (a chip, the place list, a place just saved): once, for a few
+ * seconds, "Showing salons near Work", so it is plain the list below changed. A note floating above the tab bar (the
+ * list doesn't jump); the words go into the live region only after Home has drawn, so screen readers say them also
+ * when Home opens with them (from the place list). Leaving Home forgets it; not said for the current location when
+ * the phone has none (the gate asks for it instead).
+ */
+function SwitchedNote() {
+  const t = useT()
+  const switched = useLocationStore((s) => s.switched)
+  const clearSwitched = useLocationStore((s) => s.clearSwitched)
+  const hasGps = useLocationStore((s) => s.place !== null)
+  const [said, setSaid] = useState<string | null>(null)
+  useEffect(() => {
+    if (switched === null) return
+    const text = switched ? t('home.showingNear', { place: switched }) : hasGps ? t('home.showingNearCurrent') : null
+    const shown = window.requestAnimationFrame(() => setSaid(text))
+    const timer = window.setTimeout(() => {
+      clearSwitched()
+      setSaid(null)
+    }, SWITCHED_NOTE_MS)
+    return () => {
+      window.cancelAnimationFrame(shown)
+      window.clearTimeout(timer)
+    }
+  }, [switched, hasGps, clearSwitched, t])
+  // Leaving Home before it went: not said again on coming back
+  useEffect(() => () => clearSwitched(), [clearSwitched])
+  return (
+    <div role="status" className="pointer-events-none fixed inset-x-0 bottom-20 z-30 flex justify-center px-4 empty:hidden">
+      {said && (
+        <p className="rounded-full border border-good/40 bg-bg px-4 py-2 text-sm font-medium text-good shadow-lg">{said}</p>
+      )}
+    </div>
+  )
+}
+
+/** GPS this close needs no "accurate to" on the bar. */
+const PRECISE_METRES = 100
+
+/** How long "Showing salons near …" stays. */
+const SWITCHED_NOTE_MS = 4000
+
+/** "Change ▾" drawn as a button, so the bar plainly opens something. */
+function ChangePill() {
+  const t = useT()
+  return (
+    <span className="inline-flex min-h-9 shrink-0 items-center gap-1 rounded-full border border-brand px-3 text-sm font-semibold text-link">
+      {t('common.change')}
+      <span aria-hidden>▾</span>
+    </span>
   )
 }
 
@@ -150,7 +214,7 @@ function PlaceBar({ chosen }: { chosen: ChosenPlace }) {
         <span aria-hidden>⌂ </span>{nearBefore}<span className="font-semibold">{chosen.label}</span>{nearAfter}
         <span className="block truncate text-muted">{chosen.short}</span>
       </span>
-      <span className="text-sm font-semibold text-link">{t('common.change')}</span>
+      <ChangePill />
     </Link>
   )
 }
@@ -168,33 +232,35 @@ function LocationBar() {
     {error && (
       <Banner tone="warn">
         {error === 'denied'
-          ? t('home.locationBlocked')
+          ? t(isApp() ? 'home.locationBlockedApp' : 'home.locationBlocked')
           : t('home.locationNotUpdated')}
       </Banner>
     )}
-    <div className="flex items-center justify-between rounded-xl border border-line bg-surface px-4 py-2">
-      <span className="min-w-0 text-sm">
+    <div className="flex items-center justify-between gap-3 rounded-xl border border-line bg-surface px-4 py-1.5">
+      {/* The words get the width (Telugu runs long on a 360 px phone): Find me again sits under them, Change on the right */}
+      <span className="min-w-0 flex-1 text-sm">
         <span aria-hidden>⌖ </span>{t('home.nearCurrentLocation')}
-        <span className="text-muted">
-          {' '}
-          · {place.accuracy < 1000
-            ? t('home.accuracyMetres', { metres: String(place.accuracy) })
-            : t('home.accuracyKm', { km: Math.round(place.accuracy / 1000) })}
-          {minutes >= 30 &&
-            ` · ${minutes < 120 ? t('home.agoMinutes', { minutes }) : t('home.agoHours', { hours: Math.round(minutes / 60) })}`}
-        </span>
         {near.data && (
           <span className="block truncate text-muted" title={near.data}>
             {near.data}
           </span>
         )}
+        <span className="block text-muted">
+          {/* Accurate GPS (most phones outdoors) needs no number */}
+          {place.accuracy > PRECISE_METRES &&
+            `${place.accuracy < 1000
+              ? t('home.accuracyMetres', { metres: String(place.accuracy) })
+              : t('home.accuracyKm', { km: Math.round(place.accuracy / 1000) })} · `}
+          {minutes >= 30 &&
+            `${minutes < 120 ? t('home.agoMinutes', { minutes }) : t('home.agoHours', { hours: Math.round(minutes / 60) })} · `}
+          <button type="button" onClick={locate} disabled={finding} className="font-semibold text-link disabled:opacity-50">
+            {finding ? t('home.updating') : t('home.update')}
+          </button>
+        </span>
       </span>
-      <span className="flex items-center gap-4">
-        <button type="button" onClick={locate} disabled={finding} className="text-sm font-semibold text-link disabled:opacity-50">
-          {finding ? t('home.updating') : t('home.update')}
-        </button>
-        <Link to="/places" className="text-sm font-semibold text-link" aria-label={t('home.changePlaceLabel')}>
-          {t('common.change')}
+      <span className="flex shrink-0 items-center">
+        <Link to="/places" aria-label={t('home.changePlaceLabel')}>
+          <ChangePill />
         </Link>
       </span>
     </div>
