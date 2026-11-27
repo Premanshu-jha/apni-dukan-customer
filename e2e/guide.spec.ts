@@ -315,24 +315,43 @@ test('after a finished visit, once: come-back reminders and offer messages switc
   await expect(page.getByRole('region', { name: 'Want a reminder for next time?' })).toBeHidden()
 })
 
-test('a first-timer on their current location is told, once, that Home and Work can be saved', async ({ page, context, api }) => {
+test('a first-timer on their current location is asked, once, to save it as Home; Save as Home takes the location there', async ({ page, context, api }) => {
   await signedIn(context, api)
   await page.goto('/')
-  const hint = page.getByRole('note').filter({ hasText: 'Save Home or Work once' })
+  const offer = page.getByRole('region', { name: 'At home right now?' })
   // Not while How booking works is on Home (one tip at a time): it comes once that is put away
   await expect(page.getByRole('region', { name: 'How booking works' })).toBeVisible()
   await expect(page.getByText('Shine Unisex Salon').first()).toBeVisible()
-  await expect(hint).toBeHidden()
+  await expect(offer).toBeHidden()
   await page.getByRole('region', { name: 'How booking works' }).getByRole('button', { name: 'Got it' }).click()
   await page.reload()
-  await expect(hint).toBeVisible()
-  await hint.getByRole('link', { name: 'Save a place' }).click()
-  await expect(page).toHaveURL(/\/places$/)
+  await expect(offer).toBeVisible()
+  // Save as Home: a new Home, already at the phone's location (no tap on Use current location)
+  await offer.getByRole('link', { name: 'Save as Home' }).click()
+  await expect(page).toHaveURL(/\/places\/new$/)
+  await expect(page.getByRole('button', { name: 'Home' })).toHaveAttribute('aria-pressed', 'true')
+  await expect(page.getByText(/GPS was accurate to about/)).toBeVisible()
+  await expect(page.getByText('Drag the pin onto your exact building, or tap the map where it is.')).toBeVisible()
   await page.goto('/')
-  await page.getByRole('note').filter({ hasText: 'Save Home or Work once' }).getByRole('button', { name: 'Got it' }).click()
+  await page.getByRole('region', { name: 'At home right now?' }).getByRole('button', { name: 'Not now' }).click()
   await page.reload()
   await expect(page.getByText('Shine Unisex Salon').first()).toBeVisible()
-  await expect(hint).toBeHidden()
+  await expect(offer).toBeHidden()
+})
+
+test('Save as Home is not offered once a Home is saved, nor for a rough location', async ({ page, context, api }) => {
+  await signedIn(context, api)
+  api.completedVisit('b9')   // has booked: How booking works is not on Home
+  api.places = [{ id: '00000000-0000-4000-8000-000000000001', kind: 'HOME', name: null, addressLine: 'Flat 4B', area: 'Kondapur', city: 'Hyderabad', pincode: '500084', latitude: 17.4651, longitude: 78.3644, updatedAt: '2026-11-01T10:00:00Z', createdAt: '2026-11-01T10:00:00Z' }]
+  await page.goto('/')
+  await expect(page.getByText('Shine Unisex Salon').first()).toBeVisible()
+  await expect(page.getByRole('region', { name: 'At home right now?' })).toBeHidden()
+  api.places = []
+  // A laptop's guess (worse than 1 km): not offered (it is not where home is)
+  await page.evaluate(() => localStorage.setItem('ad.location', JSON.stringify({ lat: 28.7, lng: 77.1, accuracy: 5000, at: Date.now() })))
+  await page.reload()
+  await expect(page.getByText(/only accurate to about 5 km/)).toBeVisible()
+  await expect(page.getByRole('region', { name: 'At home right now?' })).toBeHidden()
 })
 
 test("a salon's shared link opened signed out: sign-in says why, then the salon opens", async ({ page, api }) => {
@@ -481,8 +500,8 @@ for (const lang of ['en', 'hi'] as const) {
     const first = (await page.locator('a[data-index="0"]').boundingBox())!
     expect(first.y + 40).toBeLessThanOrEqual(tabs.y)
     expect((await search.boundingBox())!.y + 48).toBeLessThanOrEqual(tabs.y)
-    // No places tip on top of it while How booking works shows
-    await expect(page.getByRole('note')).toHaveCount(0)
+    // No "Save as Home" on top of it while How booking works shows
+    await expect(page.getByRole('region', { name: lang === 'hi' ? 'अभी घर पर हैं?' : 'At home right now?' })).toHaveCount(0)
   })
 }
 

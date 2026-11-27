@@ -401,6 +401,10 @@ export class MockApi {
   salonReads: number[] = []
   /** Makes "sign out everywhere" fail on the backend. */
   failLogoutAll = false
+  /** The next Book now answers this (an error with no step of its own on screen). */
+  bookError: { status: number; code: string; message: string } | null = null
+  /** Days with no free times at all (every start taken). */
+  noTimesOn = new Set<string>()
   /** The next free-times read answers 429 (a refresh that fails: the 60-a-minute limit). */
   failSlotsOnce = false
 
@@ -755,7 +759,7 @@ export class MockApi {
         : SERVICES.filter((s) => ids.includes(s.id)).reduce((t, s) => t + s.durationMinutes, 0)
       // BookingResponses.Slots: freeCancelMinutes (10) and each start's lateCancelFrom (1 hour before it)
       // Each start once, as the backend lists them (an extra time may also be a usual one, depending on the time of day)
-      const times = [...new Set([...TIMES, ...this.extraTimes.filter((x) => x.date === date).map((x) => x.time)])].sort()
+      const times = this.noTimesOn.has(date) ? [] : [...new Set([...TIMES, ...this.extraTimes.filter((x) => x.date === date).map((x) => x.time)])].sort()
       const starts = times
         .map((t) => ({ startAt: istInstant(date, t), time: t }))
         .filter((s) => !this.gone.has(s.startAt))
@@ -774,6 +778,11 @@ export class MockApi {
     }
 
     if (p === '/bookings' && method === 'POST') {
+      if (this.bookError) {
+        const e = this.bookError
+        this.bookError = null
+        return fail(e.status, e.code, e.message)
+      }
       if (this.profileIncompleteOnce) {
         this.profileIncompleteOnce = false
         this.user = { ...this.user, name: null }

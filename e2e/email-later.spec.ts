@@ -39,16 +39,24 @@ test('the banner opens the email screen; Back leaves it for later; verifying say
   await expect(page.getByRole('region', { name: 'Email not verified' })).toBeHidden()
 })
 
-test('Need help with the email pending: verify first, then the form, and what was typed is kept', async ({ page, context, api }) => {
+test('Need help with the email pending: it says why on the page, Call and WhatsApp stay, then verify and the form opens', async ({ page, context, api }) => {
   await emailPending(context, api)
   await page.goto('/profile')
   await expect(page.getByText('Not verified yet')).toBeVisible()
   await page.getByRole('link', { name: 'Write to support' }).click()
+  // Not sent away to the email screen: Need help says what writing needs, with a person one tap away
+  await expect(page).toHaveURL(/\/help\?write=1$/)
+  await expect(page.getByRole('heading', { name: 'Verify your email to write here' })).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Call us' }).first()).toHaveAttribute('href', 'tel:+919381251613')
+  await expect(page.getByRole('link', { name: 'WhatsApp us' }).first()).toHaveAttribute('href', /^https:\/\/wa\.me\/919381251613\?text=/)
+  await page.getByRole('button', { name: 'Verify my email' }).click()
   await expect(page).toHaveURL(/\/verify-email$/)
+  await expect(page.getByText('One step before you write to us.')).toBeVisible()
   await page.getByLabel('Email', { exact: true }).fill('riya@example.com')
   await page.getByRole('button', { name: 'Send code' }).click()
   await page.getByLabel('Code').fill('654321')
   await expect(page).toHaveURL(/\/help\?write=1$/)
+  await expect(page.getByLabel('Your message')).toBeVisible()
   await page.getByLabel('Your message').fill('short')
   await expect(page.getByText('Tell us a little more (at least 10 characters).')).toBeVisible()
   await expect(page.getByRole('button', { name: 'Send to support' })).toBeDisabled()
@@ -61,21 +69,26 @@ test('Need help with the email pending: verify first, then the form, and what wa
   expect(api.tickets).toHaveLength(1)
 })
 
-test('changing the name, adding a place or deleting the account wait for the email; a typed address too', async ({ page, context, api }) => {
+test('changing the name and booking wait for the email; saving a place and Need help do not', async ({ page, context, api }) => {
   await emailPending(context, api)
   await page.goto('/profile')
   await page.getByRole('button', { name: 'Edit' }).click()
   await expect(page).toHaveURL(/\/verify-email$/)
-  for (const path of ['/places/new', '/salons/s1/confirm', '/help?write=1']) {
-    await page.goto(path)
-    await expect(page).toHaveURL(/\/verify-email$/)
-  }
-  // Need help's answers don't: only writing to us does (Write to us goes to the email screen first)
+  await expect(page.getByText('One step before you change your name.')).toBeVisible()
+  await page.goto('/salons/s1/confirm')
+  await expect(page).toHaveURL(/\/verify-email$/)
+  // A place can be saved without an email (browsing salons near an address works from the first day)
+  await page.goto('/places/new')
+  await expect(page).toHaveURL(/\/places\/new$/)
+  await expect(page.getByLabel('Area')).toBeVisible()
+  // Need help's answers don't wait either; Write to us says on the page what it needs (no loop to the email screen)
   await page.goto('/help')
   await expect(page.getByRole('heading', { name: 'How do I…?' })).toBeVisible()
   await expect(page.getByRole('link', { name: /^My requests/ })).toBeHidden()
   await page.getByRole('button', { name: 'Write to us' }).click()
-  await expect(page).toHaveURL(/\/verify-email$/)
+  await expect(page).toHaveURL(/\/help$/)
+  await expect(page.getByRole('heading', { name: 'Verify your email to write here' })).toBeFocused()
+  await expect(page.getByRole('link', { name: 'Call us' }).first()).toBeVisible()
   // Browsing doesn't
   await page.goto('/salons/s1')
   await expect(page.getByText('Shine Unisex Salon')).toBeVisible()
@@ -98,7 +111,7 @@ test('deleting the account never asks for an email first', async ({ page, contex
 test('Back on the email screen forgets the detour: verifying later from Home goes Home, with a note', async ({ page, context, api }) => {
   await emailPending(context, api)
   await page.goto('/salons/s1')
-  await page.goto('/places/new')
+  await page.goto('/salons/s1/confirm')
   await expect(page).toHaveURL(/\/verify-email$/)
   await page.getByRole('button', { name: 'Back' }).click()
   await page.goto('/')

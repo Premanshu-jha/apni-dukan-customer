@@ -19,7 +19,7 @@ test('location off: the customer types an address, finds it on the map, saves it
   // The first place is Home; Find on map asks for the fields first
   await expect(page.getByRole('button', { name: 'Home' })).toHaveAttribute('aria-pressed', 'true')
   await page.getByRole('button', { name: 'Find on map' }).click({ force: true })   // aria-disabled until filled
-  await expect(page.getByText('Fill in the address, area, city and pincode above to find it on the map.')).toBeVisible()
+  await expect(page.getByText('Fill in the area, city and pincode above to find it on the map.')).toBeVisible()
   expect(api.calls.some((c) => c.path === '/api/v1/me/places/geocode')).toBe(false)
   await page.getByLabel('House or flat number, building, street').fill(flat.addressLine)
   await page.getByLabel('Area').fill(flat.area)
@@ -83,7 +83,9 @@ test('the picker: a saved place or the current location; a place deleted on anot
   await page.getByRole('link', { name: /Salons near Work/ }).click()
   await expect(page.getByRole('button', { name: /^Work/ })).toHaveAttribute('aria-current', 'true')
   await page.getByRole('button', { name: /Current location/ }).click()
-  await expect(page.getByText('Near your current location')).toBeVisible()
+  // Back on Home: said once that the salons changed, and the bar is the current location's again
+  await expect(page.getByRole('status').filter({ hasText: 'Showing salons near your current location' })).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Change where to find salons' })).toBeVisible()
 
   // Home picked, then deleted on another phone: back to the current location
   await page.goto('/places')
@@ -366,4 +368,70 @@ test('arrow keys far from the middle: the map follows, so the pin stays in sight
   const box = (await page.getByRole('application', { name: /drag the pin/ }).boundingBox())!
   const at = (await pin.boundingBox())!
   expect(at.y + at.height / 2).toBeLessThan(box.y + box.height)
+})
+
+test('the place chips on Home: one tap switches, the picked one is marked, the salons follow and it is said', async ({ page, context, api }) => {
+  await signedIn(context, api)
+  api.places = [saved(uid(1), 'HOME', null, 17.4651, 78.3644), saved(uid(2), 'WORK', null, 17.45, 78.38, 'Cyber Towers')]
+  await page.goto('/')
+  const chips = page.getByRole('group', { name: 'Find salons near' })
+  await expect(chips.getByRole('button', { name: 'Current location' })).toHaveAttribute('aria-pressed', 'true')
+  await expect(chips.getByRole('link', { name: 'Add place' })).toBeVisible()
+
+  await chips.getByRole('button', { name: 'Work' }).click()
+  await expect(chips.getByRole('button', { name: 'Work' })).toHaveAttribute('aria-pressed', 'true')
+  await expect(chips.getByRole('button', { name: 'Current location' })).toHaveAttribute('aria-pressed', 'false')
+  await expect(page.getByRole('status').filter({ hasText: 'Showing salons near Work' })).toBeVisible()
+  await expect(page.getByRole('link', { name: /Salons near Work, Cyber Towers, Kondapur/ })).toBeVisible()
+  await expect.poll(() => salonsAt(api).at(-1)).toBe('17.45')
+  // The note goes by itself; the choice stays after a reload
+  await expect(page.getByRole('status').filter({ hasText: 'Showing salons near Work' })).toBeHidden({ timeout: 8000 })
+  await page.reload()
+  await expect(page.getByRole('group', { name: 'Find salons near' }).getByRole('button', { name: 'Work' })).toHaveAttribute('aria-pressed', 'true')
+
+  await chips.getByRole('button', { name: 'Home' }).click()
+  await expect.poll(() => salonsAt(api).at(-1)).toBe('17.4651')
+  await chips.getByRole('button', { name: 'Current location' }).click()
+  await expect(page.getByRole('link', { name: 'Change where to find salons' })).toBeVisible()
+})
+
+test('no chips before a place is saved; with no Home, the add chip says Add Home and opens a new Home', async ({ page, context, api }) => {
+  await signedIn(context, api)
+  await page.goto('/')
+  await expect(page.getByText('Shine Unisex Salon').first()).toBeVisible()
+  await expect(page.getByRole('group', { name: 'Find salons near' })).toBeHidden()
+
+  api.places = [saved(uid(2), 'WORK', null, 17.45, 78.38, 'Cyber Towers')]
+  await page.reload()
+  const chips = page.getByRole('group', { name: 'Find salons near' })
+  await chips.getByRole('link', { name: 'Add Home' }).click()
+  await expect(page).toHaveURL(/\/places\/new$/)
+  await expect(page.getByRole('button', { name: 'Home' })).toHaveAttribute('aria-pressed', 'true')
+  // Saving a new place picks it and says so on Home
+  await page.getByLabel('House or flat number, building, street').fill(flat.addressLine)
+  await page.getByLabel('Area').fill(flat.area)
+  await page.getByLabel('City').fill(flat.city)
+  await page.getByLabel('Pincode').fill(flat.pincode)
+  await page.getByRole('button', { name: 'Use current location' }).click()
+  await page.getByRole('button', { name: 'Save address' }).click()
+  await expect(page.getByRole('status').filter({ hasText: 'Showing salons near Home' })).toBeVisible()
+  await expect(page.getByRole('group', { name: 'Find salons near' }).getByRole('button', { name: 'Home' })).toHaveAttribute('aria-pressed', 'true')
+  // Ten saved: no add chip
+  api.places = Array.from({ length: 10 }, (_, i) => saved(uid(i + 1), i === 0 ? 'HOME' : 'OTHER', i === 0 ? null : `Place ${i}`, 17.45, 78.38))
+  await page.reload()
+  await expect(page.getByRole('group', { name: 'Find salons near' }).getByRole('button', { name: 'Place 9' })).toBeAttached()
+  await expect(page.getByRole('group', { name: 'Find salons near' }).getByRole('link')).toHaveCount(0)
+})
+
+test('the bar\'s Change looks like a button on both bars, and a chip row fits a 360 px phone without hiding the salons', async ({ page, context, api }) => {
+  await signedIn(context, api)
+  api.completedVisit('b9')
+  api.places = [saved(uid(1), 'HOME', null, 17.4651, 78.3644), saved(uid(2), 'WORK', null, 17.45, 78.38, 'Cyber Towers')]
+  await page.setViewportSize({ width: 360, height: 640 })
+  await page.goto('/')
+  await expect(page.getByRole('link', { name: 'Change where to find salons' })).toContainText(/Change\s*▾/)
+  await page.getByRole('group', { name: 'Find salons near' }).getByRole('button', { name: 'Home' }).click()
+  await expect(page.getByRole('link', { name: /Salons near Home/ })).toContainText(/Change\s*▾/)
+  // No sideways scroll of the page: the chips scroll inside their own row
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(360)
 })
