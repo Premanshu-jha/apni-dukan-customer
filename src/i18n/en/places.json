@@ -57,13 +57,12 @@
   "mapHint": "Use your current location, or find the address on the map. Then drag the pin onto your building.",
   "pinPrivacy": "Salons are found around this pin; they never see your address.",
   "findOnMap": "Find on map",
-  "needFields": "Fill in the address, area, city and pincode above to find it on the map.",
+  "needFields": "Fill in the area, city and pincode above to find it on the map.",
   "addressChanged": "You changed the address. Tap Find on map again, or drag the pin.",
   "locTimeout": "That took too long. Turn on GPS and move near a window, then try again.",
   "locUnavailable": "Your phone couldn't find its location. Check that location is on.",
   "locUnsupported": "This browser can't share a location. Find the address on the map instead.",
   "loadingMap": "Loading the map…",
-  "dragPin": "Drag the pin, or tap the map, if it's off.",
   "gpsAccuracy": "GPS was accurate to about {metres} m.",
   "movedFromGps": "Moved {metres} m from the GPS point.",
   "roughPin": "The phone isn't sure where it is. Drag the pin onto your building, or try again near a window.",
@@ -80,5 +79,11 @@
   "deleteConfirm": "Delete {place}? You can add it again any time.",
   "yesDelete": "Yes, delete",
   "keepIt": "Keep it",
-  "deletePlace": "Delete this place"
+  "deletePlace": "Delete this place",
+  "guideApp1": "Open your phone's Settings app.",
+  "guideApp2": "Tap Apps (or See all apps), then Clozest.",
+  "guideApp3": "Tap Permissions, then Location, and choose \"Allow only while using the app\".",
+  "guideApp4": "Come back here and tap Try again.",
+  "locBlockedApp": "Location is off for Clozest. Find the address on the map instead, or allow location in your phone's settings.",
+  "dragPinExact": "Drag the pin onto your exact building, or tap the map where it is."
 }

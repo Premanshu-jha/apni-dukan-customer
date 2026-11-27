@@ -23,5 +23,9 @@
   "commentError": "ಕಾಮೆಂಟ್ {error}.",
   "saveRating": "ರೇಟಿಂಗ್ ಸೇವ್ ಮಾಡಿ",
   "sendRating": "ರೇಟಿಂಗ್ ಕಳುಹಿಸಿ",
-  "keepRating": "ನನ್ನ ರೇಟಿಂಗ್ ಹಾಗೆಯೇ ಇರಲಿ"
+  "keepRating": "ನನ್ನ ರೇಟಿಂಗ್ ಹಾಗೆಯೇ ಇರಲಿ",
+  "badVisit": "ಏನಾದರೂ ತಪ್ಪಾಯಿತೇ? ನಿಮ್ಮ ಕಾಮೆಂಟ್ ಸಲೂನ್‌ಗೆ ಮಾತ್ರ ಹೋಗುತ್ತದೆ.",
+  "badVisitAbout": "{salon} ಗೆ ನನ್ನ ಭೇಟಿ",
+  "badVisitText": "{salon} ನಲ್ಲಿ ನನ್ನ ಬುಕಿಂಗ್ {no} ಬಗ್ಗೆ: ",
+  "tellClozest": "Clozest ಗೆ ತಿಳಿಸಿ"
 }

@@ -99,5 +99,11 @@
   "searchHelpText": "I searched for: {q}\nMy area: \nLocation: {lat}, {lng}",
   "searchResultsLabel": "Salons matching ‘{q}’",
   "searchHeadingMore": "Salons matching ‘{q}’ within {km} km, nearest first",
-  "searchHeadingCount": { "one": "{count} salon matching ‘{q}’ within {km} km", "other": "{count} salons matching ‘{q}’ within {km} km" }
+  "searchHeadingCount": { "one": "{count} salon matching ‘{q}’ within {km} km", "other": "{count} salons matching ‘{q}’ within {km} km" },
+  "backToSalon": "Back to the salon",
+  "bookFailedText": "I tried to book and it said: {reason}",
+  "writeToUsAbout": "Write to us about it",
+  "lookNearAnotherPlace": "Look near another place",
+  "tryDay": "Try {day}",
+  "findAnotherSalon": "Find another salon"
 }

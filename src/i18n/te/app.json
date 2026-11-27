@@ -22,5 +22,6 @@
   "switching": "యాప్ అప్‌డేట్ అవుతోంది…",
   "updateRequiredHint": "Play Store లో ఇంకా అప్‌డేట్ కనిపించకపోతే, యాప్‌ను మూసి కొన్ని గంటల తర్వాత మళ్లీ ప్రయత్నించండి, లేదా \"మళ్లీ చూడండి\" నొక్కండి.",
   "updateRequiredCheck": "మళ్లీ చూడండి",
-  "updateRequiredChecking": "చూస్తున్నాం…"
+  "updateRequiredChecking": "చూస్తున్నాం…",
+  "updateStuck": "అప్‌డేట్ కావడం లేదా? మాతో మాట్లాడండి:"
 }

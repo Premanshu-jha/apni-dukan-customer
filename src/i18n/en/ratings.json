@@ -23,5 +23,9 @@
   "commentError": "The comment {error}.",
   "saveRating": "Save rating",
   "sendRating": "Send rating",
-  "keepRating": "Keep my rating"
+  "keepRating": "Keep my rating",
+  "badVisit": "Something went wrong? Your comment goes to the salon only.",
+  "badVisitAbout": "My visit to {salon}",
+  "badVisitText": "About my booking {no} at {salon}: ",
+  "tellClozest": "Tell Clozest"
 }

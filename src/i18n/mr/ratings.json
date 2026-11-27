@@ -23,5 +23,9 @@
   "commentError": "कमेंट {error}.",
   "saveRating": "रेटिंग सेव्ह करा",
   "sendRating": "रेटिंग पाठवा",
-  "keepRating": "माझे रेटिंग ठेवा"
+  "keepRating": "माझे रेटिंग ठेवा",
+  "badVisit": "काही चुकले? तुमची टिप्पणी फक्त सलूनला जाते.",
+  "badVisitAbout": "{salon} ला माझी भेट",
+  "badVisitText": "{salon} मधील माझ्या बुकिंग {no} बद्दल: ",
+  "tellClozest": "Clozest ला सांगा"
 }

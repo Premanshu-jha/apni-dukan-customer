@@ -17,5 +17,6 @@
   "errorHelpAbout": "काहीतरी चालत नाही",
   "errorHelpText": "{screen} या स्क्रीनवर हे दिसते: \"{message}\"\nमी हे करत होतो/होते: ",
   "errorStillBefore": "अजूनही चालत नाही?",
-  "errorWriteToUs": "आम्हाला लिहा"
+  "errorWriteToUs": "आम्हाला लिहा",
+  "errorStillStuck": "अजूनही अडकलात? आमच्याशी बोला:"
 }

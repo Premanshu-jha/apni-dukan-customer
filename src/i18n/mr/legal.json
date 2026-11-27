@@ -38,5 +38,7 @@
   "contactGrievanceAfter": "वर लिहा.",
   "termsTitle": "सेवेच्या अटी",
   "privacyTitle": "प्रायव्हसी पॉलिसी",
-  "englishApplies": "खालील मजकूर इंग्रजीत आहे. हीच इंग्रजी आवृत्ती लागू होते."
+  "englishApplies": "खालील मजकूर इंग्रजीत आहे. हीच इंग्रजी आवृत्ती लागू होते.",
+  "contactCantSignInTitle": "साइन इन होत नाही?",
+  "contactCantSignInBody": "SMS कोड येत नाही, किंवा नंबर हरवला? तुमच्या मोबाइल नंबरसह आम्हाला कॉल किंवा WhatsApp करा, आम्ही मदत करू."
 }

@@ -28,5 +28,9 @@
   "commentError": "కామెంట్ {error}.",
   "saveRating": "రేటింగ్ సేవ్ చేయండి",
   "sendRating": "రేటింగ్ పంపండి",
-  "keepRating": "నా రేటింగ్ ఉంచండి"
+  "keepRating": "నా రేటింగ్ ఉంచండి",
+  "badVisit": "ఏదైనా తప్పు జరిగిందా? మీ కామెంట్ సెలూన్‌కి మాత్రమే వెళ్తుంది.",
+  "badVisitAbout": "{salon} కి నా విజిట్",
+  "badVisitText": "{salon} లో నా బుకింగ్ {no} గురించి: ",
+  "tellClozest": "Clozest కి చెప్పండి"
 }

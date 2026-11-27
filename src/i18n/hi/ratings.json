@@ -23,5 +23,9 @@
   "commentError": "कमेंट: {error}।",
   "saveRating": "रेटिंग सेव करें",
   "sendRating": "रेटिंग भेजें",
-  "keepRating": "मेरी रेटिंग रहने दें"
+  "keepRating": "मेरी रेटिंग रहने दें",
+  "badVisit": "कुछ गलत हुआ? आपकी टिप्पणी सिर्फ़ सैलून को जाती है।",
+  "badVisitAbout": "{salon} में मेरी विज़िट",
+  "badVisitText": "{salon} में मेरी बुकिंग {no} के बारे में: ",
+  "tellClozest": "Clozest को बताएँ"
 }

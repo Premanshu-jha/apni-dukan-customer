@@ -99,5 +99,11 @@
   "searchHelpText": "ನಾನು ಹುಡುಕಿದ್ದು: {q}\nನನ್ನ ಏರಿಯಾ: \nಲೊಕೇಶನ್: {lat}, {lng}",
   "searchResultsLabel": "‘{q}’ ಇರುವ ಸಲೂನ್‌ಗಳು",
   "searchHeadingMore": "{km} km ಒಳಗೆ ‘{q}’ ಇರುವ ಸಲೂನ್‌ಗಳು, ಹತ್ತಿರದ್ದು ಮೊದಲು",
-  "searchHeadingCount": { "one": "{km} km ಒಳಗೆ ‘{q}’ ಇರುವ {count} ಸಲೂನ್", "other": "{km} km ಒಳಗೆ ‘{q}’ ಇರುವ {count} ಸಲೂನ್‌ಗಳು" }
+  "searchHeadingCount": { "one": "{km} km ಒಳಗೆ ‘{q}’ ಇರುವ {count} ಸಲೂನ್", "other": "{km} km ಒಳಗೆ ‘{q}’ ಇರುವ {count} ಸಲೂನ್‌ಗಳು" },
+  "backToSalon": "ಸಲೂನ್‌ಗೆ ವಾಪಸ್ ಹೋಗಿ",
+  "bookFailedText": "ನಾನು ಬುಕ್ ಮಾಡಲು ಪ್ರಯತ್ನಿಸಿದೆ, ಹೀಗೆ ಬಂತು: {reason}",
+  "writeToUsAbout": "ಇದರ ಬಗ್ಗೆ ನಮಗೆ ಬರೆಯಿರಿ",
+  "lookNearAnotherPlace": "ಬೇರೆ ಜಾಗದ ಹತ್ತಿರ ನೋಡಿ",
+  "tryDay": "{day} ನೋಡಿ",
+  "findAnotherSalon": "ಬೇರೆ ಸಲೂನ್ ಹುಡುಕಿ"
 }

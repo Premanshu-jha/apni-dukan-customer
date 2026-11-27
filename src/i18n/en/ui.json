@@ -17,5 +17,6 @@
   "errorHelpAbout": "Something isn't working",
   "errorHelpText": "On the screen {screen} I see: \"{message}\"\nWhat I was doing: ",
   "errorStillBefore": "Still not working?",
-  "errorWriteToUs": "Write to us"
+  "errorWriteToUs": "Write to us",
+  "errorStillStuck": "Still stuck? Talk to us:"
 }

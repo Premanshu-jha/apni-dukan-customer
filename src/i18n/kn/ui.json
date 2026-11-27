@@ -17,5 +17,6 @@
   "errorHelpAbout": "ಏನೋ ಕೆಲಸ ಮಾಡುತ್ತಿಲ್ಲ",
   "errorHelpText": "{screen} ಸ್ಕ್ರೀನ್‌ನಲ್ಲಿ ಇದು ಕಾಣುತ್ತಿದೆ: \"{message}\"\nನಾನು ಮಾಡುತ್ತಿದ್ದದ್ದು: ",
   "errorStillBefore": "ಇನ್ನೂ ಕೆಲಸ ಮಾಡುತ್ತಿಲ್ಲವೇ?",
-  "errorWriteToUs": "ನಮಗೆ ಬರೆಯಿರಿ"
+  "errorWriteToUs": "ನಮಗೆ ಬರೆಯಿರಿ",
+  "errorStillStuck": "ಇನ್ನೂ ಸಿಕ್ಕಿಹಾಕಿಕೊಂಡಿದ್ದೀರಾ? ನಮ್ಮೊಂದಿಗೆ ಮಾತನಾಡಿ:"
 }
