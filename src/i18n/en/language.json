@@ -7,5 +7,8 @@
   "keepEnglish": "Keep English",
   "profileHint": "Saved to your account too: your messages come in this language. Someone else on this phone can choose their own.",
   "changedToast": "Done. You can change the language any time in Profile → Language.",
-  "button": "Language: {name}"
+  "button": "Language: {name}",
+  "shownIn": "Language:",
+  "change": "Change",
+  "salonNext": "Next: sign in, then the salon you opened."
 }
