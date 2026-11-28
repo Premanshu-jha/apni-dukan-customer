@@ -61,10 +61,15 @@ test('the fake backend answers PATCH /auth/me as AuthController.updateMe does', 
 test.describe('a phone set to Tamil', () => {
   test.use({ locale: 'ta-IN' })
 
-  test('signing in with Tamil showing counts as choosing it: kept on the phone (offline page) and saved on the account', async ({ page, api }) => {
+  test('the first screen asks in Tamil with Tamil first and marked; one tap: kept on the phone (offline page) and saved on the account', async ({ page, api }) => {
     api.user = MockApi.completeUser()
     await page.goto('/signin')
+    await expect(page).toHaveURL(/\/language$/)
     await expect(page.locator('html')).toHaveAttribute('lang', 'ta')
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText('உங்கள் மொழியைத் தேர்ந்தெடுங்கள்')
+    const first = page.getByRole('group').getByRole('button').first()
+    await expect(first).toHaveAccessibleName('தமிழ், Tamil')
+    await first.click()
     await signInFromScreen(page, 'ta')
     await expect.poll(() => languagePatches(api)).toEqual(['ta'])
     expect(await page.evaluate(() => localStorage.getItem('language'))).toBe('ta')
@@ -72,7 +77,21 @@ test.describe('a phone set to Tamil', () => {
     await expect(page.locator('html')).toHaveAttribute('lang', 'ta')
   })
 
-  test('the account\'s own language (from another phone) wins over the phone\'s guess, and nothing is sent', async ({ page, api }) => {
+  test('picked on a new phone\'s first screen, the language is the phone\'s: an account with its own keeps it, nothing sent', async ({ page, api }) => {
+    api.user = { ...MockApi.completeUser(), language: 'kn' }
+    await page.goto('/signin')
+    await page.getByRole('button', { name: /^தமிழ்/ }).click()
+    await signInFromScreen(page, 'ta')
+    // Someone may have set the phone up for them: the account's own language comes back
+    await expect(page.locator('html')).toHaveAttribute('lang', 'kn')
+    await page.waitForTimeout(300)
+    expect(languagePatches(api)).toEqual([])
+  })
+
+  test('a phone with a language chosen before: the account\'s own language (from another phone) wins, and nothing is sent', async ({ page, context, api }) => {
+    await context.addInitScript(() => {
+      if (!localStorage.getItem('language')) localStorage.setItem('language', 'ta')
+    })
     api.user = { ...MockApi.completeUser(), language: 'kn' }
     await page.goto('/signin')
     await signInFromScreen(page, 'ta')

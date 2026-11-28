@@ -1,4 +1,4 @@
-import { expect, signedIn, test } from './helpers'
+import { expect, signedIn, test, languageKept } from './helpers'
 
 test('messages: the bell shows unread, opening one marks it read and opens its booking', async ({ page, context, api }) => {
   await signedIn(context, api)
@@ -22,6 +22,7 @@ test('messages: the bell shows unread, opening one marks it read and opens its b
 })
 
 test('signing out ends the session and the next person starts at Home', async ({ page, context, api }) => {
+  await languageKept(context)
   await signedIn(context, api)
   await page.goto('/bookings')
   // Let the start-up refresh finish first: leaving the page while it is on its way loses its answer, and the next

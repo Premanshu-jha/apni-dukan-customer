@@ -70,6 +70,7 @@ test('a shared phone: each account gets its own language back', async ({ page, a
   const ravi = { ...MockApi.completeUser(), id: 'u2', name: 'Ravi Kumar', email: 'ravi@example.com' }
   api.user = asha
   await page.goto('/signin')
+  // A new phone: the language screen first
   await page.getByRole('button', { name: 'हिन्दी' }).click()
   await signInFromScreen(page, 'hi')
   await expect.poll(() => languagePatches(api).map((c) => c.body)).toEqual([{ language: 'hi' }])
@@ -77,9 +78,10 @@ test('a shared phone: each account gets its own language back', async ({ page, a
   await page.getByRole('button', { name: text('hi', 'profile.signOut'), exact: true }).click()
   await expect(page).toHaveURL(/\/signin$/)
 
-  // Ravi on the same phone: the sign-in screen shows the phone's last choice; he picks Telugu
+  // Ravi on the same phone: the sign-in screen shows the phone's last choice; he changes it to Telugu
   api.user = ravi
   await expect(page.locator('html')).toHaveAttribute('lang', 'hi')
+  await page.getByRole('link', { name: text('hi', 'language.change') }).click()
   await page.getByRole('button', { name: 'తెలుగు' }).click()
   await signInFromScreen(page, 'te')
   await expect(page.getByRole('link', { name: text('te', 'app.tabHome') })).toBeVisible()
@@ -103,10 +105,11 @@ test('a shared phone: each account gets its own language back', async ({ page, a
 test.describe('a phone set to Hindi', () => {
   test.use({ locale: 'hi-IN' })
 
-  test('first open: the sign-in screen is in Hindi, the other languages still offered', async ({ page }) => {
+  test('first open: the language screen asks in Hindi, Hindi first, the other languages still offered', async ({ page }) => {
     await page.goto('/signin')
+    await expect(page).toHaveURL(/\/language$/)
     await expect(page.locator('html')).toHaveAttribute('lang', 'hi')
-    await expect(page.getByRole('button', { name: 'हिन्दी' })).toHaveAttribute('aria-pressed', 'true')
+    await expect(page.getByRole('group').getByRole('button').first()).toHaveAccessibleName('हिन्दी, Hindi')
     for (const name of ['English', 'తెలుగు', 'मराठी', 'தமிழ்', 'ಕನ್ನಡ']) await expect(page.getByRole('button', { name })).toBeVisible()
   })
 })

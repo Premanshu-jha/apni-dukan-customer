@@ -41,3 +41,10 @@ export async function signedIn(context: BrowserContext, api: MockApi, opts: { lo
     [session, withLocation] as const,
   )
 }
+
+/** A language already chosen on this phone (English): what a returning person sees, so sign-in opens straight away. */
+export async function languageKept(context: BrowserContext) {
+  await context.addInitScript(() => {
+    if (!localStorage.getItem('language')) localStorage.setItem('language', 'en')
+  })
+}

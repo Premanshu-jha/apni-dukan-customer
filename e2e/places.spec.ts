@@ -1,4 +1,4 @@
-import { expect, signedIn, test } from './helpers'
+import { expect, signedIn, test, languageKept } from './helpers'
 
 const flat = { addressLine: 'Flat 4B, Lake View Apartments', area: 'Kondapur', city: 'Hyderabad', pincode: '500084' }
 /** A place id as the backend makes them (UUIDs). */
@@ -128,6 +128,7 @@ test('changing a picked place moves its salons; deleting it asks once more and g
 })
 
 test('address search: not found, turned off (the button goes), 10 places at most; signing out forgets the picked place', async ({ page, context, api }) => {
+  await languageKept(context)
   await signedIn(context, api)
   await page.goto('/places/new')
   await page.getByLabel('House or flat number, building, street').fill(flat.addressLine)
@@ -270,6 +271,7 @@ test('changed on another phone: Home shows its new words and pin; /places/new wi
 })
 
 test('a session the backend ends (expired, signed out everywhere) forgets the picked place on this phone', async ({ page, context, api }) => {
+  await languageKept(context)
   await signedIn(context, api)
   api.places = [saved(uid(1), 'HOME', null, 17.4651, 78.3644)]
   await page.goto('/places')

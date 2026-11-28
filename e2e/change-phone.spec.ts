@@ -1,4 +1,4 @@
-import { expect, signedIn, test } from './helpers'
+import { expect, signedIn, test, languageKept } from './helpers'
 
 test('changing the mobile number: a taken or same number is refused; both codes move the same account; this phone stays signed in', async ({ page, context, api }) => {
   await signedIn(context, api)
@@ -79,6 +79,7 @@ test('the number taken between the codes and the change goes back to the number 
 })
 
 test('a lost answer after the change went through: sign-in says the number moved and fills it in', async ({ page, context, api }) => {
+  await languageKept(context)
   await signedIn(context, api)
   await page.goto('/profile/phone')
   await page.getByLabel('New mobile number').fill('9700000007')
