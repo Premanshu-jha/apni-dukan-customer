@@ -26,6 +26,8 @@ import { ConfirmBooking } from '../features/salon/ConfirmBooking'
 import { SalonPage } from '../features/salon/SalonPage'
 import { EmptyState, Page } from '../components/ui'
 import { useT } from '../i18n'
+import { LanguageFirst, LanguageFirstGate } from '../i18n/LanguageFirst'
+import { returningToSalon } from '../features/auth/flow'
 import { EmailVerifiedOnly, FinishingProfile, SignedIn, SignedOutOnly } from './guards'
 import { Bare, Shell } from './Shell'
 
@@ -35,14 +37,31 @@ export function App() {
     <Routes>
       <Route element={<Bare />}>
         <Route element={<SignedOutOnly />}>
-          <Route path="/signin" element={<PhoneStep />} />
+          {/* The first screen on a phone where no language was chosen yet: the language, then sign-in in it */}
+          <Route
+            path="/signin"
+            element={
+              <LanguageFirstGate>
+                <PhoneStep />
+              </LanguageFirstGate>
+            }
+          />
           <Route path="/signin/code" element={<CodeStep />} />
-          <Route path="/signin/recover" element={<RecoverStep />} />
+          <Route
+            path="/signin/recover"
+            element={
+              <LanguageFirstGate>
+                <RecoverStep />
+              </LanguageFirstGate>
+            }
+          />
         </Route>
         <Route element={<FinishingProfile />}>
           <Route path="/welcome/name" element={<NameStep />} />
         </Route>
         {/* Public pages: open to everyone, signed in or not (Razorpay's website check, and anyone opening a link) */}
+        {/* Choose the language: first on a new phone, and from "Change" on the sign-in screen */}
+        <Route path="/language" element={<LanguageScreen />} />
         <Route path="/about" element={<About />} />
         <Route path="/contact" element={<Contact />} />
         <Route path="/terms" element={<Terms />} />
@@ -104,5 +123,15 @@ export function App() {
         />
       </Route>
     </Routes>
+  )
+}
+
+/** The language screen; opened from a salon's link, it says the salon comes next (the link didn't go wrong). */
+function LanguageScreen() {
+  const t = useT()
+  return (
+    <LanguageFirst
+      note={returningToSalon() ? <p className="text-center text-sm text-muted">{t('language.salonNext')}</p> : undefined}
+    />
   )
 }
