@@ -5,10 +5,10 @@ import { isApiError, messageOf } from '../../api/errors'
 import { Banner, Button, Field, Page } from '../../components/ui'
 import { Turnstile } from '../../components/Turnstile'
 import { keepShownLanguage, useT } from '../../i18n'
-import { LanguagePicker } from '../../i18n/LanguagePicker'
+import { LanguageLine } from '../../i18n/LanguageFirst'
 import { TURNSTILE_SITE_KEY } from '../../lib/config'
 import { formatPhone, normalizePhone } from '../../lib/phone'
-import { takePhoneMove } from '../../lib/phoneMoved'
+import { keepTypedPhone, rememberPhoneMove, takePhoneMove, takeTypedPhone } from '../../lib/phoneMoved'
 import { LegalLinks } from '../legal/LegalPage'
 import { Brand } from './Brand'
 import { returningToSalon } from './flow'
@@ -22,7 +22,8 @@ export function PhoneStep() {
   const [movedTo] = useState(takePhoneMove)
   // Opened a salon's shared link while signed out: say why sign-in comes first (sign-in then opens that salon)
   const [forSalon] = useState(returningToSalon)
-  const [phone, setPhone] = useState(movedTo ?? '')
+  // Back from the language screen (Change): what was typed is still there
+  const [phone, setPhone] = useState(() => takeTypedPhone() ?? movedTo ?? '')
   const [captcha, setCaptcha] = useState<string | null>(null)
   const [resetKey, setResetKey] = useState(0)
   const [error, setError] = useState<string | null>(null)
@@ -61,8 +62,14 @@ export function PhoneStep() {
       </div>
       <Brand subtitle={t('auth.phoneSubtitle')} />
       {forSalon && <Banner tone="info">{t('guide.signInForSalon')}</Banner>}
-      {/* Before anything is typed: each language in its own script, for someone who can't read the one showing */}
-      <LanguagePicker heading />
+      {/* The language was chosen on the screen before this one (LanguageFirst); here it can be changed */}
+      <LanguageLine
+        onLeave={() => {
+          // The sign-in screen closes for the language screen: keep the number typed and the moved notice for its return
+          keepTypedPhone(phone)
+          if (movedTo) rememberPhoneMove(movedTo)
+        }}
+      />
       {deleted && <Banner tone="info">{t('auth.phoneDeleted')}</Banner>}
       {movedTo && (
         <Banner tone="info">{t('auth.phoneMoved', { phone: formatPhone(movedTo) })}</Banner>

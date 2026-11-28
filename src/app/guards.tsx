@@ -1,3 +1,4 @@
+import { languageChosen } from '../i18n'
 import { useEffect } from 'react'
 import { Navigate, Outlet, useLocation } from 'react-router'
 import { Loading } from '../components/ui'
@@ -44,6 +45,8 @@ export function SignedIn() {
     // sign-in, as before. A path saved by an earlier visit is dropped, so sign-in from About ends at Home.
     if (location.pathname === '/' && !endedHere && !signedInHereBefore()) {
       forgetReturn()
+      // A new phone: the language first (LanguageFirst), then About in it
+      if (!languageChosen()) return <Navigate to="/language" replace state={{ next: '/about' }} />
       return <Navigate to="/about" replace />
     }
     // Coming from a link: come back here after sign-in. The session ended in this tab: the next person starts at

@@ -14,6 +14,7 @@ import { YourBooking } from './YourBooking'
 import { HomeVisitTip, HowItWorks, SaveHomeOffer } from '../guide/HomeGuide'
 import { PlaceChips } from '../places/PlaceChips'
 import { HelpButton } from '../help/HelpButton'
+import { LanguageButton } from '../../i18n/LanguageButton'
 import { useT } from '../../i18n'
 import { isApp } from '../../lib/platform'
 import { ROUGH_PIN_METRES } from '../../lib/addressPin'
@@ -34,15 +35,22 @@ export function Home() {
 
   return (
     <Page>
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex flex-col gap-1">
+      <div className="flex flex-col gap-1">
+        <div className="flex items-start justify-between gap-3">
           <h1 className="font-display text-xl font-bold min-[400px]:text-2xl">{first ? t('home.greetingWithName', { greeting: hello, name: first }) : hello}</h1>
-          <p className="text-muted">{t('home.subtitle')}</p>
+          {/* Help beside the bell (Home has no title bar to carry it) */}
+          <div className="flex shrink-0 items-center gap-2">
+            <HelpButton />
+            <Bell />
+          </div>
         </div>
-        {/* Help beside the bell (Home has no title bar to carry it) */}
-        <div className="flex shrink-0 items-center gap-2">
-          <HelpButton />
-          <Bell />
+        {/* The language one tap away, on its own line beside the question (the greeting keeps its room) */}
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-muted">{t('home.subtitle')}</p>
+          {/* A full-size tap target that takes little more room than the line of text */}
+          <div className="-my-1.5">
+            <LanguageButton />
+          </div>
         </div>
       </div>
       <VerifyEmailBanner compact />

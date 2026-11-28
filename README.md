@@ -68,6 +68,7 @@ anyone who has signed in on this browser before goes straight to sign-in.
 
 | Route | Screen | Backend calls (`/api/v1/…`) |
 | --- | --- | --- |
+| `/language` | Public. Choose your language: each language in its own script; first on a phone where none was chosen, and from Change on sign-in | — |
 | `/about` | Public. The customers' front page (a first-time visitor at `/` comes here): what Clozest is, booking is free, **Sign in or sign up**; "Own a salon?" opens partner.clozest.in | — |
 | `/contact` | Public. Email, phone, address, grievance contact | — |
 | `/terms`, `/privacy` | Public. Terms of service and privacy policy (DPDP Act), for customers | — |
@@ -604,6 +605,26 @@ applies at once and keeps whatever was typed. The language code is the partner a
   should be read once by a native speaker of each language.
 
 ## Changelog
+
+### Unreleased — the language first
+
+No backend change, no new APK needed (nothing native changed).
+
+- **The language comes first.** On a phone where no language was ever chosen, the app opens on "Choose your
+  language" (`i18n/LanguageFirst.tsx`, route `/language`), before About, sign-in and recover: one big button per
+  language, each in its own script with its English name under it. On a phone set to a language the app has, the
+  question is in it and that language is first, worked out once from the phone's setting so the buttons never move
+  when its words arrive. One tap downloads it, keeps it on the phone and goes on (to About on a fresh visit, to
+  sign-in from a sign-in link or a salon's link, with its notices); from a salon's link the screen says the salon
+  comes next. A slow download never holds the screen: another tap (English) takes over. A language that can't
+  download says so in that language and in English. Phones with a language already chosen never see it.
+- **The account's own language wins at sign-in.** A language picked while signed out (the first screen, Change) is
+  the phone's: an account that already has one keeps it (someone helping set the phone up, or the last person on a
+  shared phone, doesn't change it); an account with none gets the pick. A change while signed in is the account's.
+- **The language one tap away on Home**: "🌐 हिन्दी" beside Help and the bell (`i18n/LanguageButton.tsx`), as well
+  as in Profile.
+- **Sign-in shows "🌐 Language: हिन्दी · बदलें (Change)"** (`LanguageLine`) instead of the six buttons; Change opens
+  the language screen with Back, and coming back keeps the number typed and the "number probably changed" notice.
 
 ### Unreleased — kirana by branch
 

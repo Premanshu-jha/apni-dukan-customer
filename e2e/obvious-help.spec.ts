@@ -1,5 +1,5 @@
 import { addDays, istInstant, todayIst } from './mockApi'
-import { expect, signedIn, test } from './helpers'
+import { expect, signedIn, test, languageKept } from './helpers'
 
 /**
  * Getting help is the most obvious thing in the app (the usability round): Call us and WhatsApp us one tap away on
@@ -92,7 +92,8 @@ test('the answers cover what stops people: the SMS code (with Call and WhatsApp 
   await expect(page.getByText(/the booking waits 10 minutes after its time/)).toBeVisible()
 })
 
-test('signed out: sign-in trouble has a person to call, on the code screen and on Contact', async ({ page, api }) => {
+test('signed out: sign-in trouble has a person to call, on the code screen and on Contact', async ({ page, api, context }) => {
+  await languageKept(context)
   void api   // the fake backend answers the code request
   await page.goto('/signin')
   await page.getByLabel('Mobile number').fill('+91 98480 12345')

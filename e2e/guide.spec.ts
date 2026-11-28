@@ -1,5 +1,5 @@
 import { addDays, istInstant, todayIst } from './mockApi'
-import { expect, signedIn, test } from './helpers'
+import { expect, signedIn, test, languageKept } from './helpers'
 import type { Page } from '@playwright/test'
 
 /** The Help button in the title bar (exact: "Need help with this booking?" is a link too). */
@@ -57,7 +57,8 @@ test('a long salon name wraps under the title bar without pushing Help off a 360
   expect(box.x + box.width).toBeLessThanOrEqual(360)
 })
 
-test('signed out, Help goes to the public Contact page, and nothing asks for requests', async ({ page, api }) => {
+test('signed out, Help goes to the public Contact page, and nothing asks for requests', async ({ page, api, context }) => {
+  await languageKept(context)
   await page.goto('/signin')
   await expect(help(page)).toBeVisible()
   await help(page).click()
@@ -354,7 +355,8 @@ test('Save as Home is not offered once a Home is saved, nor for a rough location
   await expect(page.getByRole('region', { name: 'At home right now?' })).toBeHidden()
 })
 
-test("a salon's shared link opened signed out: sign-in says why, then the salon opens", async ({ page, api }) => {
+test("a salon's shared link opened signed out: sign-in says why, then the salon opens", async ({ page, api, context }) => {
+  await languageKept(context)
   await page.goto('/salons/s1')
   await expect(page).toHaveURL(/\/signin$/)
   await expect(page.getByText('Sign in to book at the salon you opened.', { exact: false })).toBeVisible()
@@ -366,7 +368,8 @@ test("a salon's shared link opened signed out: sign-in says why, then the salon 
   await expect(page.getByRole('heading', { name: 'Shine Unisex Salon' })).toBeVisible()
 })
 
-test('a new customer from a shared link: name first, then the salon', async ({ page, api }) => {
+test('a new customer from a shared link: name first, then the salon', async ({ page, api, context }) => {
+  await languageKept(context)
   expect(api.user.name).toBeNull()
   await page.goto('/salons/s1')
   await page.getByLabel('Mobile number').fill('+91 98480 12345')
@@ -380,7 +383,8 @@ test('a new customer from a shared link: name first, then the salon', async ({ p
   await expect(page).toHaveURL(/\/salons\/s1$/)
 })
 
-test('plain sign-in (no link) says nothing about a salon', async ({ page }) => {
+test('plain sign-in (no link) says nothing about a salon', async ({ page, context }) => {
+  await languageKept(context)
   await page.goto('/signin')
   await expect(page.getByLabel('Mobile number')).toBeVisible()
   await expect(page.getByText('Sign in to book at the salon you opened.', { exact: false })).toBeHidden()
@@ -402,6 +406,7 @@ async function signInHere(page: Page) {
 }
 
 test('a salon link opened with a session that has ended (refused at start-up): sign-in still lands on that salon', async ({ page, context, api }) => {
+  await languageKept(context)
   await signedIn(context, api)
   for (const t of api.refreshTokens.keys()) api.refreshTokens.set(t, 'revoked')
   await page.goto('/salons/s1')
@@ -412,6 +417,7 @@ test('a salon link opened with a session that has ended (refused at start-up): s
 })
 
 test("the session ends while a salon's page is open (signed out in another tab): the next person starts at Home", async ({ page, context, api }) => {
+  await languageKept(context)
   await signedIn(context, api)
   await page.goto('/salons/s1')
   await expect(page.getByRole('heading', { name: 'Shine Unisex Salon' })).toBeVisible()
@@ -426,6 +432,7 @@ test("the session ends while a salon's page is open (signed out in another tab):
 })
 
 test('signed out in this tab, then a salon link opened inside the app: the next sign-in starts at Home', async ({ page, context, api }) => {
+  await languageKept(context)
   await signedIn(context, api)
   await page.goto('/profile')
   await page.getByRole('button', { name: 'Sign out', exact: true }).click()
@@ -437,7 +444,8 @@ test('signed out in this tab, then a salon link opened inside the app: the next 
   await expect(page).toHaveURL(/\/$/)
 })
 
-test('a shared phone: a salon link opened signed out but never signed in is forgotten after 30 minutes', async ({ page, api }) => {
+test('a shared phone: a salon link opened signed out but never signed in is forgotten after 30 minutes', async ({ page, api, context }) => {
+  await languageKept(context)
   api.user = { ...api.user, name: 'Riya Sharma', email: 'riya@example.com', emailVerified: true }
   await page.goto('/salons/s1')
   await expect(page.getByText('Sign in to book at the salon you opened.', { exact: false })).toBeVisible()
@@ -455,6 +463,7 @@ test('a shared phone: a salon link opened signed out but never signed in is forg
 })
 
 test('signed out in this tab, then any other screen: the next sign-in still starts at Home', async ({ page, context, api }) => {
+  await languageKept(context)
   await signedIn(context, api)
   api.bookings.push(api.makeBooking('b1', ['v1'], istInstant(addDays(todayIst(), 1), '10:00')))
   await page.goto('/profile')
@@ -581,6 +590,7 @@ test('/help when My requests can not be read (offline, server down): Write to us
 })
 
 test("a salon's booking steps (/book, /confirm) open when the session ended are not kept for the next person", async ({ page, context, api }) => {
+  await languageKept(context)
   await signedIn(context, api)
   for (const step of ['book', 'confirm'] as const) {
     await page.goto('/salons/s1')

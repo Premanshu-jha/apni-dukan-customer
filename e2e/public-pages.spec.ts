@@ -1,11 +1,13 @@
 import { readFileSync } from 'node:fs'
 import { MockApi } from './mockApi'
-import { expect, signedIn, test } from './helpers'
+import { expect, signedIn, test, languageKept } from './helpers'
 
 const te = (area: string) => JSON.parse(readFileSync(`src/i18n/te/${area}.json`, 'utf8')) as Record<string, string>
 
-test('a visitor opening the site sees About first, with Sign in on it; the sign-in screen links back to every page', async ({ page }) => {
+test('a visitor opening the site chooses the language first, then sees About, with Sign in on it; the sign-in screen links back to every page', async ({ page }) => {
   await page.goto('/')
+  await expect(page).toHaveURL(/\/language$/)
+  await page.getByRole('button', { name: 'English' }).click()
   await expect(page).toHaveURL(/\/about$/)
   await expect(page.getByRole('heading', { name: 'About Clozest' })).toBeVisible()
   await expect(page.getByText('Clozest is operated by Premanshu Jha, a sole proprietor.')).toBeVisible()
@@ -25,11 +27,12 @@ test('a visitor opening the site sees About first, with Sign in on it; the sign-
   await expect(page).toHaveURL(/\/signin$/)
 })
 
-test('a first-time visitor picks Telugu on About: the page is in Telugu, then sign-in, and the account gets it, as when picked on sign-in', async ({ page, api }) => {
+test('a first-time visitor picks Telugu on the first screen: About is in Telugu, then sign-in, and the account gets it', async ({ page, api }) => {
   api.user = MockApi.completeUser()
   await page.goto('/')
+  await expect(page).toHaveURL(/\/language$/)
+  await page.getByRole('button', { name: 'తెలుగు' }).click()
   await expect(page).toHaveURL(/\/about$/)
-  await page.getByRole('group', { name: 'Choose your language' }).getByRole('button', { name: 'తెలుగు' }).click()
   await expect(page.getByRole('heading', { level: 1, name: te('legal').aboutTitle })).toBeVisible()
   await expect(page.locator('html')).toHaveAttribute('lang', 'te')
   await expect(page.getByText(te('legal').aboutFind.replace('{km}', '2'))).toBeVisible()
@@ -38,7 +41,9 @@ test('a first-time visitor picks Telugu on About: the page is in Telugu, then si
   await page.getByRole('link', { name: te('legal').signInOrUp }).click()
   await expect(page).toHaveURL(/\/signin$/)
   await expect(page.getByRole('button', { name: te('auth').sendCode })).toBeVisible()
-  await expect(page.getByRole('button', { name: 'తెలుగు' })).toHaveAttribute('aria-pressed', 'true')
+  // Sign-in says which language it is in, with Change
+  await expect(page.getByText('తెలుగు', { exact: true })).toBeVisible()
+  await expect(page.getByRole('link', { name: te('language').change })).toBeVisible()
   // The policies keep their English text, and say so in Telugu
   await page.getByRole('navigation', { name: te('legal').linksLabel }).getByRole('link', { name: te('legal').terms }).click()
   await expect(page.getByRole('heading', { level: 1, name: te('legal').termsTitle })).toBeVisible()
@@ -58,6 +63,7 @@ test('a first-time visitor picks Telugu on About: the page is in Telugu, then si
 })
 
 test('someone who has signed in on this browser goes straight to sign-in at /, even after a reload (not About)', async ({ page, context, api }) => {
+  await languageKept(context)
   await signedIn(context, api)
   await page.goto('/')
   await expect(page.getByRole('heading', { name: /Good (morning|afternoon|evening)/ })).toBeVisible()
@@ -71,6 +77,7 @@ test('someone who has signed in on this browser goes straight to sign-in at /, e
 })
 
 test('a saved session whose refresh is refused (expired, or from before this release): sign-in at /, even after a reload', async ({ page, context, api }) => {
+  await languageKept(context)
   await signedIn(context, api)
   // The backend no longer knows the saved token (expired, or ended elsewhere)
   for (const t of api.refreshTokens.keys()) api.refreshTokens.set(t, 'revoked')
@@ -80,7 +87,8 @@ test('a saved session whose refresh is refused (expired, or from before this rel
   await expect(page).toHaveURL(/\/signin$/)
 })
 
-test('a visit to / drops a path saved by an earlier visit, so signing up from About ends at Home', async ({ page, api }) => {
+test('a visit to / drops a path saved by an earlier visit, so signing up from About ends at Home', async ({ page, api, context }) => {
+  await languageKept(context)
   await page.goto('/salons/s1')
   await expect(page).toHaveURL(/\/signin$/)
   await page.goto('/')

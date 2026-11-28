@@ -1,5 +1,5 @@
 import { addDays, istInstant, MockApi, todayIst } from './mockApi'
-import { expect, signedIn, test } from './helpers'
+import { expect, signedIn, test, languageKept } from './helpers'
 
 /** Less common situations from docs/scenarios.md, each checked end to end. */
 
@@ -72,7 +72,8 @@ test('outside India: a clear message instead of "fields not valid"', async ({ pa
   await expect(page.getByText('Clozest works only in India')).toBeVisible()
 })
 
-test('expired and too-many-tries sign-in codes say what to do', async ({ page, api }) => {
+test('expired and too-many-tries sign-in codes say what to do', async ({ page, api, context }) => {
+  await languageKept(context)
   void api // the fake backend answers sign-in
   await page.goto('/signin')
   await page.getByLabel('Mobile number').fill('9848012345')
@@ -85,6 +86,7 @@ test('expired and too-many-tries sign-in codes say what to do', async ({ page, a
 })
 
 test('signing out in one tab signs out the other tab too', async ({ context, api }) => {
+  await languageKept(context)
   await signedIn(context, api)
   const a = await context.newPage()
   await a.goto('/profile')
